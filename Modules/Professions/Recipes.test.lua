@@ -337,22 +337,22 @@ describe("Recipes", function()
         end)
 
         it("sorts by name, by skill needed and by how many can be made, either way", function()
-            local function names(sort) return listed(ns.Recipes_Rows(copy, { known = true, sort = sort })) end
-            assert.are.same({ "Elixir of Wisdom", "Healing Potion" }, names({ key = "name" }))
-            assert.are.same({ "Healing Potion", "Elixir of Wisdom" }, names({ key = "name", desc = true }))
-            assert.are.same({ "Healing Potion", "Elixir of Wisdom" }, names({ key = "craftable", desc = true })) -- 4, 1
-            assert.are.same({ "Elixir of Wisdom", "Healing Potion" }, names({ key = "craftable" }))
+            local function sortedNames(sort) return listed(ns.Recipes_Rows(copy, { known = true, sort = sort })) end
+            assert.are.same({ "Elixir of Wisdom", "Healing Potion" }, sortedNames({ key = "name" }))
+            assert.are.same({ "Healing Potion", "Elixir of Wisdom" }, sortedNames({ key = "name", desc = true }))
+            assert.are.same({ "Healing Potion", "Elixir of Wisdom" }, sortedNames({ key = "craftable", desc = true })) -- 4, 1
+            assert.are.same({ "Elixir of Wisdom", "Healing Potion" }, sortedNames({ key = "craftable" }))
             local unknown = listed(ns.Recipes_Rows(copy, { unknown = true, sort = { key = "level", desc = true } }))
             assert.are.same({ "Flask of the Titans", "Elixir of Giants" }, unknown)
         end)
 
         it("sorts by cost and value, the ones without a price last", function()
-            ns.Prices_RecipeCost = function(recipe) return ({ ["Elixir of Wisdom"] = 500, ["Healing Potion"] = 100 })[recipe.name] end
-            ns.Prices_RecipeValue = function(recipe) return recipe.name == "Healing Potion" and 900 or nil end
-            local function names(sort) return listed(ns.Recipes_Rows(copy, { known = true, unknown = true, sort = sort })) end
-            assert.are.same({ "Healing Potion", "Elixir of Wisdom", "Elixir of Giants", "Flask of the Titans" }, names({ key = "cost" }))
-            assert.are.same({ "Elixir of Wisdom", "Healing Potion", "Elixir of Giants", "Flask of the Titans" }, names({ key = "cost", desc = true }))
-            assert.are.equal("Healing Potion", names({ key = "value" })[1])
+            ns.Prices_RecipeCost = function(r) return ({ ["Elixir of Wisdom"] = 500, ["Healing Potion"] = 100 })[r.name] end
+            ns.Prices_RecipeValue = function(r) return r.name == "Healing Potion" and 900 or nil end
+            local function sortedNames(sort) return listed(ns.Recipes_Rows(copy, { known = true, unknown = true, sort = sort })) end
+            assert.are.same({ "Healing Potion", "Elixir of Wisdom", "Elixir of Giants", "Flask of the Titans" }, sortedNames({ key = "cost" }))
+            assert.are.same({ "Elixir of Wisdom", "Healing Potion", "Elixir of Giants", "Flask of the Titans" }, sortedNames({ key = "cost", desc = true }))
+            assert.are.equal("Healing Potion", sortedNames({ key = "value" })[1])
         end)
 
         it("puts cost and value in the rows", function()
