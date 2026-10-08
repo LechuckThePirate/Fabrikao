@@ -181,12 +181,23 @@ local function newRow()
     b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
     b:SetScript("OnEnter", showRecipeTooltip)
     b:SetScript("OnLeave", GameTooltip_Hide)
-    b:SetScript("OnClick", function(self)
+    local function onClick(self)
         local data = self.data
         if data and data.kind == "recipe" and data.recipe.link and IsModifiedClick and IsModifiedClick("CHATLINK") then
             ChatEdit_InsertLink(data.recipe.link)
         end
+    end
+    b:SetScript("OnClick", onClick)
+    -- over the icon: the tooltip of what the recipe makes
+    b.iconButton = CreateFrame("Button", nil, b)
+    b.iconButton:SetAllPoints(b.icon)
+    b.iconButton:SetScript("OnEnter", function(self)
+        local data = b.data
+        local recipe = data and data.kind == "recipe" and data.recipe
+        if not (recipe and recipe.db and ns.RecipeDB_ShowProductTooltip(self, recipe.id, recipe.db)) then showRecipeTooltip(b) end
     end)
+    b.iconButton:SetScript("OnLeave", GameTooltip_Hide)
+    b.iconButton:SetScript("OnClick", function() onClick(b) end)
     return b
 end
 
@@ -194,6 +205,7 @@ local function renderRow(b, data)
     b.data = data
     if data.kind == "header" then
         b.icon:Hide()
+        b.iconButton:Hide()
         b.info:SetText("")
         b.text:SetText(("%s (%d)"):format(data.text, data.count))
         b.text:SetTextColor(1, 0.82, 0)
@@ -203,6 +215,7 @@ local function renderRow(b, data)
     local recipe = data.recipe
     b:EnableMouse(true)
     b.icon:Show()
+    b.iconButton:Show()
     b.icon:SetTexture(recipe.icon)
     if recipe.learned then
         local color = ns.DIFFICULTY_COLORS[recipe.difficulty or ns.DIFFICULTY_LAST]

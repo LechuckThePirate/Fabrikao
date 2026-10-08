@@ -70,6 +70,23 @@ function ns.RecipeDB_Icon(spellID, recipe)
     return icon or 134400 -- the question mark
 end
 
+-- The tooltip of what the recipe makes (the item; for the ones that make none, like an enchantment, the recipe's own
+-- spell) next to `owner`. False when there is nothing to show.
+function ns.RecipeDB_ShowProductTooltip(owner, spellID, recipe)
+    local product = recipe and recipe.p and recipe.p[1]
+    if product and GameTooltip.SetItemByID then
+        GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+        GameTooltip:SetItemByID(product)
+    elseif GameTooltip.SetSpellByID then
+        GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+        GameTooltip:SetSpellByID(spellID)
+    else
+        return false
+    end
+    GameTooltip:Show()
+    return true
+end
+
 -- the record of a recipe (by its spell id), or nil
 function ns.RecipeDB_Get(spellID)
     local db = data()

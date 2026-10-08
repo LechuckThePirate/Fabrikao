@@ -172,14 +172,23 @@ local function newRow()
     b.selectedTexture:Hide()
     b:SetScript("OnEnter", showRowTooltip)
     b:SetScript("OnLeave", GameTooltip_Hide)
-    b:SetScript("OnClick", function(self)
+    local function onClick(self)
         selectRecipe(self.spellID)
         if IsModifiedClick and IsModifiedClick("CHATLINK") then
             local product = self.recipe.p and self.recipe.p[1]
             local link = product and select(2, GetItemInfo(product)) or ("|cff71d5ff|Hspell:%d|h[%s]|h|r"):format(self.spellID, self.recipe.n)
             ChatEdit_InsertLink(link)
         end
+    end
+    b:SetScript("OnClick", onClick)
+    -- over the icon: the tooltip of what the recipe makes
+    b.iconButton = CreateFrame("Button", nil, b)
+    b.iconButton:SetAllPoints(b.icon)
+    b.iconButton:SetScript("OnEnter", function(self)
+        if not ns.RecipeDB_ShowProductTooltip(self, b.spellID, b.recipe) then showRowTooltip(b) end
     end)
+    b.iconButton:SetScript("OnLeave", GameTooltip_Hide)
+    b.iconButton:SetScript("OnClick", function() onClick(b) end)
     return b
 end
 

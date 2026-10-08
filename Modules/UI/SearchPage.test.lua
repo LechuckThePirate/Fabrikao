@@ -110,6 +110,13 @@ describe("SearchPage", function()
             assert.matches("ReadyCheck", rows[1].info._text)
         end)
 
+        it("over the icon of a result, the tooltip of what it makes", function()
+            ns.UI_ShowSearch("elixir")
+            local row = framesWith("recipe")[1]
+            row.iconButton._scripts.OnEnter(row.iconButton)
+            assert.are.same({ 200 }, GameTooltip._set.SetItemByID)
+        end)
+
         it("selecting a result shows its detail", function()
             ns.UI_ShowSearch("i")
             local rows = framesWith("recipe")

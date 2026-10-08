@@ -112,6 +112,26 @@ describe("MainWindow", function()
         assert.are.equal("Skill 250  Trainer", rows[2].info._text)
     end)
 
+    it("over the icon of a recipe, the tooltip of what it makes (the spell's, when it makes no item)", function()
+        ns.Recipes_Request = function(skillLine, callback)
+            callback({
+                skillLine = skillLine, sources = {},
+                known = { { id = 1, name = "Elixir", icon = 5, learned = true, difficulty = 0, db = { s = 171, n = "Elixir", p = { 200, 1, 1 } } } },
+                unknown = { { id = 3, name = "Enchant", icon = 7, learned = false, db = { s = 171, n = "Enchant" } } },
+            })
+        end
+        ns.UI_Toggle()
+        click(framesWith("profession")[1])
+        local rows = framesWith("data")
+        local product = rows[2].iconButton
+        product._scripts.OnEnter(product)
+        assert.are.same({ 200 }, GameTooltip._set.SetItemByID)
+        local enchant = rows[4].iconButton
+        enchant._scripts.OnEnter(enchant)
+        assert.are.same({ 3 }, GameTooltip._set.SetSpellByID)
+        assert.is_false(rows[1].iconButton:IsShown()) -- a header has no icon
+    end)
+
     it("the search narrows both groups", function()
         ns.UI_Toggle()
         click(framesWith("profession")[1])
