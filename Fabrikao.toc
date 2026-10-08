@@ -20,6 +20,7 @@ Data\Generated\Recipes.lua
 Modules\Data\RecipeDB.lua
 Modules\Professions\Professions.lua
 Modules\Professions\Recipes.lua
+Modules\UI\SearchPage.lua
 Modules\UI\MainWindow.lua
 Modules\UI\MinimapButton.lua
 Modules\Debug\Probe.lua

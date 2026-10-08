@@ -1,12 +1,12 @@
 local _, ns = ...
 
--- Recipes of a profession, read from the game's trade skill API (C_TradeSkillUI). The game only answers
--- while that profession's window is open, so ns.Recipes_Request opens it (out of sight when it wasn't open
--- already), copies what the window needs into plain tables and closes it again. Everything after that works
--- on the copy: the list, the search and the "how many can I make" counts (from the bags, not the game).
+-- Recipes of a profession for the window's lists. The list comes from the addon's own data (every recipe of the
+-- profession) and "known" from the spell book, so it needs no trade skill window. When the player happens to
+-- have that profession's window open, its live answer (C_TradeSkillUI) is used instead, which also knows what
+-- the data doesn't. Everything works on plain tables: the list, the search and the "how many can I make"
+-- counts (from the bags).
 
 local BASIC_REAGENT = (Enum and Enum.CraftingReagentType and Enum.CraftingReagentType.Basic) or 1
-local REQUEST_TIMEOUT = 5 -- seconds before giving up on a profession that never answers
 
 local cache = {} -- skill line -> last copy
 
@@ -83,7 +83,6 @@ function ns.Recipes_Read(skillLine, name)
             local recipe = {
                 id = info.recipeID or id, name = info.name, icon = info.icon, link = info.hyperlink,
                 learned = info.learned and true or false, trivial = info.maxTrivialLevel,
-                sourceType = info.sourceType,
             }
             -- what the addon's own data knows about it: skill levels and where it is learned
             local db = ns.RecipeDB_Get and ns.RecipeDB_Get(recipe.id)
@@ -92,6 +91,7 @@ function ns.Recipes_Read(skillLine, name)
                 recipe.required = ns.RecipeDB_Required(db)
                 recipe.colors = ns.RecipeDB_Colors(db)
                 recipe.search = ns.RecipeDB_SearchText(recipe.id)
+                recipe.sourceType = ns.RecipeDB_Sources(db)[1]
             end
             if recipe.learned then
                 recipe.difficulty = info.relativeDifficulty
@@ -132,9 +132,9 @@ function ns.Recipes_Craftable(recipe)
     return most or 0
 end
 
--- Name of a recipe source (the game numbers them as the pet sources: drop, quest, vendor, profession...).
+-- Name of a recipe source code (trainer, vendor, drop, quest...).
 function ns.Recipes_SourceLabel(sourceType)
-    return sourceType and _G["BATTLE_PET_SOURCE_" .. (sourceType + 1)] or ns.L["Other"]
+    return sourceType and ns.RecipeDB_SourceName(sourceType) or ns.L["Other"]
 end
 
 -- The rows of the recipe list for the current search: { kind = "header", text = } and { kind = "recipe",
@@ -174,89 +174,49 @@ function ns.Recipes_Rows(copy, opts)
     return rows
 end
 
--- Asks for a profession's recipes: callback(copy) when read, callback(nil, reason) when it can't be.
--- Opens the profession's window if it isn't, hidden while the copy is made, and closes it afterwards; a
--- window the player had open is left as the player has it (showing the profession asked for).
--- opts: { slot = spell book slot of the profession's spell, name = its name }. Forever opens a profession by
--- casting its spell (what its own profession tabs do on a click), so that is tried first when there is a slot;
--- OpenTradeSkill is the other way, tried when the first one doesn't get an answer.
-local pending
-local frame = CreateFrame("Frame")
-local SECOND_TRY = 1.5 -- seconds before trying the other way of opening it
-
-local function hideGameWindow(hide)
-    if ProfessionsFrame and ProfessionsFrame.SetAlpha then ProfessionsFrame:SetAlpha(hide and 0 or 1) end
-end
-
-local function finish(copy, reason)
-    local request = pending
-    pending = nil
-    frame:UnregisterAllEvents()
-    if request.openedByUs then
-        C_TradeSkillUI.CloseTradeSkill()
-        hideGameWindow(false)
+-- A recipe of the data as the window's lists use it.
+local function fromData(id, db, learned, rank)
+    local recipe = {
+        id = id, name = db.n, icon = ns.RecipeDB_Icon(id, db), learned = learned, db = db,
+        required = ns.RecipeDB_Required(db), colors = ns.RecipeDB_Colors(db), trivial = db.c and db.c[4],
+        search = ns.RecipeDB_SearchText(id), sourceType = ns.RecipeDB_Sources(db)[1],
+    }
+    if learned then
+        recipe.difficulty = ns.RecipeDB_Difficulty(db, rank or 0)
+        recipe.reagents = {}
+        for _, reagent in ipairs(db.m or {}) do
+            recipe.reagents[#recipe.reagents + 1] = { items = { reagent[1] }, quantity = reagent[2] }
+        end
     end
-    request.callback(copy, reason)
+    return recipe
 end
 
--- what the game said, for the message when it never answers
-local function describe(request)
-    local info = C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
-    local events = {}
-    for event in pairs(request.events) do events[#events + 1] = event end
-    table.sort(events)
-    return ("tried %s, ready=%s, open=%s/%s, events=%s"):format(table.concat(request.tried, "+"),
-        tostring(C_TradeSkillUI.IsTradeSkillReady and C_TradeSkillUI.IsTradeSkillReady()),
-        tostring(info and info.professionID), tostring(info and info.professionName), table.concat(events, ","))
-end
-
-local function check(_, event)
-    if not pending then return end
-    if event then pending.events[event] = true end
-    if not isReady(pending.skillLine, pending.name) then return end
-    if pending.openedByUs then hideGameWindow(true) end
-    local copy = ns.Recipes_Read(pending.skillLine, pending.name)
-    -- the list can arrive empty and fill in a moment later
-    if copy and (#copy.known + #copy.unknown > 0 or pending.expired) then finish(copy) end
-end
-
-frame:SetScript("OnEvent", check)
-
--- one way of opening the profession; false when it isn't possible
-local function open(request, way)
-    request.tried[#request.tried + 1] = way
-    if way == "cast" then
-        if not (request.slot and C_SpellBook and C_SpellBook.CastSpellBookItem and Enum and Enum.SpellBookSpellBank) then return false end
-        C_SpellBook.CastSpellBookItem(request.slot, Enum.SpellBookSpellBank.Player)
-        return true
+-- Every recipe of the data for a profession, known ones (by the spell book) apart from the rest. `rank` is the
+-- character's skill, to color the known ones.
+function ns.Recipes_FromData(skillLine, rank)
+    local copy = { skillLine = skillLine, known = {}, unknown = {}, sources = {} }
+    for id, db in ns.RecipeDB_Each() do
+        if db.s == skillLine then
+            local learned = ns.RecipeDB_Known(id)
+            local recipe = fromData(id, db, learned, rank)
+            if learned then
+                copy.known[#copy.known + 1] = recipe
+            else
+                if recipe.sourceType then copy.sources[recipe.sourceType] = true end
+                copy.unknown[#copy.unknown + 1] = recipe
+            end
+        end
     end
-    return C_TradeSkillUI.OpenTradeSkill(request.skillLine) ~= false
+    table.sort(copy.known, sortKnown)
+    table.sort(copy.unknown, sortUnknown)
+    return copy
 end
 
+-- A profession's recipes: callback(copy) at once. The live answer of the game's window if that profession's is open,
+-- else the data's. opts: { name = the profession's name, rank = the character's skill }
 function ns.Recipes_Request(skillLine, callback, opts)
     opts = opts or {}
-    if not (C_TradeSkillUI and C_TradeSkillUI.OpenTradeSkill) then callback(nil, "no-api") return end
-    if pending then finish(nil, "superseded") end
-    local alreadyOpen = openSkillLine() ~= nil
-    local request = { skillLine = skillLine, name = opts.name, slot = opts.slot, callback = callback,
-        openedByUs = not alreadyOpen, events = {}, tried = {} }
-    pending = request
-    if isReady(skillLine, opts.name) then check() return end
-    for _, event in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "TRADE_SKILL_DETAILS_UPDATE" }) do
-        frame:RegisterEvent(event)
-    end
-    local first, second = "cast", "open"
-    if not opts.slot then first, second = "open", "cast" end
-    if not open(request, first) and not open(request, second) then finish(nil, "not-opened") return end
-    if request.openedByUs then C_Timer.After(0, function() if pending == request then hideGameWindow(true) end end) end
-    C_Timer.After(SECOND_TRY, function()
-        if pending ~= request or isReady(skillLine, opts.name) or #request.tried > 1 then return end
-        open(request, second)
-    end)
-    C_Timer.After(REQUEST_TIMEOUT, function()
-        if pending ~= request then return end
-        request.expired = true
-        check()
-        if pending == request then finish(nil, "timeout: " .. describe(request)) end
-    end)
+    local copy = ns.Recipes_Read(skillLine, opts.name) or ns.Recipes_FromData(skillLine, opts.rank)
+    cache[skillLine] = copy
+    callback(copy)
 end

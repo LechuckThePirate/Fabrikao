@@ -47,6 +47,29 @@ local function money(copper)
     return ("%dg %ds %dc"):format(math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100)
 end
 
+-- does the character know the recipe? (learned recipes are spells in the spell book)
+function ns.RecipeDB_Known(spellID)
+    local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
+    if C_SpellBook and C_SpellBook.IsSpellKnown then
+        local ok, known = pcall(C_SpellBook.IsSpellKnown, spellID, bank)
+        if ok and known then return true end
+    end
+    if C_SpellBook and C_SpellBook.IsSpellInSpellBook then
+        local ok, known = pcall(C_SpellBook.IsSpellInSpellBook, spellID, bank, false)
+        if ok and known then return true end
+    end
+    return IsPlayerSpell ~= nil and IsPlayerSpell(spellID) and true or false
+end
+
+-- icon of what the recipe makes (or of the recipe itself)
+function ns.RecipeDB_Icon(spellID, recipe)
+    local product = recipe.p and recipe.p[1]
+    local icon = product and C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(product)
+    if icon then return icon end
+    icon = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(spellID)
+    return icon or 134400 -- the question mark
+end
+
 -- the record of a recipe (by its spell id), or nil
 function ns.RecipeDB_Get(spellID)
     local db = data()
@@ -218,14 +241,15 @@ function ns.RecipeDB_Search(text, opts)
     local db = data()
     if not db then return results end
     text = strtrim((text or ""):lower())
-    if text == "" then return results end
+    local skill = opts and opts.skill
+    -- no text: nothing, unless asked for everything of one profession (to browse it)
+    if text == "" and not (skill and opts.all) then return results end
     local words = {}
     for word in text:gmatch("%S+") do words[#words + 1] = word end
-    local skill = opts and opts.skill
 
     for id, recipe in pairs(db.recipes) do
         if not skill or recipe.s == skill then
-            local haystack = haystackOf(recipe)
+            local haystack = text ~= "" and haystackOf(recipe) or ""
             local all = true
             for _, word in ipairs(words) do
                 if not haystack:find(word, 1, true) then all = false break end
@@ -233,7 +257,12 @@ function ns.RecipeDB_Search(text, opts)
             if all then results[#results + 1] = { id = id, recipe = recipe } end
         end
     end
+    local browsing = text == ""
     table.sort(results, function(a, b)
+        if browsing then -- a whole profession: by the skill each recipe needs
+            local ra, rb = ns.RecipeDB_Required(a.recipe), ns.RecipeDB_Required(b.recipe)
+            if ra ~= rb then return ra < rb end
+        end
         if a.recipe.n ~= b.recipe.n then return a.recipe.n < b.recipe.n end
         return a.id < b.id
     end)

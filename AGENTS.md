@@ -25,15 +25,16 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
 - `Modules/Settings/` — settings per character or shared by the account; new modules go in their own `Modules/<Area>/` folder and are
   added to the TOC. Every `X.lua` has `X.test.lua` next to it
 - `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing) and `Recipes.lua`
-  (opens a profession's game window out of sight, copies its recipes into plain tables, closes it; filtering, search and the
-  "how many can I make" count from the bags)
-- `Modules/UI/` — `MainWindow.lua` (professions page, recipes page with search) and `MinimapButton.lua`; `Bindings.xml` has the key binding
+  (a profession's recipes for the lists: from the data, with "known" from the spell book; the live answer of the game's window
+  instead when that profession's tab is open; filtering, search and the "how many can I make" count from the bags)
+- `Modules/UI/` — `MainWindow.lua` (professions page, recipes page), `SearchPage.lua` (search of every recipe in the data, with a detail
+  panel) and `MinimapButton.lua`; `Bindings.xml` has the key binding (the game loads it itself: **never list it in the TOC**)
 - `Data/Generated/Recipes.lua` (**generated, never edit by hand**) — every recipe of the crafting professions (skill levels where each
   turns orange / yellow / green / grey, ingredients, product, how it is learned), the items that teach them (vendors, drops, quests)
   and the trainers; `Data/Data.test.lua` checks its shape. `Modules/Data/RecipeDB.lua` queries it (by spell id, search by name /
   ingredient / NPC / zone, "where to learn it" lines)
-- `Modules/Debug/Probe.lua` — `/fab probe` writes what the client's profession API really answers into `FabrikaoDB.probe`
-  (read it from `WTF/Account/<account>/SavedVariables/Fabrikao.lua` after `/reload`)
+- `Modules/Debug/Probe.lua` — `/fab probe` prints, per profession, how many of the data's recipes the client says are known (by each way
+  of asking) and compares with the game's window when it is open; result also in `FabrikaoDB.probe` (SavedVariables file after `/reload`)
 - `test/` (WoW API mock + local runner), `setupTests.lua`, `Icons/` (addon icon), `images/screencaps/` (CurseForge description images),
   `images/fabrikao_propuesta_iconos.jpg` (the four icon proposals; `Icons/Fabrikao.png` is the top-left one, cut round and transparent, 256x256)
 
@@ -48,11 +49,13 @@ in `tools/local/cache/`. Source codes in the data: 1 crafted, 2 drop, 3 PvP, 4 q
 
 ## Forever's API (what the code relies on)
 
-Forever runs on the retail engine: professions use `GetProfessions()` / `GetProfessionInfo(index)` for the list and `C_TradeSkillUI` for
-recipes, which only answers while that profession's window is open (`C_TradeSkillUI.OpenTradeSkill(skillLine)`, then
-`GetFilteredRecipeIDs`, `GetRecipeInfo`, `GetRecipeSchematic`, `GetRecipeSourceText`). The game's own UI code for Forever (to check
-anything about the API) is the `forever` branch of https://github.com/Gethe/wow-ui-source (`Interface/AddOns/Blizzard_Professions*`,
-`Blizzard_APIDocumentationGenerated`). Anything the docs don't settle is verified in game with `/fab probe`.
+Forever runs on the retail engine: professions use `GetProfessions()` / `GetProfessionInfo(index)` for the list. **All professions live in one
+window with tabs (K key)**, not one window each, and neither `C_TradeSkillUI.OpenTradeSkill` nor casting the profession spell from an
+addon opened anything (no `TRADE_SKILL_*` event ever arrived), so the addon never opens it: the recipe lists come from the data and
+"known" from `C_SpellBook.IsSpellKnown` / `IsPlayerSpell`; `C_TradeSkillUI` (`GetFilteredRecipeIDs`, `GetRecipeInfo`...) is only read when
+the player has that profession's tab open. The game's own UI code for Forever (to check anything about the API) is the `forever` branch of
+https://github.com/Gethe/wow-ui-source (`Interface/AddOns/Blizzard_Professions*`, `Blizzard_APIDocumentationGenerated`). Anything the docs
+don't settle is verified in game with `/fab probe`.
 
 ## Commands (PowerShell, repo root)
 

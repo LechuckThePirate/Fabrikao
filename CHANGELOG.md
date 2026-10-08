@@ -9,6 +9,10 @@
 - New: the recipes you don't know show the skill they need and where they are learned (trainer, vendor, drop, quest), with the skill
   levels where they turn orange, yellow, green and grey in the tooltip. The search also looks at who sells or drops them.
 - New: data for every recipe of every crafting profession (also the ones of professions you don't have), from public databases.
+- New: search of every recipe in the game (the box above your professions, or `/fab find <text>`): by name, ingredient, vendor, drop,
+  quest or zone, also for professions you don't have, with a detail panel (skill levels, what it makes, ingredients with how many you
+  have, where to learn it) and a filter by profession.
+- The recipe lists no longer need the game's profession window: they come from the data.
 - Now only for WoW Forever.
 - `/fab probe`: diagnostic that saves what the client's profession API answers.
 

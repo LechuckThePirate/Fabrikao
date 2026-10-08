@@ -54,9 +54,11 @@ SlashCmdList.FABRIKAO = function(msg)
         ns.Print("v" .. ns.Version())
     elseif msg == "minimap" then
         ns.Minimap_Toggle()
+    elseif msg:match("^find") or msg:match("^search") then
+        ns.UI_ShowSearch(strtrim(msg:gsub("^%a+", "", 1)))
     elseif msg == "probe" then
         ns.Probe()
     else
-        ns.Print(ns.L["Usage: /fabrikao | minimap | version"])
+        ns.Print(ns.L["Usage: /fabrikao | find <recipe> | minimap | version"])
     end
 end

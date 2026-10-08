@@ -6,7 +6,7 @@ local L = ns.L
 -- (colored by difficulty, with how many it can make from the bags) and, below, the ones it doesn't know, with
 -- a search box and where each is learned.
 
-local WIDTH, HEIGHT = 560, 600
+local WIDTH, HEIGHT = 720, 600
 local ROW_H = 24
 local PROFESSION_H = 56
 
@@ -78,7 +78,7 @@ local function refreshOverview()
     for _, h in ipairs(headerTexts) do h:Hide(); h.line:Hide() end
 
     local list = ns.Professions_List()
-    local y, nButton, nHeader, lastPrimary = 0, 0, 0, nil
+    local y, nButton, nHeader, lastPrimary = 34, 0, 0, nil -- below the search box
     for _, profession in ipairs(list) do
         if profession.primary ~= lastPrimary then
             lastPrimary = profession.primary
@@ -345,6 +345,7 @@ function ns.UI_ShowOverview()
     if not frame then return end
     state.skillLine, state.copy = nil, nil
     page:Hide()
+    ns.SearchPage_Hide()
     overview:Show()
     refreshOverview()
 end
@@ -355,6 +356,7 @@ function ns.UI_ShowRecipes(profession)
     state.skillLine, state.source = skillLine, nil
     state.copy = ns.Recipes_Cached(skillLine)
     overview:Hide()
+    ns.SearchPage_Hide()
     page:Show()
     page.icon:SetTexture(profession.icon)
     page.title:SetText(profession.name)
@@ -377,7 +379,7 @@ function ns.UI_ShowRecipes(profession)
         elseif not state.copy then
             setStatus(L["Could not read this profession's recipes."] .. (reason and ("\n(" .. reason .. ")") or ""))
         end
-    end, { slot = profession.slot, name = profession.name })
+    end, { rank = profession.rank, name = profession.name })
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -430,6 +432,34 @@ local function createFrame()
     overview.empty:Hide()
 
     createPage(frame, top)
+    ns.SearchPage_Create(frame, top)
+
+    -- typing in the box above the professions goes to the search of every recipe
+    local search = CreateFrame("EditBox", nil, overview, "InputBoxTemplate")
+    search:SetHeight(20)
+    search:SetPoint("TOPLEFT", 6, -4)
+    search:SetPoint("RIGHT", overview, "RIGHT", -6, 0)
+    search:SetAutoFocus(false)
+    search:SetMaxLetters(60)
+    local hint = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    hint:SetPoint("LEFT", 2, 0)
+    hint:SetText(L["Search any recipe in the game..."])
+    local function startSearch(self)
+        local text = self:GetText()
+        if text == "" then return end
+        self:SetText("")
+        self:ClearFocus()
+        ns.UI_ShowSearch(text)
+    end
+    search:SetScript("OnTextChanged", function(self, userInput)
+        hint:SetShown(self:GetText() == "" and not self:HasFocus())
+        if userInput then startSearch(self) end
+    end)
+    search:SetScript("OnEditFocusGained", function() hint:Hide() end)
+    search:SetScript("OnEditFocusLost", function(self) hint:SetShown(self:GetText() == "") end)
+    search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+    search:SetScript("OnEnterPressed", startSearch)
+    overview.search = search
 
     frame:HookScript("OnShow", function()
         if state.skillLine then refreshRecipes() else refreshOverview() end
@@ -445,6 +475,15 @@ local function createFrame()
             refreshOverview()
         end
     end)
+end
+
+-- the search page of every recipe in the data, optionally starting with a text
+function ns.UI_ShowSearch(text)
+    ns.UI_Show()
+    state.skillLine, state.copy = nil, nil
+    overview:Hide()
+    page:Hide()
+    ns.SearchPage_Show(text)
 end
 
 function ns.UI_Toggle()
