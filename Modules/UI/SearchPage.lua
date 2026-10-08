@@ -14,7 +14,6 @@ local GOLD = "|cffffd100"
 local page
 local rowButtons = {}
 local state = { skill = nil, results = {}, selected = nil, truncated = 0 }
-local itemsPending = false
 
 local function colorCode(color)
     return ("|cff%02x%02x%02x"):format(math.floor(color[1] * 255), math.floor(color[2] * 255), math.floor(color[3] * 255))
@@ -46,7 +45,6 @@ local function itemName(itemID)
     local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID)
     if name then return name end
     if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
-    itemsPending = true
     return L["item %d"]:format(itemID)
 end
 
@@ -339,7 +337,6 @@ function ns.SearchPage_Create(parent, top)
     events:RegisterEvent("BAG_UPDATE_DELAYED")
     events:SetScript("OnEvent", function()
         if page:IsVisible() and state.selected then
-            itemsPending = false
             renderDetail()
         end
     end)
