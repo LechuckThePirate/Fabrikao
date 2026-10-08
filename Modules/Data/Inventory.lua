@@ -71,7 +71,7 @@ function ns.Inventory_Breakdown(itemID)
     local list = {}
     local bags, bank = ns.Inventory_Mine(itemID)
     if bags > 0 or bank > 0 then
-        local _, class = UnitClass and UnitClass("player")
+        local class = UnitClass and select(2, UnitClass("player"))
         list[#list + 1] = { name = UnitName("player"), class = class, bags = bags, bank = bank, me = true }
     end
     for _, character in ipairs(ns.Inventory_Others()) do
