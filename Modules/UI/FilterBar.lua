@@ -8,9 +8,6 @@ local L = ns.L
 --     sort = { key =, desc = } or nil, source = a source code or nil, category = a category name or nil }
 -- and gets onChange() after every change.
 
-local SKILL_MODES = { nil, "learnable", "higher" }
-local SORT_KEYS = { nil, "name", "level", "cost", "value", "craftable" } -- nil: the list's own order
-
 -- the value after `current` in `values` (a list that may start with nil: "no filter"), wrapping around
 function ns.FilterBar_NextValue(values, count, current)
     for i = 1, count do
