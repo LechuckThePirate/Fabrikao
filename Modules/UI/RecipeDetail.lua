@@ -8,16 +8,20 @@ local L = ns.L
 -- profession (when the recipe has none of its own), onClose = function() }.
 -- With TomTom installed, the trainers and vendors of a recipe the character doesn't know have a button that sets a waypoint.
 
-local WIDTH = 450
+local WIDTH = 520
 local MARGIN = 22
 local SCROLL_W = 28 -- the scroll bar
 local TEXT_W = WIDTH - MARGIN - SCROLL_W - 6
-local LABEL_W = 116
-local ICON, ROW_H = 36, 46
+local LABEL_W = 150
+local ICON, ROW_H = 42, 54
 local GOLD = "|cffffd100"
 local GREEN, RED, DIM = "|cff40bf40", "|cffff4040", "|cff9a9a9a"
 local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:16|t"
 local CROSS = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:16|t"
+
+-- the texts are one size up from the game's usual: the panel has the room
+local FONT_BODY, FONT_LABEL, FONT_SMALL = "GameFontHighlightLarge", "GameFontNormalLarge", "GameFontHighlight"
+local FONT_HEAD = _G.GameFontNormalHuge and "GameFontNormalHuge" or "GameFontNormalLarge"
 
 local panel, current
 
@@ -210,7 +214,7 @@ local function releaseAll()
 end
 
 local function newText()
-    local fs = panel.child:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local fs = panel.child:CreateFontString(nil, "OVERLAY", FONT_BODY)
     fs:SetJustifyV("TOP")
     fs:SetWordWrap(true)
     return fs
@@ -230,19 +234,19 @@ local function put(font, x, y, width, text, justify, color)
 end
 
 local function heading(y, title)
-    put("GameFontNormalLarge", 0, y, TEXT_W, title, nil, { 1, 0.82, 0 })
+    put(FONT_HEAD, 0, y, TEXT_W, title, nil, { 1, 0.82, 0 })
     local line = acquire("line", function() return panel.child:CreateTexture(nil, "ARTWORK") end)
     line:ClearAllPoints()
-    line:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 0, -(y + 22))
+    line:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 0, -(y + 28))
     line:SetSize(TEXT_W, 1)
     line:SetColorTexture(1, 0.82, 0, 0.4)
-    return y + 32
+    return y + 40
 end
 
 -- "Label    value" with the value wrapping in its own column
 local function factRow(y, label, value)
-    local a = put("GameFontNormal", 0, y, LABEL_W, label, nil, { 1, 0.82, 0 })
-    local b = put("GameFontHighlight", LABEL_W + 8, y, TEXT_W - LABEL_W - 8, value)
+    local a = put(FONT_LABEL, 0, y, LABEL_W, label, nil, { 1, 0.82, 0 })
+    local b = put(FONT_BODY, LABEL_W + 8, y, TEXT_W - LABEL_W - 8, value)
     return y + math.max(a, b) + 9
 end
 
@@ -252,19 +256,19 @@ local function newIngredient()
     row.icon = row:CreateTexture(nil, "ARTWORK")
     row.icon:SetSize(ICON, ICON)
     row.icon:SetPoint("LEFT", 2, 0)
-    row.count = row:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    row.count = row:CreateFontString(nil, "OVERLAY", "NumberFontNormalLarge")
     row.count:SetPoint("BOTTOMRIGHT", row.icon, "BOTTOMRIGHT", 1, 1)
-    row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.name = row:CreateFontString(nil, "OVERLAY", FONT_BODY)
     row.name:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 10, -2)
-    row.name:SetPoint("RIGHT", row, "RIGHT", -86, 0)
+    row.name:SetPoint("RIGHT", row, "RIGHT", -100, 0)
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
-    row.status = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.status = row:CreateFontString(nil, "OVERLAY", FONT_SMALL)
     row.status:SetPoint("BOTTOMLEFT", row.icon, "BOTTOMRIGHT", 10, 2)
     row.status:SetPoint("RIGHT", row, "RIGHT", -4, 0)
     row.status:SetJustifyH("LEFT")
     row.status:SetWordWrap(false)
-    row.price = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.price = row:CreateFontString(nil, "OVERLAY", FONT_SMALL)
     row.price:SetPoint("TOPRIGHT", row, "TOPRIGHT", -4, -4)
     row.price:SetJustifyH("RIGHT")
     row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
@@ -300,7 +304,7 @@ end
 
 local function newNpc()
     local row = CreateFrame("Frame", nil, panel.child)
-    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.text = row:CreateFontString(nil, "OVERLAY", FONT_BODY)
     row.text:SetPoint("TOPLEFT", 0, 0)
     row.text:SetJustifyH("LEFT")
     row.text:SetJustifyV("TOP")
@@ -361,17 +365,17 @@ local function render()
     if #data.economy > 0 then
         y = heading(y + 10, L["Cost and profit"])
         for _, f in ipairs(data.economy) do y = factRow(y, f.label, f.value) end
-        if data.note then y = y + put("GameFontHighlightSmall", 0, y, TEXT_W, data.note, nil, { 0.6, 0.6, 0.6 }) + 8 end
+        if data.note then y = y + put(FONT_SMALL, 0, y, TEXT_W, data.note, nil, { 0.6, 0.6, 0.6 }) + 8 end
     end
 
     if #data.sources > 0 then
         y = heading(y + 10, L["Where to learn it"])
         for _, line in ipairs(data.sources) do
             if line.npcs and #line.npcs > 0 then
-                y = y + put("GameFontNormal", 0, y, TEXT_W, line.title, nil, { 1, 0.82, 0 }) + 6
+                y = y + put(FONT_LABEL, 0, y, TEXT_W, line.title, nil, { 1, 0.82, 0 }) + 6
                 for _, npc in ipairs(line.npcs) do y = npcRow(y, npc, data.waypoints) end
                 if line.more and line.more > 0 then
-                    y = y + put("GameFontHighlightSmall", 14, y, TEXT_W - 14, L["and %d more"]:format(line.more), nil, { 0.6, 0.6, 0.6 }) + 6
+                    y = y + put(FONT_SMALL, 14, y, TEXT_W - 14, L["and %d more"]:format(line.more), nil, { 0.6, 0.6, 0.6 }) + 6
                 end
                 y = y + 4
             else
@@ -380,7 +384,7 @@ local function render()
         end
     end
 
-    y = y + put("GameFontHighlightSmall", 0, y + 14, TEXT_W, data.ids, nil, { 0.55, 0.55, 0.55 }) + 28
+    y = y + put(FONT_SMALL, 0, y + 14, TEXT_W, data.ids, nil, { 0.55, 0.55, 0.55 }) + 28
     panel.child:SetHeight(math.max(1, y))
     panel.scroll:SetVerticalScroll(0)
 end
@@ -410,7 +414,7 @@ local function create(parent)
 
     -- the icon of what it makes, in a frame, with that item's tooltip
     local iconFrame = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-    iconFrame:SetSize(64, 64)
+    iconFrame:SetSize(72, 72)
     iconFrame:SetPoint("TOPLEFT", MARGIN, -MARGIN)
     iconFrame:SetBackdrop({ edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14 })
     iconFrame:SetBackdropBorderColor(1, 0.82, 0, 0.9)
@@ -429,29 +433,28 @@ local function create(parent)
         if recipe and recipe.link and IsModifiedClick and IsModifiedClick("CHATLINK") then ChatEdit_InsertLink(recipe.link) end
     end)
 
-    local huge = _G.GameFontNormalHuge and "GameFontNormalHuge" or "GameFontNormalLarge"
-    panel.name = panel:CreateFontString(nil, "OVERLAY", huge)
+    panel.name = panel:CreateFontString(nil, "OVERLAY", FONT_HEAD)
     panel.name:SetPoint("TOPLEFT", iconFrame, "TOPRIGHT", 14, -2)
-    panel.name:SetWidth(WIDTH - MARGIN * 2 - 64 - 14 - 26)
+    panel.name:SetWidth(WIDTH - MARGIN * 2 - 72 - 14 - 26)
     panel.name:SetJustifyH("LEFT")
     panel.name:SetWordWrap(true)
     panel.name:SetMaxLines(2)
-    panel.subtitle = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    panel.subtitle = panel:CreateFontString(nil, "OVERLAY", FONT_BODY)
     panel.subtitle:SetPoint("BOTTOMLEFT", iconFrame, "BOTTOMRIGHT", 14, 2)
     panel.subtitle:SetTextColor(0.7, 0.7, 0.7)
     panel.subtitle:SetJustifyH("LEFT")
-    panel.status = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    panel.status = panel:CreateFontString(nil, "OVERLAY", FONT_BODY)
     panel.status:SetPoint("TOPLEFT", iconFrame, "BOTTOMLEFT", 0, -12)
     panel.status:SetJustifyH("LEFT")
 
     local separator = panel:CreateTexture(nil, "ARTWORK")
-    separator:SetPoint("TOPLEFT", panel, "TOPLEFT", MARGIN, -(MARGIN + 64 + 40))
+    separator:SetPoint("TOPLEFT", panel, "TOPLEFT", MARGIN, -(MARGIN + 72 + 44))
     separator:SetPoint("RIGHT", panel, "RIGHT", -MARGIN, 0)
     separator:SetHeight(1)
     separator:SetColorTexture(1, 0.82, 0, 0.5)
 
     panel.scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
-    panel.scroll:SetPoint("TOPLEFT", MARGIN, -(MARGIN + 64 + 54))
+    panel.scroll:SetPoint("TOPLEFT", MARGIN, -(MARGIN + 72 + 58))
     panel.scroll:SetPoint("BOTTOMRIGHT", -SCROLL_W, MARGIN)
     panel.child = CreateFrame("Frame", nil, panel.scroll)
     panel.child:SetSize(TEXT_W, 1)
