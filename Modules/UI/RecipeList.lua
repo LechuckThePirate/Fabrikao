@@ -142,10 +142,8 @@ local function newComponent(row)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.itemID) else GameTooltip:SetText(itemName(self.itemID), 1, 1, 1) end
         GameTooltip:AddLine(L["Needs %d, you have %d"]:format(self.quantity, self.owned), 1, 1, 1)
-        -- who has it, when there are other characters to tell from
-        for _, entry in ipairs(ns.Inventory_Breakdown and ns.Inventory_Breakdown(self.itemID) or {}) do
-            GameTooltip:AddLine(ns.Inventory_Line(entry), 0.8, 0.8, 0.8)
-        end
+        -- who has it, when there are other characters to tell from (not the ones the tooltip already lists)
+        if ns.Inventory_AddTooltipLines then ns.Inventory_AddTooltipLines(GameTooltip, self.itemID) end
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", GameTooltip_Hide)

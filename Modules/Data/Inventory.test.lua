@@ -87,6 +87,50 @@ describe("Inventory", function()
         assert.are.equal("Bad Yuyu: 1 in bags", ns.Inventory_Line({ name = "Bad Yuyu", class = "WARLOCK", bags = 1, bank = 0 }))
     end)
 
+    describe("the tooltip lines", function()
+        -- a tooltip that keeps its lines, readable the way the game's are (GameTooltipTextLeft1...)
+        local function tooltip(existing)
+            local lines = {}
+            for i, text in ipairs(existing or {}) do
+                lines[i] = text
+                _G["TestTooltipTextLeft" .. i] = { GetText = function() return text end }
+            end
+            local tip = { added = {} }
+            function tip:GetName() return "TestTooltip" end
+            function tip:NumLines() return #lines end
+            function tip:AddLine(text) self.added[#self.added + 1] = text end
+            return tip
+        end
+
+        it("adds a line for each character that has the item", function()
+            local tip = tooltip()
+            ns.Inventory_AddTooltipLines(tip, 10)
+            assert.are.equal(2, #tip.added) -- the character and Elsa (Bad Yuyu has none)
+            assert.matches("Therzok", tip.added[1])
+        end)
+
+        it("leaves out the characters the tooltip already lists (Embolsao adds them itself)", function()
+            local tip = tooltip({ "|cff3fc7ebElsa|r: 4 in bags" })
+            ns.Inventory_AddTooltipLines(tip, 10)
+            assert.are.equal(1, #tip.added)
+            assert.matches("Therzok", tip.added[1])
+            assert.is_nil(tip.added[1]:find("Elsa", 1, true))
+        end)
+
+        it("also recognizes a name without a color", function()
+            local tip = tooltip({ "Elsa: 4 in bags" })
+            ns.Inventory_AddTooltipLines(tip, 10)
+            assert.are.equal(1, #tip.added)
+        end)
+
+        it("adds nothing when there are no other characters", function()
+            _G.EmbolsaoDB = nil
+            local tip = tooltip()
+            ns.Inventory_AddTooltipLines(tip, 10)
+            assert.are.same({}, tip.added)
+        end)
+    end)
+
     describe("with Embolsao's public API", function()
         local calls
 

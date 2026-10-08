@@ -123,6 +123,27 @@ function ns.Inventory_Breakdown(itemID)
     return list
 end
 
+-- Adds who has the item to a tooltip, one line per character, leaving out the ones the tooltip already lists: Embolsao puts
+-- the other characters in every item tooltip itself, so they would show twice.
+function ns.Inventory_AddTooltipLines(tooltip, itemID)
+    local list = ns.Inventory_Breakdown(itemID)
+    if not list then return end
+    local present = {}
+    local name = tooltip.GetName and tooltip:GetName()
+    for i = 1, (name and tooltip.NumLines and tooltip:NumLines()) or 0 do
+        local fontString = _G[name .. "TextLeft" .. i]
+        local text = fontString and fontString.GetText and fontString:GetText()
+        if text then present[#present + 1] = text end
+    end
+    for _, entry in ipairs(list) do
+        local listed = false
+        for _, text in ipairs(present) do
+            if text:find(entry.name .. "|r: ", 1, true) or text:find(entry.name .. ": ", 1, true) then listed = true break end
+        end
+        if not listed then tooltip:AddLine(ns.Inventory_Line(entry), 0.8, 0.8, 0.8) end
+    end
+end
+
 -- The same as a line of text: "Elsa: 5 in bags, 2 in bank" (the name in its class color).
 function ns.Inventory_Line(entry)
     local color = entry.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[entry.class]
