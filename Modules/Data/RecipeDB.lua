@@ -213,6 +213,13 @@ function ns.RecipeDB_NpcLocation(id)
     return spot and { map = spot[1], x = spot[2], y = spot[3] } or nil
 end
 
+-- a list of texts as the entries of a line of ns.RecipeDB_Where
+local function asEntries(texts)
+    local entries = {}
+    for i, text in ipairs(texts) do entries[i] = { text = text } end
+    return entries
+end
+
 -- The NPCs standing in the zone the character is in first (a trainer next door beats one in another continent).
 local function nearestFirst(list)
     local here = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
@@ -226,12 +233,13 @@ local function nearestFirst(list)
     return near
 end
 
--- where the recipe is learned, as lines { title =, text =, npcs = { { id =, name =, text = }... } (trainers and vendors) } for a
--- tooltip or detail panel; `full` lists far more of each (the recipe's own panel has the room)
+-- where the recipe is learned, as lines { title =, text =, entries = { { text =, id =, name = }... }, more = how many are left out }
+-- for a tooltip or detail panel (`text` is the entries in one line; the panel puts each entry on its own line; id and name are
+-- there for the trainers and vendors, who can be shown on the map); `full` lists far more of each (the recipe's own panel has the room)
 function ns.RecipeDB_Where(recipe, full)
     local lines = {}
     local maxTrainers, maxVendors, maxQuests, maxDrops, maxObjects = 3, 5, 3, 4, 3
-    if full then maxTrainers, maxVendors, maxQuests, maxDrops, maxObjects = 10, 12, 8, 12, 8 end
+    if full then maxTrainers, maxVendors, maxQuests, maxDrops, maxObjects = 10, 12, 8, 30, 8 end
     local item = ns.RecipeDB_Item(recipe)
     local db = data()
 
@@ -254,7 +262,7 @@ function ns.RecipeDB_Where(recipe, full)
         if count > #names then text = text .. "; " .. L["and %d more"]:format(count - #names) end
         local cost = money(recipe.g)
         if cost then text = (text ~= "" and (text .. " -- ") or "") .. L["costs %s"]:format(cost) end
-        lines[#lines + 1] = { title = L["Trainer"], text = text, npcs = npcs, more = count - #names }
+        lines[#lines + 1] = { title = L["Trainer"], text = text, entries = npcs, more = count - #names }
     end
 
     if item then
@@ -275,7 +283,7 @@ function ns.RecipeDB_Where(recipe, full)
         if #vendors > 0 then
             local text = table.concat(vendors, "; ")
             if vendorCount > #vendors then text = text .. "; " .. L["and %d more"]:format(vendorCount - #vendors) end
-            lines[#lines + 1] = { title = L["Vendor"], text = text, npcs = npcs, more = vendorCount - #vendors }
+            lines[#lines + 1] = { title = L["Vendor"], text = text, entries = npcs, more = vendorCount - #vendors }
         end
 
         if item.qs then
@@ -283,7 +291,7 @@ function ns.RecipeDB_Where(recipe, full)
             for _, quest in ipairs(item.qs) do
                 if forMySide(quest) and #quests < maxQuests then quests[#quests + 1] = quest.n end
             end
-            if #quests > 0 then lines[#lines + 1] = { title = L["Quest"], text = table.concat(quests, "; ") } end
+            if #quests > 0 then lines[#lines + 1] = { title = L["Quest"], text = table.concat(quests, "; "), entries = asEntries(quests) } end
         end
 
         if item.d then
@@ -298,8 +306,9 @@ function ns.RecipeDB_Where(recipe, full)
                 end
             end
             local text = table.concat(drops, "; ")
-            if item.dn and item.dn > #drops then text = text .. "; " .. L["and %d more"]:format(item.dn - #drops) end
-            lines[#lines + 1] = { title = L["Drop"], text = text }
+            local left = item.dn and item.dn > #drops and item.dn - #drops or 0
+            if left > 0 then text = text .. "; " .. L["and %d more"]:format(left) end
+            lines[#lines + 1] = { title = L["Drop"], text = text, entries = asEntries(drops), more = left }
         elseif item.cd then
             lines[#lines + 1] = { title = L["Drop"], text = L["World drop: any creature of about level %d"]:format(item.lv or 0) }
         end
@@ -309,7 +318,7 @@ function ns.RecipeDB_Where(recipe, full)
             for _, object in ipairs(item.o) do
                 if #objects < maxObjects then objects[#objects + 1] = named(object, true) end
             end
-            lines[#lines + 1] = { title = L["Found in"], text = table.concat(objects, "; ") }
+            lines[#lines + 1] = { title = L["Found in"], text = table.concat(objects, "; "), entries = asEntries(objects) }
         end
     end
 

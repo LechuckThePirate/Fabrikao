@@ -143,12 +143,12 @@ describe("Recipe detail", function()
 
         it("lists where it is learned in full: the vendors of the character's side with their zones, each one apart", function()
             local vendors = source(build(2, false), "Vendor")
-            assert.matches("^Alliance Vendor %(Stormwind City%) %-%- 1g", vendors.npcs[1].text)
-            assert.are.equal(1, vendors.npcs[1].id)
-            assert.are.equal(6, #vendors.npcs) -- the 6 of the side (the tooltips list five)
-            for _, npc in ipairs(vendors.npcs) do assert.is_nil(npc.text:find("Horde Vendor", 1, true)) end
+            assert.matches("^Alliance Vendor %(Stormwind City%) %-%- 1g", vendors.entries[1].text)
+            assert.are.equal(1, vendors.entries[1].id)
+            assert.are.equal(6, #vendors.entries) -- the 6 of the side (the tooltips list five)
+            for _, npc in ipairs(vendors.entries) do assert.is_nil(npc.text:find("Horde Vendor", 1, true)) end
             local trainers = source(build(2, false), "Trainer")
-            assert.are.equal(2, #trainers.npcs)
+            assert.are.equal(2, #trainers.entries)
         end)
 
         it("has the ids at the end", function()
@@ -236,7 +236,7 @@ describe("Recipe detail", function()
         it("the trainers and vendors of the zone the character is in come first", function()
             _G.C_Map.GetBestMapForUnit = function() return 36 end
             local lines = ns.RecipeDB_Where(DATA.recipes[1], true)
-            assert.are.equal(10, lines[1].npcs[1].id) -- Alchemist Ben stands in map 36
+            assert.are.equal(10, lines[1].entries[1].id) -- Alchemist Ben stands in map 36
         end)
     end)
 

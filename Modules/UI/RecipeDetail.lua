@@ -326,10 +326,11 @@ local function newNpc()
     return row
 end
 
--- A trainer or vendor on its own line, with the waypoint button when it can be used.
+-- An entry of a source (a trainer, a vendor, a creature that drops it, a quest...) on its own line, with the map and waypoint buttons
+-- when it is an NPC with a known location.
 local function npcRow(y, npc, withWaypoint)
     local row = acquire("npc", newNpc)
-    local spot = withWaypoint and ns.RecipeDB_NpcLocation(npc.id)
+    local spot = withWaypoint and npc.id and ns.RecipeDB_NpcLocation(npc.id)
     local withTomTom = spot and ns.Map_HasTomTom()
     row:ClearAllPoints()
     row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 14, -y)
@@ -374,9 +375,9 @@ local function render()
     if #data.sources > 0 then
         y = heading(y + 10, L["Where to learn it"])
         for _, line in ipairs(data.sources) do
-            if line.npcs and #line.npcs > 0 then
+            if line.entries and #line.entries > 0 then
                 y = y + put(FONT_LABEL, 0, y, TEXT_W, line.title, nil, { 1, 0.82, 0 }) + 6
-                for _, npc in ipairs(line.npcs) do y = npcRow(y, npc, data.waypoints) end
+                for _, entry in ipairs(line.entries) do y = npcRow(y, entry, data.waypoints) end
                 if line.more and line.more > 0 then
                     y = y + put(FONT_SMALL, 14, y, TEXT_W - 14, L["and %d more"]:format(line.more), nil, { 0.6, 0.6, 0.6 }) + 6
                 end

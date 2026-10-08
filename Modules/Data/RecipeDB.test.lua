@@ -109,6 +109,7 @@ describe("RecipeDB", function()
         it("lists the quests of the character's side", function()
             local text = ns.RecipeDB_Where(ns.RecipeDB_Get(103))[1].text
             assert.are.equal("The Sword Quest", text)
+            assert.are.same({ "The Sword Quest" }, { ns.RecipeDB_Where(ns.RecipeDB_Get(103))[1].entries[1].text })
         end)
 
         it("lists who drops it, with level and chance, and how many more there are", function()
@@ -117,6 +118,10 @@ describe("RecipeDB", function()
             assert.matches("Black Drake %(Burning Steppes%) level 55%-57 %-%- 1%.25%%", line.text)
             assert.matches("Red Whelp %(Burning Steppes%) level 50", line.text)
             assert.matches("and 4 more", line.text)
+            -- the panel puts each one on its own line
+            assert.are.equal(2, #line.entries)
+            assert.matches("^Black Drake %(Burning Steppes%) level 55%-57", line.entries[1].text)
+            assert.are.equal(4, line.more)
         end)
 
         it("says so when nothing is known", function()
