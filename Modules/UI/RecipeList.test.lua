@@ -43,19 +43,17 @@ describe("RecipeList", function()
 
     local function rowsShown() return framesWith("data") end
 
-    describe("the list view", function()
-        it("shows the name in the difficulty color, with how many can be made, and for the unknown ones skill and source", function()
-            ns.RecipeList_Set(rows(), "list", nil, 60)
+
+    describe("the table view", function()
+        it("shows the name in the difficulty color, with how many can be made", function()
+            ns.RecipeList_Set(rows(), "table", nil, 60)
             local shown = rowsShown()
             assert.are.equal(4, #shown)
             assert.are.equal("Elixir of Wisdom (2)", shown[2].text._text)
             assert.are.same({ 1, 1, 0 }, shown[2].text._set.SetTextColor)
-            assert.are.equal("Skill 250  Vendor", shown[4].info._text)
             assert.are.equal(24, shown[2]:GetHeight())
         end)
-    end)
 
-    describe("the table view", function()
         it("has a column for cost, auction value and level", function()
             ns.RecipeList_Set(rows(), "table", nil, 60)
             local row = rowsShown()[2]
@@ -105,10 +103,8 @@ describe("RecipeList", function()
             assert.are.equal(14, visibleIcons + tonumber(shown[2].compMore._text:sub(2)))
         end)
 
-        it("the other views show no ingredient icons", function()
+        it("the detailed view shows no ingredient icons", function()
             ns.RecipeList_Set(rows(), "table", nil, 60)
-            ns.RecipeList_Set(rows(), "list", nil, 60)
-            assert.is_false(rowsShown()[2].compIcons[1]:IsShown())
             ns.RecipeList_Set(rows(), "detailed", nil, 60)
             assert.is_false(rowsShown()[2].compIcons[1]:IsShown())
         end)
@@ -129,7 +125,7 @@ describe("RecipeList", function()
             ns.RecipeList_Set(rows(), "table", nil, 60)
             local header = ns.RecipeList_HeaderFrame()
             assert.is_true(header:IsShown())
-            ns.RecipeList_Set(rows(), "list", nil, 60)
+            ns.RecipeList_Set(rows(), "detailed", nil, 60)
             assert.is_false(header:IsShown())
         end)
     end)
@@ -154,7 +150,7 @@ describe("RecipeList", function()
 
     describe("the group titles", function()
         it("show a minus when open and a plus when folded, and fold or unfold on a click", function()
-            ns.RecipeList_Set(rows(), "list", nil, 60)
+            ns.RecipeList_Set(rows(), "table", nil, 60)
             local shown = rowsShown()
             assert.matches("MinusButton", shown[1].icon._set.SetTexture[1])
             assert.matches("PlusButton", shown[3].icon._set.SetTexture[1])
@@ -189,13 +185,13 @@ describe("RecipeList", function()
         end
 
         it("only makes frames for the rows in view, however many recipes there are", function()
-            ns.RecipeList_Set(manyRows(600), "list", nil, 60)
+            ns.RecipeList_Set(manyRows(600), "table", nil, 60)
             assert.is_true(made() < 60)
             assert.are.equal(24 * 600, content()._h) -- the scroll is as tall as all of them
         end)
 
         it("the same few frames show other rows as the list scrolls", function()
-            ns.RecipeList_Set(manyRows(600), "list", nil, 60)
+            ns.RecipeList_Set(manyRows(600), "table", nil, 60)
             local before = made()
             scroll():SetVerticalScroll(24 * 300)
             WowMock.Fire(scroll(), "OnVerticalScroll", 24 * 300)
@@ -213,9 +209,9 @@ describe("RecipeList", function()
         end)
 
         it("with fewer rows after a filter, the list is not left scrolled past the end", function()
-            ns.RecipeList_Set(manyRows(600), "list", nil, 60)
+            ns.RecipeList_Set(manyRows(600), "table", nil, 60)
             scroll():SetVerticalScroll(24 * 500)
-            ns.RecipeList_Set(manyRows(10), "list", nil, 60)
+            ns.RecipeList_Set(manyRows(10), "table", nil, 60)
             assert.is_true(scroll():GetVerticalScroll() <= 24 * 10)
         end)
     end)
@@ -227,9 +223,9 @@ describe("RecipeList", function()
             timers, draws = {}, 0
             _G.C_Timer = { After = function(_, f) timers[#timers + 1] = f end }
             local original = ns.RecipeDB_ShortSource
-            -- the list view asks it once for every unknown recipe it draws: a count of the redraws
+            -- the detailed view asks it once for every unknown recipe it draws: a count of the redraws
             ns.RecipeDB_ShortSource = function(...) draws = draws + 1; return original(...) end
-            ns.RecipeList_Set(rows(), "list", nil, 60)
+            ns.RecipeList_Set(rows(), "detailed", nil, 60)
             draws, timers = 0, {}
         end)
 
@@ -283,7 +279,7 @@ describe("RecipeList", function()
 
     it("the scroll's content is as tall as the rows of the view", function()
         local content = WowMock.Find(function(f) return f._kind == "Frame" and f._parent and f._parent._kind == "ScrollFrame" end)
-        ns.RecipeList_Set(rows(), "list", nil, 60)
+        ns.RecipeList_Set(rows(), "table", nil, 60)
         assert.are.equal(24 * 4, content._h)
         ns.RecipeList_Set(rows(), "detailed", nil, 60)
         assert.are.equal(24 + 58 + 24 + 58, content._h)

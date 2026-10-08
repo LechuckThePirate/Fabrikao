@@ -32,7 +32,7 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   it the counts are the character's own, the "Other characters" checkbox is hidden and the preferences say it isn't installed (tests
   cover that path in `Alts.test.lua`); never reference `EmbolsaoAPI` / `EmbolsaoDB` anywhere else
 - `Modules/Data/Prices.lua` — approximate prices for the table view: auction prices from Auctionator's public API when it is installed,
-  else what vendors pay; `Modules/UI/RecipeList.lua` — the three views of the recipe list (list, table with sortable columns, detailed
+  else what vendors pay; `Modules/UI/RecipeList.lua` — the two views of the recipe list (table with sortable columns, detailed
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search
   of every recipe (each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
 - `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing) and `Recipes.lua`

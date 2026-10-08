@@ -79,12 +79,12 @@ describe("Settings", function()
     it("the view and the window scale are switchable settings with their defaults", function()
         local char, account = {}, {}
         login(char, account)
-        assert.are.equal("list", ns.char.view)
+        assert.are.equal("table", ns.char.view)
         assert.are.equal(1, ns.char.scale)
-        ns.char.view = "table"
-        assert.are.equal("table", char.view)
+        ns.char.view = "detailed"
+        assert.are.equal("detailed", char.view)
         ns.SetPerCharacter(false)
-        assert.are.equal("list", ns.char.view) -- the shared ones
+        assert.are.equal("table", ns.char.view) -- the shared ones
     end)
 
     it("restoring the defaults clears the settings, the window and the filters, and tells the window", function()
@@ -95,7 +95,7 @@ describe("Settings", function()
         ns.UI_ApplySettings = function() applied = applied + 1 end
         ns.Minimap_Init = function() minimap = minimap + 1 end
         ns.ResetSettings()
-        assert.are.equal("list", ns.char.view)
+        assert.are.equal("table", ns.char.view)
         assert.are.equal(1, ns.char.scale)
         assert.is_nil(char.quiet)
         assert.is_nil(char.window)

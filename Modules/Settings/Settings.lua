@@ -6,7 +6,7 @@ local _, ns = ...
 -- character. The rest of the addon uses ns.char without knowing which one is behind it, and reads a key
 -- that was never set as its default (DEFAULTS), so a checkbox can store a plain true / false.
 ns.DEFAULTS = {
-    view = "list", -- the recipe lists: "list", "table" or "detailed"
+    view = "table", -- the recipe lists: "table" or "detailed"
     scale = 1,     -- of the window
     useAlts = true, -- count the items the other characters carry and keep in their banks (Embolsao's copies)
 }

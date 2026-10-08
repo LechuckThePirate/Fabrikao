@@ -8,7 +8,6 @@ local LABEL_W = WIDTH - 48 - 16 -- a checkbox's text: from after the box (x = 48
 local prefs
 
 local VIEWS = {
-    { key = "list", text = "List (one line per recipe)" },
     { key = "table", text = "Table (columns: components, cost, value, level)" },
     { key = "detailed", text = "Detailed (big icon, three lines)" },
 }
@@ -130,7 +129,7 @@ local function create()
     prefs.viewChecks = {}
     for i, view in ipairs(VIEWS) do
         local check = makeCheck(prefs, -84 - i * 28, L[view.text],
-            function() return (ns.char.view or "list") == view.key end,
+            function() return (ns.char.view == "detailed" and "detailed" or "table") == view.key end, -- "list" was removed: it is the table
             function()
                 ns.char.view = view.key
                 if ns.UI_ApplySettings then ns.UI_ApplySettings() end

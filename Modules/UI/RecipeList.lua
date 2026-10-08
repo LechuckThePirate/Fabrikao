@@ -1,15 +1,13 @@
 local _, ns = ...
 local L = ns.L
 
--- The scrolling list of recipes of a profession page, in the three views the player can choose in the preferences:
---   list      one line per recipe (icon, name, skill and where it is learned)
+-- The scrolling list of recipes of a profession page, in the two views the player can choose in the preferences:
 --   table     columns: icon, name, components (the ingredients' icons, with their tooltips), approximate cost, approximate
 --             auction value, level; the headers sort
 --   detailed  a big icon and three lines of information per recipe
 -- ns.RecipeList_Create(parent) builds it; ns.RecipeList_Set(rows, view, sort) draws the rows of ns.Recipes_Rows.
 
 local VIEWS = {
-    list = { height = 24, icon = 20 },
     table = { height = 24, icon = 20 },
     detailed = { height = 58, icon = 44 },
 }
@@ -252,15 +250,7 @@ local function layoutRow(b, data, width)
     else
         b.icon:SetPoint("LEFT", b, "LEFT", ICON_X, 0)
     end
-    if view == "list" then
-        b.info:ClearAllPoints()
-        b.info:SetPoint("RIGHT", b, "RIGHT", -8, 0)
-        b.info:SetWidth(0)
-        b.info:Show()
-        b.text:SetFontObject("GameFontNormal")
-        b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
-        b.text:SetPoint("RIGHT", b.info, "LEFT", -8, 0)
-    elseif view == "table" then
+    if view == "table" then
         local c = columnsFor(width)
         b.text:SetFontObject("GameFontNormal")
         b.text:SetPoint("LEFT", b, "LEFT", c.name[1], 0)
@@ -353,11 +343,7 @@ local function renderRow(b, data, width)
     b.text:SetText(name)
     b.text:SetTextColor(color[1], color[2], color[3])
 
-    if view == "list" then
-        local info = recipe.learned and "" or sourceText(recipe)
-        if not recipe.learned and recipe.required then info = L["Skill %d"]:format(recipe.required) .. "  " .. info end
-        b.info:SetText(info)
-    elseif view == "table" then
+    if view == "table" then
         showComponents(b, recipe, width, data.alts)
         b.cost:SetText(money(data.cost, data.incomplete))
         b.value:SetText(money(data.value))
@@ -520,16 +506,16 @@ function ns.RecipeList_Create(parent, onSortCallback, onToggleCallback)
         end)
     end)
 
-    view, rows = "list", {}
+    view, rows = "table", {}
     return list
 end
 
 -- (A click on the title of a group, "Known recipes (38)", calls onToggleCallback(group).)
--- Draws the rows of ns.Recipes_Rows in a view ("list", "table" or "detailed"); `currentSort` marks the sorted column;
+-- Draws the rows of ns.Recipes_Rows in a view ("table" or "detailed"); `currentSort` marks the sorted column;
 -- `rank` is the character's skill in the profession.
 function ns.RecipeList_Set(newRows, newView, currentSort, rank)
     if not list then return end
-    rows, view, sort = newRows or {}, VIEWS[newView] and newView or "list", currentSort
+    rows, view, sort = newRows or {}, VIEWS[newView] and newView or "table", currentSort
     list.rank = rank
     updateColumnHeader()
     computeTops()

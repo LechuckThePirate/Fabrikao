@@ -19,7 +19,7 @@ local state = { skillLine = nil, copy = nil }
 local filters = {}
 local collapsed = {} -- the groups of the list folded: { known = bool, unknown = bool }
 
-local VIEW_NAMES = { "list", "table", "detailed" }
+local VIEW_NAMES = { "table", "detailed" }
 
 ---------------------------------------------------------------------------------------------------
 -- Overview: the professions
@@ -149,11 +149,11 @@ end
 local function viewName()
     local view = ns.char.view
     for _, name in ipairs(VIEW_NAMES) do if name == view then return view end end
-    return "list"
+    return "table" -- also what an older version's "list" becomes
 end
 
 local function viewLabel(view)
-    return ({ list = L["List"], table = L["Table"], detailed = L["Detailed"] })[view]
+    return ({ table = L["Table"], detailed = L["Detailed"] })[view]
 end
 
 local function updateControls()
@@ -195,7 +195,7 @@ local function sortBy(key)
 end
 
 local function cycleView()
-    ns.char.view = ns.FilterBar_NextValue(VIEW_NAMES, 3, viewName())
+    ns.char.view = ns.FilterBar_NextValue(VIEW_NAMES, 2, viewName())
     refreshRecipes()
 end
 

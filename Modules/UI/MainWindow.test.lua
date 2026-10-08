@@ -98,7 +98,7 @@ describe("MainWindow", function()
         assert.are.equal("Flask", rows[5].text._text)
     end)
 
-    it("an unknown recipe the data knows shows its skill and where it is learned", function()
+    it("an unknown recipe the data knows shows the skill it needs", function()
         ns.Recipes_Request = function(skillLine, callback)
             callback({
                 skillLine = skillLine, sources = {}, known = {},
@@ -109,7 +109,7 @@ describe("MainWindow", function()
         ns.UI_Toggle()
         click(framesWith("profession")[1])
         local rows = framesWith("data")
-        assert.are.equal("Skill 250  Trainer", rows[2].info._text)
+        assert.matches("250", rows[2].level._text)
     end)
 
     it("over the icon of a recipe, the tooltip of what it makes (the spell's, when it makes no item)", function()

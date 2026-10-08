@@ -31,12 +31,18 @@ describe("Preferences", function()
     end)
 
     describe("the view of the recipes", function()
-        it("is a choice of the three views, with the current one checked", function()
+        it("is a choice of the two views, with the current one checked", function()
             ns.Prefs_Toggle()
             local checks = _G.FabrikaoPreferencesFrame.viewChecks
-            assert.is_true(checks.list:GetChecked())
-            assert.is_false(checks.table:GetChecked())
+            assert.is_true(checks.table:GetChecked())
             assert.is_false(checks.detailed:GetChecked())
+            assert.is_nil(checks.list)
+        end)
+
+        it("a \"list\" saved by an older version shows the table checked", function()
+            ns.char.view = "list"
+            ns.Prefs_Toggle()
+            assert.is_true(_G.FabrikaoPreferencesFrame.viewChecks.table:GetChecked())
         end)
 
         it("choosing one saves it and moves the check", function()
@@ -46,15 +52,15 @@ describe("Preferences", function()
             click(checks.detailed)
             assert.are.equal("detailed", ns.char.view)
             assert.is_true(checks.detailed:GetChecked())
-            assert.is_false(checks.list:GetChecked())
+            assert.is_false(checks.table:GetChecked())
             click(checks.table)
             assert.are.equal("table", ns.char.view)
         end)
 
         it("shows the saved one when it opens", function()
-            ns.char.view = "table"
+            ns.char.view = "detailed"
             ns.Prefs_Toggle()
-            assert.is_true(_G.FabrikaoPreferencesFrame.viewChecks.table:GetChecked())
+            assert.is_true(_G.FabrikaoPreferencesFrame.viewChecks.detailed:GetChecked())
         end)
     end)
 
@@ -99,10 +105,10 @@ describe("Preferences", function()
             ns.UI_Toggle()
             ns.Prefs_Toggle()
             click(button("Restore default preferences"))
-            assert.are.equal("list", ns.char.view)
+            assert.are.equal("table", ns.char.view)
             assert.are.equal(1, ns.char.scale)
             assert.is_nil(ns.char.quiet)
-            assert.is_true(_G.FabrikaoPreferencesFrame.viewChecks.list:GetChecked())
+            assert.is_true(_G.FabrikaoPreferencesFrame.viewChecks.table:GetChecked())
         end)
     end)
 
