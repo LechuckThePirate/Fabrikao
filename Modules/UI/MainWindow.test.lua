@@ -98,6 +98,20 @@ describe("MainWindow", function()
         assert.are.equal("Flask", rows[5].text._text)
     end)
 
+    it("an unknown recipe the data knows shows its skill and where it is learned", function()
+        ns.Recipes_Request = function(skillLine, callback)
+            callback({
+                skillLine = skillLine, sources = {}, known = {},
+                unknown = { { id = 3, name = "Potion", icon = 7, learned = false, required = 250, colors = { 250, 270, 290, 310 },
+                    db = { s = 171, n = "Potion", c = { 250, 270, 290, 310 }, k = { 6 } } } },
+            })
+        end
+        ns.UI_Toggle()
+        click(framesWith("profession")[1])
+        local rows = framesWith("data")
+        assert.are.equal("Skill 250  Trainer", rows[2].info._text)
+    end)
+
     it("the search narrows both groups", function()
         ns.UI_Toggle()
         click(framesWith("profession")[1])

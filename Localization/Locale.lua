@@ -37,6 +37,28 @@ local es = {
     ["Could not read this profession's recipes."] = "No se pudieron leer las recetas de esta profesión.",
     ["No recipes match"] = "Ninguna receta coincide",
 
+    -- recipe details
+    ["Skill %d"] = "Hab. %d",
+    ["Skill needed: %d"] = "Habilidad necesaria: %d",
+
+    -- where a recipe is learned
+    ["Crafted"] = "Fabricada",
+    ["Drop"] = "Botín",
+    ["PvP"] = "JcJ",
+    ["Quest"] = "Misión",
+    ["Vendor"] = "Vendedor",
+    ["Trainer"] = "Instructor",
+    ["Gathered"] = "Recolectada",
+    ["Salvaged"] = "Recuperada",
+    ["Found in"] = "Se encuentra en",
+    ["Unknown"] = "Desconocido",
+    ["No source known for this recipe"] = "No se conoce el origen de esta receta",
+    ["and %d more"] = "y %d más",
+    ["costs %s"] = "cuesta %s",
+    ["level %d"] = "nivel %d",
+    ["level %d-%d"] = "nivel %d-%d",
+    ["World drop: any creature of about level %d"] = "Botín del mundo: cualquier criatura de nivel %d aproximadamente",
+
     -- diagnostic
     ["Probe finished. Type /reload to save it."] = "Diagnóstico terminado. Escribe /reload para guardarlo.",
 }

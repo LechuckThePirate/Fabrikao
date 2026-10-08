@@ -231,6 +231,39 @@ describe("Recipes", function()
         end)
     end)
 
+    describe("with the addon's own recipe data", function()
+        before_each(function()
+            local db = {
+                [5] = { s = 171, n = "Late", c = { 200, 220, 240, 260 } },
+                [6] = { s = 171, n = "Early", c = { 1, 20, 40, 60 }, l = 1 },
+            }
+            ns.RecipeDB_Get = function(id) return db[id] end
+            ns.RecipeDB_Required = function(r) return r.l or r.c[1] end
+            ns.RecipeDB_Colors = function(r) return r.c end
+            ns.RecipeDB_SearchText = function(id) return id == 6 and "early alchemist anna stormwind" or "" end
+            game.recipes = {
+                [5] = recipe("Late", { learned = false, trivial = 1 }),
+                [6] = recipe("Early", { learned = false, trivial = 999 }),
+            }
+            openAndReady(171)
+        end)
+
+        it("gives the unknown recipes their skill levels and sorts them by the skill they need", function()
+            local copy = ns.Recipes_Read(171)
+            assert.are.equal("Early", copy.unknown[1].name)
+            assert.are.equal(1, copy.unknown[1].required)
+            assert.are.same({ 200, 220, 240, 260 }, copy.unknown[2].colors)
+            assert.is_not_nil(copy.unknown[2].db)
+        end)
+
+        it("searches in the data's NPCs and zones too", function()
+            local copy = ns.Recipes_Read(171)
+            local rows = ns.Recipes_Rows(copy, { text = "stormwind", unknown = true })
+            assert.are.equal("Early", rows[2].recipe.name)
+            assert.are.equal(2, #rows)
+        end)
+    end)
+
     describe("asking for a profession", function()
         local timers
 

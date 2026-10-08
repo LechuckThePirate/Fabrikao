@@ -1,0 +1,135 @@
+dofile("setupTests.lua")
+
+describe("RecipeDB", function()
+    local ns
+
+    local DATA = {
+        recipes = {
+            [100] = { s = 171, n = "Elixir of Wisdom", c = { 1, 55, 75, 95 }, p = { 200, 1, 1 }, m = { { 10, 2 }, { 11, 1 } }, k = { 6 }, g = 5000 },
+            [101] = { s = 171, n = "Mighty Flask", c = { 250, 270, 290, 310 }, l = 240, m = { { 12, 3 } }, k = { 2 }, i = 900 },
+            [102] = { s = 164, n = "Iron Sword", c = { 100, 120, 140, 160 }, k = { 5 }, i = 901 },
+            [103] = { s = 164, n = "Sword of Quests", c = { 50, 60, 70, 80 }, k = { 4 }, i = 902 },
+        },
+        items = {
+            [900] = { n = "Recipe: Mighty Flask", lv = 50, k = { 2 }, d = {
+                { id = 1, n = "Black Drake", z = { 46 }, lo = 55, hi = 57, pm = 125 }, { id = 2, n = "Red Whelp", z = { 46 }, lo = 50, hi = 50 },
+            }, dn = 6 },
+            [901] = { n = "Plans: Iron Sword", lv = 20, k = { 5 }, v = {
+                { id = 3, n = "Alliance Smith", z = { 1519 }, f = "A", g = 12345 }, { id = 4, n = "Horde Smith", z = { 1637 }, f = "H" },
+            } },
+            [902] = { n = "Plans: Sword of Quests", lv = 20, k = { 4 }, qs = { { id = 5, n = "The Sword Quest" }, { id = 6, n = "Horde Quest", f = "H" } } },
+        },
+        trainers = {
+            [171] = {
+                { id = 7, n = "Alchemist Anna", z = { 1519 }, f = "A" }, { id = 8, n = "Alchemist Orc", z = { 1637 }, f = "H" },
+                { id = 9, n = "Neutral Nick", z = { 1519 } },
+            },
+        },
+    }
+
+    before_each(function()
+        WowMock.Reset()
+        _G.UnitFactionGroup = function() return "Alliance" end
+        _G.C_Map = { GetAreaInfo = function(id) return ({ [1519] = "Stormwind City", [1637] = "Orgrimmar", [46] = "Burning Steppes" })[id] end }
+        _G.C_Item = { GetItemNameByID = function(id) return ({ [10] = "Peacebloom", [11] = "Silverleaf", [12] = "Dreamfoil" })[id] end }
+        ns = LoadAddon({ files = { "Modules/Data/RecipeDB.lua" } })
+        ns.RECIPE_DATA = DATA
+    end)
+
+    it("gets a recipe by its spell id", function()
+        assert.are.equal("Iron Sword", ns.RecipeDB_Get(102).n)
+        assert.is_nil(ns.RecipeDB_Get(1))
+    end)
+
+    it("gives the skill levels where the recipe changes color", function()
+        assert.are.same({ 1, 55, 75, 95 }, ns.RecipeDB_Colors(ns.RecipeDB_Get(100)))
+        -- the skill to learn it can be lower than where it turns orange
+        assert.are.equal(240, ns.RecipeDB_Required(ns.RecipeDB_Get(101)))
+        assert.are.equal(100, ns.RecipeDB_Required(ns.RecipeDB_Get(102)))
+        assert.are.same({ 240, 270, 290, 310 }, ns.RecipeDB_Colors(ns.RecipeDB_Get(101)))
+    end)
+
+    it("joins the sources of the recipe and of the item that teaches it", function()
+        assert.are.same({ 6 }, ns.RecipeDB_Sources(ns.RecipeDB_Get(100)))
+        assert.are.same({ 5 }, ns.RecipeDB_Sources(ns.RecipeDB_Get(102)))
+        assert.are.equal("Trainer", ns.RecipeDB_ShortSource(ns.RecipeDB_Get(100)))
+        assert.are.equal("Quest", ns.RecipeDB_ShortSource(ns.RecipeDB_Get(103)))
+    end)
+
+    describe("where it is learned", function()
+        it("lists the trainers of the character's side, with their zone and the cost", function()
+            local lines = ns.RecipeDB_Where(ns.RecipeDB_Get(100))
+            assert.are.equal("Trainer", lines[1].title)
+            assert.matches("Alchemist Anna %(Stormwind City%)", lines[1].text)
+            assert.matches("Neutral Nick", lines[1].text)
+            assert.is_nil(lines[1].text:find("Alchemist Orc", 1, true))
+            assert.matches("costs", lines[1].text)
+        end)
+
+        it("lists the vendors of the character's side", function()
+            local text = ns.RecipeDB_Where(ns.RecipeDB_Get(102))[1].text
+            assert.matches("Alliance Smith %(Stormwind City%)", text)
+            assert.is_nil(text:find("Horde Smith", 1, true))
+            _G.UnitFactionGroup = function() return "Horde" end
+            text = ns.RecipeDB_Where(ns.RecipeDB_Get(102))[1].text
+            assert.matches("Horde Smith %(Orgrimmar%)", text)
+        end)
+
+        it("lists the quests of the character's side", function()
+            local text = ns.RecipeDB_Where(ns.RecipeDB_Get(103))[1].text
+            assert.are.equal("The Sword Quest", text)
+        end)
+
+        it("lists who drops it, with level and chance, and how many more there are", function()
+            local line = ns.RecipeDB_Where(ns.RecipeDB_Get(101))[1]
+            assert.are.equal("Drop", line.title)
+            assert.matches("Black Drake %(Burning Steppes%) level 55%-57 %-%- 1%.25%%", line.text)
+            assert.matches("Red Whelp %(Burning Steppes%) level 50", line.text)
+            assert.matches("and 4 more", line.text)
+        end)
+
+        it("says so when nothing is known", function()
+            ns.RECIPE_DATA.recipes[104] = { s = 171, n = "Mystery", c = { 1, 2, 3, 4 } }
+            local lines = ns.RecipeDB_Where(ns.RecipeDB_Get(104))
+            assert.are.equal("Unknown", lines[1].title)
+        end)
+    end)
+
+    describe("search", function()
+        local function names(results)
+            local out = {}
+            for _, r in ipairs(results) do out[#out + 1] = r.recipe.n end
+            return out
+        end
+
+        it("finds by name, ignoring case, sorted by name", function()
+            assert.are.same({ "Iron Sword", "Sword of Quests" }, names(ns.RecipeDB_Search("SWORD")))
+        end)
+
+        it("every word has to match", function()
+            assert.are.same({ "Sword of Quests" }, names(ns.RecipeDB_Search("sword quests")))
+            assert.are.same({}, names(ns.RecipeDB_Search("sword banana")))
+        end)
+
+        it("finds by ingredient", function()
+            assert.are.same({ "Elixir of Wisdom" }, names(ns.RecipeDB_Search("peacebloom")))
+            assert.are.same({ "Mighty Flask" }, names(ns.RecipeDB_Search("dreamfoil")))
+        end)
+
+        it("finds by who sells, drops or gives it, and by zone", function()
+            assert.are.same({ "Mighty Flask" }, names(ns.RecipeDB_Search("black drake")))
+            assert.are.same({ "Iron Sword" }, names(ns.RecipeDB_Search("alliance smith")))
+            assert.are.same({ "Mighty Flask" }, names(ns.RecipeDB_Search("burning steppes")))
+            assert.are.same({ "Sword of Quests" }, names(ns.RecipeDB_Search("sword quest")))
+        end)
+
+        it("can be limited to one profession", function()
+            assert.are.same({ "Elixir of Wisdom", "Mighty Flask" }, names(ns.RecipeDB_Search("i", { skill = 171 })))
+        end)
+
+        it("an empty search finds nothing", function()
+            assert.are.same({}, ns.RecipeDB_Search(""))
+            assert.are.same({}, ns.RecipeDB_Search("   "))
+        end)
+    end)
+end)

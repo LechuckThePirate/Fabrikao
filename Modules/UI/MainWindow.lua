@@ -122,6 +122,17 @@ local function setStatus(text)
     page.status:SetShown(text ~= nil)
 end
 
+-- "orange yellow green grey" skill levels, each in its color
+local function colorsText(colors)
+    local out = {}
+    for i, level in ipairs(colors) do
+        local c = ns.DIFFICULTY_COLORS[i - 1]
+        local shown = (level > 0 or i == 1) and tostring(level) or "-" -- a color the recipe skips
+        out[#out + 1] = ("|cff%02x%02x%02x%s|r"):format(math.floor(c[1] * 255), math.floor(c[2] * 255), math.floor(c[3] * 255), shown)
+    end
+    return table.concat(out, "  ")
+end
+
 local function showRecipeTooltip(row)
     local data = row.data
     if not data or data.kind ~= "recipe" then return end
@@ -129,15 +140,24 @@ local function showRecipeTooltip(row)
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     local shown = recipe.link and pcall(GameTooltip.SetHyperlink, GameTooltip, recipe.link)
     if not shown then GameTooltip:SetText(recipe.name, 1, 1, 1) end
+    if recipe.colors then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["Skill needed: %d"]:format(recipe.required or recipe.colors[1]), 1, 0.82, 0)
+        GameTooltip:AddLine(colorsText(recipe.colors), 1, 1, 1)
+    end
     if not recipe.learned then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(L["Where to learn it"], 1, 0.82, 0)
-        if recipe.sourceText and recipe.sourceText ~= "" then
+        if recipe.db then
+            for _, line in ipairs(ns.RecipeDB_Where(recipe.db)) do
+                GameTooltip:AddLine(line.title .. ": " .. line.text, 1, 1, 1, true)
+            end
+        elseif recipe.sourceText and recipe.sourceText ~= "" then
             GameTooltip:AddLine(recipe.sourceText, 1, 1, 1, true)
         else
             GameTooltip:AddLine(ns.Recipes_SourceLabel(recipe.sourceType), 1, 1, 1)
         end
-        if recipe.trivial and recipe.trivial > 0 then
+        if not recipe.colors and recipe.trivial and recipe.trivial > 0 then
             GameTooltip:AddLine(L["Turns grey at skill %d"]:format(recipe.trivial), 0.7, 0.7, 0.7)
         end
     end
@@ -192,7 +212,8 @@ local function renderRow(b, data)
     else
         b.text:SetText(recipe.name)
         b.text:SetTextColor(0.85, 0.85, 0.85)
-        b.info:SetText(ns.Recipes_SourceLabel(recipe.sourceType))
+        local source = recipe.db and ns.RecipeDB_ShortSource(recipe.db) or ns.Recipes_SourceLabel(recipe.sourceType)
+        b.info:SetText(recipe.required and (L["Skill %d"]:format(recipe.required) .. "  " .. source) or source)
     end
 end
 

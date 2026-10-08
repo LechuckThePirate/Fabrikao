@@ -18,7 +18,7 @@ jobs:
       - name: Run luacheck
         uses: nebularg/actions-luacheck@v1
         with:
-          files: Fabrikao.lua Localization Modules Fabrikao.test.lua test setupTests.lua
+          files: Fabrikao.lua Localization Modules Data Fabrikao.test.lua test setupTests.lua
           args: -q
 
   unit-tests:

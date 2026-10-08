@@ -43,14 +43,16 @@ end
 
 local function byName(a, b) return a.name < b.name end
 
--- Known recipes by difficulty (orange first), then by name; the unknown ones by when they turn grey, then name.
+-- Known recipes by difficulty (orange first), then by name; the unknown ones by the skill they need (or, without
+-- that, when they turn grey), then name.
 local function sortKnown(a, b)
     local da, db = a.difficulty or ns.DIFFICULTY_LAST, b.difficulty or ns.DIFFICULTY_LAST
     if da ~= db then return da < db end
     return byName(a, b)
 end
 local function sortUnknown(a, b)
-    if (a.trivial or 0) ~= (b.trivial or 0) then return (a.trivial or 0) < (b.trivial or 0) end
+    local sa, sb = a.required or a.trivial or 0, b.required or b.trivial or 0
+    if sa ~= sb then return sa < sb end
     return byName(a, b)
 end
 
@@ -80,6 +82,14 @@ function ns.Recipes_Read(skillLine)
                 learned = info.learned and true or false, trivial = info.maxTrivialLevel,
                 sourceType = info.sourceType,
             }
+            -- what the addon's own data knows about it: skill levels and where it is learned
+            local db = ns.RecipeDB_Get and ns.RecipeDB_Get(recipe.id)
+            if db then
+                recipe.db = db
+                recipe.required = ns.RecipeDB_Required(db)
+                recipe.colors = ns.RecipeDB_Colors(db)
+                recipe.search = ns.RecipeDB_SearchText(recipe.id)
+            end
             if recipe.learned then
                 recipe.difficulty = info.relativeDifficulty
                 recipe.reagents = readReagents(recipe.id)
@@ -132,7 +142,8 @@ function ns.Recipes_Rows(copy, opts)
     local function matches(recipe)
         if text == "" then return true end
         if recipe.name:lower():find(text, 1, true) then return true end
-        return recipe.sourceText and recipe.sourceText:lower():find(text, 1, true) and true or false
+        if recipe.sourceText and recipe.sourceText:lower():find(text, 1, true) then return true end
+        return recipe.search and recipe.search:find(text, 1, true) and true or false
     end
 
     if opts.known then

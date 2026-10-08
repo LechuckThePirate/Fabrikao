@@ -6,6 +6,9 @@
   the primary ones first, then First Aid, Cooking and Fishing, each with its skill bar.
 - New: a profession's page lists the recipes the character knows (colored by difficulty, with how many can be made from the
   bags in brackets) and then the ones it doesn't know, with a search box (names and where to learn them) and a filter by source.
+- New: the recipes you don't know show the skill they need and where they are learned (trainer, vendor, drop, quest), with the skill
+  levels where they turn orange, yellow, green and grey in the tooltip. The search also looks at who sells or drops them.
+- New: data for every recipe of every crafting profession (also the ones of professions you don't have), from public databases.
 - Now only for WoW Forever.
 - `/fab probe`: diagnostic that saves what the client's profession API answers.
 

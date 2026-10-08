@@ -8,6 +8,7 @@ exclude_files = {
     "tools/",
     ".github/",
     "images/",
+    "Data/Generated/",
 }
 
 -- what the addon defines as globals
@@ -19,9 +20,9 @@ globals = {
 
 -- the game's API and frames it uses (add here as the addon grows)
 read_globals = {
-    "C_AddOns", "C_Item", "C_PetJournal", "C_SpellBook", "C_Timer", "C_TradeSkillUI", "ChatEdit_InsertLink", "CreateFrame", "Enum",
-    "GameTooltip", "GameTooltip_Hide", "GetAddOnMetadata", "GetBuildInfo", "GetCursorPosition", "GetItemCount", "GetLocale",
-    "GetProfessionInfo", "GetProfessions", "IsModifiedClick", "Minimap", "ProfessionsFrame", "UIParent", "UISpecialFrames",
+    "C_AddOns", "C_Item", "C_Map", "C_PetJournal", "C_SpellBook", "C_Timer", "C_TradeSkillUI", "ChatEdit_InsertLink", "CreateFrame", "Enum",
+    "GameTooltip", "GameTooltip_Hide", "GetAddOnMetadata", "GetBuildInfo", "GetCoinTextureString", "GetCursorPosition", "GetItemCount", "GetLocale",
+    "GetProfessionInfo", "GetProfessions", "IsModifiedClick", "Minimap", "ProfessionsFrame", "UIParent", "UISpecialFrames", "UnitFactionGroup",
     "WOW_PROJECT_ID", "strtrim", "tinsert",
 }
 

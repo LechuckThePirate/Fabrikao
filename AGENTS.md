@@ -28,10 +28,23 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   (opens a profession's game window out of sight, copies its recipes into plain tables, closes it; filtering, search and the
   "how many can I make" count from the bags)
 - `Modules/UI/` — `MainWindow.lua` (professions page, recipes page with search) and `MinimapButton.lua`; `Bindings.xml` has the key binding
+- `Data/Generated/Recipes.lua` (**generated, never edit by hand**) — every recipe of the crafting professions (skill levels where each
+  turns orange / yellow / green / grey, ingredients, product, how it is learned), the items that teach them (vendors, drops, quests)
+  and the trainers; `Data/Data.test.lua` checks its shape. `Modules/Data/RecipeDB.lua` queries it (by spell id, search by name /
+  ingredient / NPC / zone, "where to learn it" lines)
 - `Modules/Debug/Probe.lua` — `/fab probe` writes what the client's profession API really answers into `FabrikaoDB.probe`
   (read it from `WTF/Account/<account>/SavedVariables/Fabrikao.lua` after `/reload`)
 - `test/` (WoW API mock + local runner), `setupTests.lua`, `Icons/` (addon icon), `images/screencaps/` (CurseForge description images),
   `images/fabrikao_propuesta_iconos.jpg` (the four icon proposals; `Icons/Fabrikao.png` is the top-left one, cut round and transparent, 256x256)
+
+## Recipe data
+
+`Data/Generated/Recipes.lua` comes from local tools in `tools/local/` (git-ignored, **never published, and the name of the web source is
+never written in anything tracked**: README, CHANGELOG, CurseForge text, commit messages, code comments — credit it only as "public
+databases", like Completao). Steps: `node tools/local/recipes_fetch.mjs` (a spell listing and a skill page per profession),
+`node tools/local/recipes_items.mjs` (slow: one page per recipe item whose source isn't named yet; resumable; one request every 3 s,
+the source answers 403 beyond that), then `node tools/local/recipes_write.mjs <worktree>/Data/Generated/Recipes.lua`. Pages are cached
+in `tools/local/cache/`. Source codes in the data: 1 crafted, 2 drop, 3 PvP, 4 quest, 5 vendor, 6 trainer, 16 gathered, 21 salvaged.
 
 ## Forever's API (what the code relies on)
 

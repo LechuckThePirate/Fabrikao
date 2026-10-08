@@ -16,6 +16,8 @@
 
 Localization\Locale.lua
 Modules\Settings\Settings.lua
+Data\Generated\Recipes.lua
+Modules\Data\RecipeDB.lua
 Modules\Professions\Professions.lua
 Modules\Professions\Recipes.lua
 Modules\UI\MainWindow.lua
