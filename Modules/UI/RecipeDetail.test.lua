@@ -15,10 +15,10 @@ describe("Recipe detail", function()
                 { id = 1, n = "Alliance Vendor", z = { 1519 }, g = 12345 }, { id = 2, n = "Horde Vendor", z = { 1637 }, f = "H" },
                 { id = 3, n = "Vendor 3", z = { 46 } }, { id = 4, n = "Vendor 4", z = { 46 } }, { id = 5, n = "Vendor 5", z = { 46 } },
                 { id = 6, n = "Vendor 6", z = { 46 } }, { id = 7, n = "Vendor 7", z = { 46 } },
-            } },
+            }, d = { { id = 20, n = "Boss", z = { 46 }, lo = 60, hi = 60, pm = 250 }, { id = 21, n = "Nowhere Boss", z = { 46 } } } },
         },
         trainers = { [171] = { { id = 9, n = "Alchemist Anna", z = { 1519 }, f = "A" }, { id = 10, n = "Alchemist Ben", z = { 46 } } } },
-        npcs = { [1] = { 1453, 74.4, 36.4 }, [9] = { 1453, 40, 60 }, [10] = { 36, 30, 20 } },
+        npcs = { [1] = { 1453, 74.4, 36.4 }, [9] = { 1453, 40, 60 }, [10] = { 36, 30, 20 }, [20] = { 36, 55, 45 } },
     }
 
     local function visible(field)
@@ -151,6 +151,14 @@ describe("Recipe detail", function()
             assert.are.equal(2, #trainers.entries)
         end)
 
+        it("lists who drops it one by one, with the id to show them on the map", function()
+            local drops = source(build(2, false), "Drop")
+            assert.are.equal(2, #drops.entries)
+            assert.are.equal(20, drops.entries[1].id)
+            assert.are.equal("Boss", drops.entries[1].name)
+            assert.matches("^Boss %(Burning Steppes%) level 60 %-%- 2%.50%%", drops.entries[1].text)
+        end)
+
         it("has the ids at the end", function()
             local detail = build(2, false)
             assert.matches("Recipe ID: 2", detail.ids)
@@ -206,14 +214,14 @@ describe("Recipe detail", function()
             install()
             click(recipeRow("Flask of the Titans"))
             local ids, found = buttons("TomTom")
-            assert.are.same({ 1, 9, 10 }, ids) -- the other vendors and trainers have no known location
+            assert.are.same({ 1, 9, 10, 20 }, ids) -- the other vendors, trainers and creatures have no known location
             click(found[1])
             assert.are.equal(1, #waypoints)
         end)
 
         it("and a Map button too, with or without TomTom", function()
             click(recipeRow("Flask of the Titans"))
-            assert.are.same({ 1, 9, 10 }, (buttons("Map")))
+            assert.are.same({ 1, 9, 10, 20 }, (buttons("Map")))
             assert.are.same({}, (buttons("TomTom")))
         end)
 

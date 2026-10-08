@@ -295,7 +295,7 @@ function ns.RecipeDB_Where(recipe, full)
         end
 
         if item.d then
-            local drops = {}
+            local drops, dropEntries = {}, {}
             for _, npc in ipairs(item.d) do
                 if #drops < maxDrops then
                     local text = named(npc, true)
@@ -303,12 +303,13 @@ function ns.RecipeDB_Where(recipe, full)
                         or (" " .. L["level %d"]:format(npc.lo))) end
                     if npc.pm and npc.pm > 0 then text = text .. (" -- %.2f%%"):format(npc.pm / 100) end
                     drops[#drops + 1] = text
+                    dropEntries[#dropEntries + 1] = { text = text, id = npc.id, name = npc.n }
                 end
             end
             local text = table.concat(drops, "; ")
             local left = item.dn and item.dn > #drops and item.dn - #drops or 0
             if left > 0 then text = text .. "; " .. L["and %d more"]:format(left) end
-            lines[#lines + 1] = { title = L["Drop"], text = text, entries = asEntries(drops), more = left }
+            lines[#lines + 1] = { title = L["Drop"], text = text, entries = dropEntries, more = left }
         elseif item.cd then
             lines[#lines + 1] = { title = L["Drop"], text = L["World drop: any creature of about level %d"]:format(item.lv or 0) }
         end
