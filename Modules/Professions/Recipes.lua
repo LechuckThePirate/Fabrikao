@@ -44,6 +44,13 @@ local function readReagents(recipeID)
     return reagents
 end
 
+-- The ingredients of a recipe of the data, as Recipes_Craftable reads them.
+local function reagentsOfData(db)
+    local reagents = {}
+    for _, reagent in ipairs(db.m or {}) do reagents[#reagents + 1] = { items = { reagent[1] }, quantity = reagent[2] } end
+    return reagents
+end
+
 local function byName(a, b) return a.name < b.name end
 
 -- Known recipes by difficulty (orange first), then by name; the unknown ones by the skill they need (or, without
@@ -92,14 +99,15 @@ function ns.Recipes_Read(skillLine, name)
                 recipe.colors = ns.RecipeDB_Colors(db)
                 recipe.search = ns.RecipeDB_SearchText(recipe.id)
                 recipe.sourceType = ns.RecipeDB_Sources(db)[1]
+                recipe.reagents = reagentsOfData(db)
             end
+            if recipe.sourceType then copy.sources[recipe.sourceType] = true end
             if recipe.learned then
                 recipe.difficulty = info.relativeDifficulty
-                recipe.reagents = readReagents(recipe.id)
+                recipe.reagents = readReagents(recipe.id) or recipe.reagents
                 copy.known[#copy.known + 1] = recipe
             else
                 if T.GetRecipeSourceText then recipe.sourceText = T.GetRecipeSourceText(recipe.id) end
-                if recipe.sourceType then copy.sources[recipe.sourceType] = true end
                 copy.unknown[#copy.unknown + 1] = recipe
             end
         end
@@ -137,11 +145,43 @@ function ns.Recipes_SourceLabel(sourceType)
     return sourceType and ns.RecipeDB_SourceName(sourceType) or ns.L["Other"]
 end
 
--- The rows of the recipe list for the current search: { kind = "header", text = } and { kind = "recipe",
--- recipe =, craftable = }. opts: { text =, known = bool, unknown = bool, source = sourceType or nil }
+-- Sort keys of the lists: the value each row is compared by (nil goes last).
+local SORT_VALUE = {
+    name = function(row) return row.recipe.name end,
+    level = function(row) return row.recipe.required end,
+    cost = function(row) return row.cost end,
+    value = function(row) return row.value end,
+    craftable = function(row) return row.craftable end,
+}
+
+local function sortRows(group, sort)
+    local value = SORT_VALUE[sort.key]
+    if not value then return end
+    table.sort(group, function(a, b)
+        local va, vb = value(a), value(b)
+        if va ~= vb then
+            if va == nil then return false end
+            if vb == nil then return true end
+            if sort.desc then return va > vb end
+            return va < vb
+        end
+        return a.recipe.name < b.recipe.name
+    end)
+end
+
+-- The rows of the recipe list for the current search and filters: { kind = "header", text = } and
+-- { kind = "recipe", recipe =, craftable =, cost =, incomplete =, value = }.
+-- opts: { text =, known = bool, unknown = bool,
+--   source = a source code (the recipes learned that way),
+--   difficulty = 0..3 (orange .. grey, for the character's skill),
+--   canMake = only what the bags allow, hideGrey = hide what gives no skill points,
+--   skill = "learnable" (not known, skill enough to learn) or "higher" (not known, needs more skill),
+--   sort = { key = name | level | cost | value | craftable, desc = bool } (nil: the list's own order) }
 function ns.Recipes_Rows(copy, opts)
     local rows = {}
     local text = strtrim((opts.text or ""):lower())
+    local rank = copy.rank
+
     local function matches(recipe)
         if text == "" then return true end
         if recipe.name:lower():find(text, 1, true) then return true end
@@ -149,26 +189,55 @@ function ns.Recipes_Rows(copy, opts)
         return recipe.search and recipe.search:find(text, 1, true) and true or false
     end
 
-    if opts.known then
-        local group = {}
-        for _, recipe in ipairs(copy.known) do
-            if matches(recipe) then group[#group + 1] = { kind = "recipe", recipe = recipe, craftable = ns.Recipes_Craftable(recipe) } end
+    -- how the recipe looks for the character's skill (0 orange .. 3 grey), nil when it needs more skill than it has
+    local function difficultyOf(recipe)
+        if recipe.learned then return recipe.difficulty or ns.DIFFICULTY_LAST end
+        if recipe.db and rank and recipe.required and recipe.required <= rank then
+            return ns.RecipeDB_Difficulty(recipe.db, rank)
         end
-        if #group > 0 then
-            rows[#rows + 1] = { kind = "header", text = ns.L["Known recipes"], count = #group }
-            for _, row in ipairs(group) do rows[#rows + 1] = row end
-        end
+        return nil
     end
-    if opts.unknown then
-        local group = {}
-        for _, recipe in ipairs(copy.unknown) do
-            if (opts.source == nil or recipe.sourceType == opts.source) and matches(recipe) then
-                group[#group + 1] = { kind = "recipe", recipe = recipe }
+
+    local function passes(recipe, craftable)
+        if opts.source ~= nil and recipe.sourceType ~= opts.source then return false end
+        if opts.difficulty ~= nil and difficultyOf(recipe) ~= opts.difficulty then return false end
+        if opts.hideGrey and difficultyOf(recipe) == ns.DIFFICULTY_LAST then return false end
+        local needsMore = not recipe.learned and rank and recipe.required and recipe.required > rank
+        if opts.skill == "learnable" and (recipe.learned or needsMore) then return false end
+        if opts.skill == "higher" and not needsMore then return false end
+        if opts.canMake and craftable == 0 then return false end
+        return true
+    end
+
+    local function group(list)
+        local out = {}
+        for _, recipe in ipairs(list) do
+            if matches(recipe) then
+                local craftable = ns.Recipes_Craftable(recipe)
+                if passes(recipe, craftable) then
+                    local row = { kind = "recipe", recipe = recipe, craftable = craftable }
+                    if ns.Prices_RecipeCost then
+                        row.cost, row.incomplete = ns.Prices_RecipeCost(recipe)
+                        row.value = ns.Prices_RecipeValue(recipe)
+                    end
+                    out[#out + 1] = row
+                end
             end
         end
-        if #group > 0 then
-            rows[#rows + 1] = { kind = "header", text = ns.L["Not known"], count = #group }
-            for _, row in ipairs(group) do rows[#rows + 1] = row end
+        if opts.sort then sortRows(out, opts.sort) end
+        return out
+    end
+
+    for _, part in ipairs({
+        { opts.known, copy.known, ns.L["Known recipes"] },
+        { opts.unknown, copy.unknown, ns.L["Not known"] },
+    }) do
+        if part[1] then
+            local inGroup = group(part[2])
+            if #inGroup > 0 then
+                rows[#rows + 1] = { kind = "header", text = part[3], count = #inGroup }
+                for _, row in ipairs(inGroup) do rows[#rows + 1] = row end
+            end
         end
     end
     return rows
@@ -181,30 +250,22 @@ local function fromData(id, db, learned, rank)
         required = ns.RecipeDB_Required(db), colors = ns.RecipeDB_Colors(db), trivial = db.c and db.c[4],
         search = ns.RecipeDB_SearchText(id), sourceType = ns.RecipeDB_Sources(db)[1],
     }
-    if learned then
-        recipe.difficulty = ns.RecipeDB_Difficulty(db, rank or 0)
-        recipe.reagents = {}
-        for _, reagent in ipairs(db.m or {}) do
-            recipe.reagents[#recipe.reagents + 1] = { items = { reagent[1] }, quantity = reagent[2] }
-        end
-    end
+    recipe.reagents = reagentsOfData(db)
+    if learned then recipe.difficulty = ns.RecipeDB_Difficulty(db, rank or 0) end
     return recipe
 end
 
 -- Every recipe of the data for a profession, known ones (by the spell book) apart from the rest. `rank` is the
 -- character's skill, to color the known ones.
 function ns.Recipes_FromData(skillLine, rank)
-    local copy = { skillLine = skillLine, known = {}, unknown = {}, sources = {} }
+    local copy = { skillLine = skillLine, rank = rank, known = {}, unknown = {}, sources = {} }
     for id, db in ns.RecipeDB_Each() do
         if db.s == skillLine then
             local learned = ns.RecipeDB_Known(id)
             local recipe = fromData(id, db, learned, rank)
-            if learned then
-                copy.known[#copy.known + 1] = recipe
-            else
-                if recipe.sourceType then copy.sources[recipe.sourceType] = true end
-                copy.unknown[#copy.unknown + 1] = recipe
-            end
+            if recipe.sourceType then copy.sources[recipe.sourceType] = true end
+            local list = learned and copy.known or copy.unknown
+            list[#list + 1] = recipe
         end
     end
     table.sort(copy.known, sortKnown)
@@ -217,6 +278,7 @@ end
 function ns.Recipes_Request(skillLine, callback, opts)
     opts = opts or {}
     local copy = ns.Recipes_Read(skillLine, opts.name) or ns.Recipes_FromData(skillLine, opts.rank)
+    copy.rank = opts.rank
     cache[skillLine] = copy
     callback(copy)
 end

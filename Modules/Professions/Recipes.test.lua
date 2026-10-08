@@ -78,7 +78,7 @@ describe("Recipes", function()
     before_each(function()
         WowMock.Reset()
         installGame()
-        ns = LoadAddon({ files = { "Modules/Data/RecipeDB.lua", "Modules/Professions/Recipes.lua" } })
+        ns = LoadAddon({ files = { "Modules/Professions/Professions.lua", "Modules/Data/RecipeDB.lua", "Modules/Professions/Recipes.lua" } })
         ns.RECIPE_DATA = DATA
     end)
 
@@ -180,7 +180,7 @@ describe("Recipes", function()
             assert.are.equal(4, giants.sourceType)
             assert.is_not_nil(giants.db)
             assert.matches("a hard day", giants.search)
-            assert.are.same({ [4] = true, [2] = true }, copy.sources)
+            assert.are.same({ [6] = true, [4] = true, [2] = true }, copy.sources)
         end)
 
         it("counts how many of the known ones can be made from the bags", function()
@@ -279,6 +279,83 @@ describe("Recipes", function()
         end)
     end)
 
+    describe("filters and sorting", function()
+        local copy
+
+        -- skill 60 in alchemy: Elixir of Wisdom (1,55,75,95) is yellow, Healing Potion (1,20,40,60) grey, both known;
+        -- unknown: Elixir of Giants needs 200, Flask 250
+        before_each(function()
+            known[1], known[2] = true, true
+            game.bag = { [10] = 4, [11] = 1 }
+            copy = ns.Recipes_FromData(171, 60)
+        end)
+
+        local function listed(rows)
+            local out = {}
+            for _, row in ipairs(rows) do if row.kind == "recipe" then out[#out + 1] = row.recipe.name end end
+            return out
+        end
+
+        it("by difficulty for the character's skill", function()
+            assert.are.same({ "Elixir of Wisdom" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, difficulty = 1 })))
+            assert.are.same({ "Healing Potion" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, difficulty = 3 })))
+            assert.are.same({}, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, difficulty = 0 })))
+        end)
+
+        it("hides what gives no skill points", function()
+            assert.are.same({ "Elixir of Wisdom", "Elixir of Giants", "Flask of the Titans" },
+                listed(ns.Recipes_Rows(copy, { known = true, unknown = true, hideGrey = true })))
+        end)
+
+        it("by whether the skill is enough to learn them, or not", function()
+            copy.rank = 220
+            assert.are.same({ "Elixir of Giants" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, skill = "learnable" })))
+            assert.are.same({ "Flask of the Titans" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, skill = "higher" })))
+        end)
+
+        it("by where they are learned, known recipes too", function()
+            assert.are.same({ "Elixir of Wisdom", "Healing Potion" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, source = 6 })))
+            assert.are.same({ "Flask of the Titans" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, source = 2 })))
+        end)
+
+        it("only what the bags allow to make, unknown recipes too", function()
+            -- Elixir of Wisdom: 4 // 2 and 1 // 1 -> 1; Healing Potion: 4
+            assert.are.same({ "Elixir of Wisdom", "Healing Potion" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, canMake = true })))
+            game.bag = { [10] = 1 }
+            assert.are.same({ "Healing Potion" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, canMake = true })))
+            game.bag = {}
+            assert.are.same({}, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, canMake = true })))
+        end)
+
+        it("sorts by name, by skill needed and by how many can be made, either way", function()
+            local function names(sort) return listed(ns.Recipes_Rows(copy, { known = true, sort = sort })) end
+            assert.are.same({ "Elixir of Wisdom", "Healing Potion" }, names({ key = "name" }))
+            assert.are.same({ "Healing Potion", "Elixir of Wisdom" }, names({ key = "name", desc = true }))
+            assert.are.same({ "Healing Potion", "Elixir of Wisdom" }, names({ key = "craftable", desc = true })) -- 4, 1
+            assert.are.same({ "Elixir of Wisdom", "Healing Potion" }, names({ key = "craftable" }))
+            local unknown = listed(ns.Recipes_Rows(copy, { unknown = true, sort = { key = "level", desc = true } }))
+            assert.are.same({ "Flask of the Titans", "Elixir of Giants" }, unknown)
+        end)
+
+        it("sorts by cost and value, the ones without a price last", function()
+            ns.Prices_RecipeCost = function(recipe) return ({ ["Elixir of Wisdom"] = 500, ["Healing Potion"] = 100 })[recipe.name] end
+            ns.Prices_RecipeValue = function(recipe) return recipe.name == "Healing Potion" and 900 or nil end
+            local function names(sort) return listed(ns.Recipes_Rows(copy, { known = true, unknown = true, sort = sort })) end
+            assert.are.same({ "Healing Potion", "Elixir of Wisdom", "Elixir of Giants", "Flask of the Titans" }, names({ key = "cost" }))
+            assert.are.same({ "Elixir of Wisdom", "Healing Potion", "Elixir of Giants", "Flask of the Titans" }, names({ key = "cost", desc = true }))
+            assert.are.equal("Healing Potion", names({ key = "value" })[1])
+        end)
+
+        it("puts cost and value in the rows", function()
+            ns.Prices_RecipeCost = function() return 123, true end
+            ns.Prices_RecipeValue = function() return 456 end
+            local row = ns.Recipes_Rows(copy, { known = true })[2]
+            assert.are.equal(123, row.cost)
+            assert.is_true(row.incomplete)
+            assert.are.equal(456, row.value)
+        end)
+    end)
+
     describe("asking for a profession", function()
         it("answers at once from the data when that profession's window isn't open", function()
             known[1] = true
@@ -286,6 +363,7 @@ describe("Recipes", function()
             ns.Recipes_Request(171, function(copy) got = copy end, { name = "Alchemy", rank = 10 })
             assert.are.equal(1, #got.known)
             assert.are.equal(171, got.skillLine)
+            assert.are.equal(10, got.rank)
         end)
 
         it("prefers the live answer when the window of that profession is open", function()
