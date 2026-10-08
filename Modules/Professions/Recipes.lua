@@ -67,9 +67,10 @@ local function sortUnknown(a, b)
 end
 
 -- Copies the open profession's recipes (known and not known) into a table, or nil when `skillLine` isn't the
--- one open. { skillLine =, known = { recipe, ... }, unknown = { recipe, ... }, sources = { [sourceType] = true } }
+-- one open. { skillLine =, known = { recipe, ... }, unknown = { recipe, ... }, sources = { [sourceType] = true },
+-- categories = { [category name] = true } }
 -- recipe: { id, name, icon, link, learned, difficulty (0 orange .. 3 grey, known ones only), trivial (the skill
--- at which it turns grey), sourceType, sourceText (not known ones), reagents (known ones) }
+-- at which it turns grey), sourceType, category (what it makes: hands, bags, potions...), sourceText (not known ones), reagents (known ones) }
 function ns.Recipes_Read(skillLine, name)
     if not isReady(skillLine, name) then return nil end
     local T = C_TradeSkillUI
@@ -79,7 +80,7 @@ function ns.Recipes_Read(skillLine, name)
     if T.SetShowLearned then T.SetShowLearned(true) end
     if T.SetShowUnlearned then T.SetShowUnlearned(true) end
 
-    local copy = { skillLine = skillLine, known = {}, unknown = {}, sources = {} }
+    local copy = { skillLine = skillLine, known = {}, unknown = {}, sources = {}, categories = {} }
     local seen = {}
     for _, id in ipairs(T.GetFilteredRecipeIDs and T.GetFilteredRecipeIDs() or {}) do
         local info = T.GetRecipeInfo(id)
@@ -99,9 +100,11 @@ function ns.Recipes_Read(skillLine, name)
                 recipe.colors = ns.RecipeDB_Colors(db)
                 recipe.search = ns.RecipeDB_SearchText(recipe.id)
                 recipe.sourceType = ns.RecipeDB_Sources(db)[1]
+                recipe.category = ns.RecipeDB_Category(db)
                 recipe.reagents = reagentsOfData(db)
             end
             if recipe.sourceType then copy.sources[recipe.sourceType] = true end
+            if recipe.category then copy.categories[recipe.category] = true end
             if recipe.learned then
                 recipe.difficulty = info.relativeDifficulty
                 recipe.reagents = readReagents(recipe.id) or recipe.reagents
@@ -175,7 +178,7 @@ end
 -- The rows of the recipe list for the current search and filters: { kind = "header", text = } and
 -- { kind = "recipe", recipe =, craftable =, cost =, incomplete =, value = }.
 -- opts: { text =, known = bool, unknown = bool,
---   source = a source code (the recipes learned that way),
+--   source = a source code (the recipes learned that way), category = a category name (what the recipe makes),
 --   difficulty = 0..3 (orange .. grey, for the character's skill),
 --   canMake = only what the bags allow (with alts = true: what the whole account allows), hideGrey = hide what gives no skill points,
 --   skill = "learnable" (not known, skill enough to learn) or "higher" (not known, needs more skill),
@@ -206,6 +209,7 @@ function ns.Recipes_Rows(copy, opts)
 
     local function passes(recipe, craftable)
         if opts.source ~= nil and recipe.sourceType ~= opts.source then return false end
+        if opts.category ~= nil and recipe.category ~= opts.category then return false end
         if opts.difficulty ~= nil and difficultyOf(recipe) ~= opts.difficulty then return false end
         if opts.hideGrey and difficultyOf(recipe) == ns.DIFFICULTY_LAST then return false end
         local rank = recipe.rank or copy.rank
@@ -262,7 +266,7 @@ local function fromData(id, db, learned, rank, withSearch)
     local recipe = {
         id = id, name = db.n, icon = ns.RecipeDB_Icon(id, db), learned = learned, db = db, rank = rank,
         required = ns.RecipeDB_Required(db), colors = ns.RecipeDB_Colors(db), trivial = db.c and db.c[4],
-        sourceType = ns.RecipeDB_Sources(db)[1],
+        sourceType = ns.RecipeDB_Sources(db)[1], category = ns.RecipeDB_Category(db),
     }
     if withSearch then recipe.search = ns.RecipeDB_SearchText(id) end
     recipe.reagents = reagentsOfData(db)
@@ -279,12 +283,13 @@ end
 -- Every recipe of the data for a profession, known ones (by the spell book) apart from the rest. `rank` is the
 -- character's skill, to color the known ones.
 function ns.Recipes_FromData(skillLine, rank)
-    local copy = { skillLine = skillLine, rank = rank, known = {}, unknown = {}, sources = {} }
+    local copy = { skillLine = skillLine, rank = rank, known = {}, unknown = {}, sources = {}, categories = {} }
     for id, db in ns.RecipeDB_Each() do
         if db.s == skillLine then
             local learned = ns.RecipeDB_Known(id)
             local recipe = fromData(id, db, learned, rank, true)
             if recipe.sourceType then copy.sources[recipe.sourceType] = true end
+            copy.categories[recipe.category] = true
             local list = learned and copy.known or copy.unknown
             list[#list + 1] = recipe
         end

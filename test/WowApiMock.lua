@@ -181,12 +181,40 @@ local function methodFor(self, k)
     return function() end
 end
 
+-- The game's dropdown (WowStyle1DropdownTemplate, a DropdownButton with menus), when WowMock.menuDropdowns is on: SetupMenu runs
+-- the generator on a root that records its entries in dropdown.menu = { { kind = "radio" | "checkbox" | "divider", text =,
+-- selected =, choose = function() }... }; dropdown.shownText is what the button says (the translator's text for the selected
+-- radio, else the default text).
+local function addDropdownMethods(f)
+    function f:SetSelectionTranslator(translator) self._translator = translator end
+    function f:SetDefaultText(text) self._defaultText = text end
+    function f:SetupMenu(generator) self._generator = generator; self:GenerateMenu() end
+    function f:GenerateMenu()
+        local menu = {}
+        local root = {}
+        function root.CreateRadio(_, text, isSelected, setSelected, data)
+            menu[#menu + 1] = { kind = "radio", text = text, selected = isSelected(data), choose = function() setSelected(data) end }
+        end
+        function root.CreateCheckbox(_, text, isSelected, setSelected, data)
+            menu[#menu + 1] = { kind = "checkbox", text = text, selected = isSelected(data), choose = function() setSelected(data) end }
+        end
+        function root.CreateDivider() menu[#menu + 1] = { kind = "divider" } end
+        self._generator(self, root)
+        self.menu = menu
+        self.shownText = self._defaultText
+        for _, entry in ipairs(menu) do
+            if entry.kind == "radio" and entry.selected and self._translator then self.shownText = self._translator(entry) end
+        end
+    end
+end
+
 function WowMock.NewFrame(kind, name, parent, template)
     local f = { _kind = kind, _name = name, _parent = parent, _template = template, _scripts = {}, _hooks = {},
         _set = {}, _shown = true }
     setmetatable(f, { __index = function(t, k) return methodFor(t, k) end })
     table.insert(WowMock.frames, f)
     if name then _G[name] = f end
+    if template == "WowStyle1DropdownTemplate" and WowMock.menuDropdowns then addDropdownMethods(f) end
     return f
 end
 

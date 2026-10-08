@@ -143,7 +143,7 @@ local function loadFilters()
     filters.hideGrey = saved.hideGrey and true or false
     filters.alts = saved.alts and true or false
     filters.difficulty, filters.skill, filters.sort = saved.difficulty, saved.skill, saved.sort
-    filters.source = nil -- depends on the profession: not kept
+    filters.source, filters.category = nil, nil -- depend on the profession: not kept
 end
 
 local function viewName()
@@ -164,7 +164,7 @@ end
 local function refreshRecipes()
     if not (page and state.copy) then return end
     local rows = ns.Recipes_Rows(state.copy, {
-        text = page.search:GetText(), known = true, unknown = true, source = filters.source,
+        text = page.search:GetText(), known = true, unknown = true, source = filters.source, category = filters.category,
         difficulty = filters.difficulty, canMake = filters.canMake, hideGrey = filters.hideGrey, skill = filters.skill,
         sort = filters.sort, collapsed = collapsed, alts = filters.alts and ns.Inventory_Available and ns.Inventory_Available(),
     })
@@ -241,6 +241,7 @@ local function createPage(parent, top)
     page.filterBar = ns.FilterBar_Create(page, search, {
         filters = filters,
         sources = function() return state.copy and state.copy.sources or {} end,
+        categories = function() return state.copy and state.copy.categories or {} end,
         onChange = function() saveFilters(); refreshRecipes() end,
         onClear = function()
             page.search:SetText("")
@@ -249,7 +250,7 @@ local function createPage(parent, top)
     })
     page.viewButton = CreateFrame("Button", nil, page.filterBar.checks, "UIPanelButtonTemplate")
     page.viewButton:SetSize(130, 22)
-    page.viewButton:SetPoint("RIGHT", 0, 0)
+    page.viewButton:SetPoint("RIGHT", page.filterBar.clearButton, "LEFT", -6, 0)
     page.viewButton:SetScript("OnClick", cycleView)
 
     page.count = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -279,7 +280,7 @@ end
 function ns.UI_ShowRecipes(profession)
     if not frame then return end
     local skillLine = profession.skillLine
-    state.skillLine, filters.source = skillLine, nil
+    state.skillLine, filters.source, filters.category = skillLine, nil, nil
     state.copy = ns.Recipes_Cached(skillLine)
     overview:Hide()
     ns.SearchPage_Hide()

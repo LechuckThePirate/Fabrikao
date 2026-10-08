@@ -34,7 +34,11 @@ describe("Recipes page", function()
     end
 
     local function button(prefix)
-        return WowMock.Find(function(f) return type(f._text) == "string" and f._text:sub(1, #prefix) == prefix and f._scripts.OnClick and f:IsVisible() end)
+        -- (the skill's button drops its "Skill:" when it filters: it says what it filters)
+        local function named(text)
+            return text:sub(1, #prefix) == prefix or (prefix == "Skill:" and (text == "Learnable now" or text == "Needs more skill"))
+        end
+        return WowMock.Find(function(f) return type(f._text) == "string" and named(f._text) and f._scripts.OnClick and f:IsVisible() end)
     end
 
     local function checks()

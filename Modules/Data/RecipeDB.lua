@@ -70,6 +70,45 @@ function ns.RecipeDB_Icon(spellID, recipe)
     return icon or 134400 -- the question mark
 end
 
+-- Category of what a recipe makes, to filter by: the slot of armor (hands, wrist...), the kind of weapon, bags, potions, elixirs,
+-- food, gems, trade goods... The game names them (in the player's language) from the item the recipe makes. An enchantment makes
+-- no item: its slot comes from its name ("Enchant Bracer - ...").
+local ENCHANT_SLOTS = {
+    Bracer = "INVTYPE_WRIST", Chest = "INVTYPE_CHEST", Boots = "INVTYPE_FEET", Gloves = "INVTYPE_HAND", Cloak = "INVTYPE_CLOAK",
+    Shield = "INVTYPE_SHIELD", Ring = "INVTYPE_FINGER", ["2H Weapon"] = "INVTYPE_2HWEAPON",
+}
+local BY_SUBCLASS = { [0] = true, [2] = true, [6] = true, [7] = true } -- consumables, weapons, projectiles, trade goods: named by their subclass
+local categories = {}
+
+local function categoryOf(recipe)
+    local product = recipe.p and recipe.p[1]
+    local info = C_Item and C_Item.GetItemInfoInstant
+    if product and info then
+        local _, itemType, subType, equipLoc, _, classID = info(product)
+        if classID == 1 then return L["Bags"] end
+        if classID == 4 and equipLoc and equipLoc ~= "" then
+            if equipLoc == "INVTYPE_ROBE" then equipLoc = "INVTYPE_CHEST" end -- robes are chests
+            return _G[equipLoc] or subType
+        end
+        if (BY_SUBCLASS[classID] or classID == 4) and subType and subType ~= "" then return subType end
+        return itemType
+    end
+    local what = recipe.n and recipe.n:match("^Enchant (.-) %- ")
+    if what == "Weapon" then return L["Weapon"] end
+    return what and ENCHANT_SLOTS[what] and _G[ENCHANT_SLOTS[what]] or nil
+end
+
+function ns.RecipeDB_Category(recipe)
+    local category = categories[recipe]
+    if not category then
+        local ok, found = pcall(categoryOf, recipe)
+        category = ok and found or L["Other"]
+        if category == "" then category = L["Other"] end
+        categories[recipe] = category
+    end
+    return category
+end
+
 -- The tooltip of what the recipe makes (the item; for the ones that make none, like an enchantment, the recipe's own
 -- spell) next to `owner`. False when there is nothing to show.
 function ns.RecipeDB_ShowProductTooltip(owner, spellID, recipe)

@@ -13,7 +13,7 @@ local GOLD = "|cffffd100"
 
 local page
 local rowButtons = {}
-local state = { skill = nil, results = {}, selected = nil, truncated = 0, sources = {} }
+local state = { skill = nil, results = {}, selected = nil, truncated = 0, sources = {}, categories = {} }
 local filters = {} -- the filters of the page (FilterBar.lua), kept for the next time in ns.char.searchFilters
 
 local function colorCode(color)
@@ -198,19 +198,20 @@ local function loadFilters()
     filters.hideGrey = saved.hideGrey and true or false
     filters.alts = saved.alts and true or false
     filters.difficulty, filters.skill, filters.sort = saved.difficulty, saved.skill, saved.sort
-    filters.source = nil
+    filters.source, filters.category = nil, nil
 end
 
--- every source code of the data, for the source filter before anything is listed
-local allSources
-local function sourcesOfAll()
+-- every source code and category of the data, for those filters before anything is listed
+local allSources, allCategories
+local function listAll()
     if not allSources then
-        allSources = {}
+        allSources, allCategories = {}, {}
         for _, recipe in ns.RecipeDB_Each() do
             for _, code in ipairs(ns.RecipeDB_Sources(recipe)) do allSources[code] = true end
+            allCategories[ns.RecipeDB_Category(recipe)] = true
         end
     end
-    return allSources
+    return allSources, allCategories
 end
 
 local function refresh()
@@ -224,16 +225,17 @@ local function refresh()
     -- filters of the profession's page work here too
     local mine = myProfessions()
     local objects = {}
-    state.sources = {}
+    state.sources, state.categories = {}, {}
     for _, result in ipairs(found) do
         local profession = mine[result.recipe.s]
         local object = ns.Recipes_FromRecord(result.id, result.recipe, knows(result.id), profession and profession.rank)
         objects[#objects + 1] = object
         if object.sourceType then state.sources[object.sourceType] = true end
+        if object.category then state.categories[object.category] = true end
     end
-    if not browse then state.sources = sourcesOfAll() end
+    if not browse then state.sources, state.categories = listAll() end
     local results = ns.Recipes_Rows({ all = objects }, {
-        flat = true, source = filters.source, difficulty = filters.difficulty, canMake = filters.canMake,
+        flat = true, source = filters.source, category = filters.category, difficulty = filters.difficulty, canMake = filters.canMake,
         hideGrey = filters.hideGrey, skill = filters.skill, sort = filters.sort,
         alts = filters.alts and ns.Inventory_Available and ns.Inventory_Available(),
     })
@@ -331,11 +333,12 @@ function ns.SearchPage_Create(parent, top)
     page.filterBar = ns.FilterBar_Create(page, back, {
         filters = filters, x = 0,
         sources = function() return state.sources end,
+        categories = function() return state.categories end,
         onChange = function() saveFilters(); refresh() end,
     })
     local skillButton = CreateFrame("Button", nil, page.filterBar.checks, "UIPanelButtonTemplate")
     skillButton:SetSize(190, 22)
-    skillButton:SetPoint("RIGHT", 0, 0)
+    skillButton:SetPoint("RIGHT", page.filterBar.clearButton, "LEFT", -6, 0)
     skillButton:SetText(L["Profession: %s"]:format(L["All"]))
     skillButton:SetScript("OnClick", cycleSkill)
     page.skillButton = skillButton

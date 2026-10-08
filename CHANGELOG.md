@@ -22,6 +22,10 @@
   include the bags and banks of your other characters, as Embolsao saved them (through Embolsao's new public API when it has it; without
   Embolsao nothing of this shows and everything works with the character's own items); the ingredient icons' tooltips say who has each
   item, and the details of the search show how many the others have. A preference turns it off.
+- New: the filters are dropdowns like the ones of the game's options, and there is a new one by category: the slot of armor (hands,
+  wrist, chest...), the kind of weapon, bags, potions, elixirs, food, gems, trade goods, the slot an enchantment goes on... in both
+  the profession's page and the search of every recipe. "Clear" moved next to the view button, and the sort dropdown has a
+  "Descending" checkbox.
 - New: the detailed view shows the ingredients as icons too, with their tooltips (red when you lack them), like the table.
 - New: two views of the recipe lists, chosen in the preferences or with the "View" button: table (icon, name, components,
   approximate cost, approximate auction value, level; click a title to sort) and detailed (big icon, three lines). In the table
