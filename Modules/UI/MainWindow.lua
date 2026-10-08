@@ -12,15 +12,13 @@ local PROFESSION_H = 56
 
 local frame, overview, page
 local professionButtons, headerTexts = {}, {}
-local state = { skillLine = nil, copy = nil, source = nil }
+local state = { skillLine = nil, copy = nil }
 
 -- what the page filters by: kept for the next time (ns.char.filters)
 local filters = {}
 local collapsed = {} -- the groups of the list folded: { known = bool, unknown = bool }
 
 local VIEW_NAMES = { "list", "table", "detailed" }
-local SKILL_MODES = { nil, "learnable", "higher" }
-local SORT_KEYS = { nil, "name", "level", "cost", "value", "craftable" } -- nil: the list's own order
 
 ---------------------------------------------------------------------------------------------------
 -- Overview: the professions
@@ -143,6 +141,7 @@ local function loadFilters()
     filters.canMake = saved.canMake and true or false
     filters.hideGrey = saved.hideGrey and true or false
     filters.difficulty, filters.skill, filters.sort = saved.difficulty, saved.skill, saved.sort
+    filters.source = nil -- depends on the profession: not kept
 end
 
 local function viewName()
@@ -155,37 +154,15 @@ local function viewLabel(view)
     return ({ list = L["List"], table = L["Table"], detailed = L["Detailed"] })[view]
 end
 
-local function difficultyLabel(difficulty)
-    if difficulty == nil then return L["All"] end
-    local c = ns.DIFFICULTY_COLORS[difficulty]
-    local names = { [0] = L["orange"], L["yellow"], L["green"], L["grey"] }
-    return ("|cff%02x%02x%02x%s|r"):format(math.floor(c[1] * 255), math.floor(c[2] * 255), math.floor(c[3] * 255), names[difficulty])
-end
-
-local function skillLabel(mode)
-    return mode == "learnable" and L["Learnable now"] or mode == "higher" and L["Needs more skill"] or L["All"]
-end
-
-local function sortLabel(sort)
-    if not sort then return L["Default"] end
-    local names = { name = L["Name"], level = L["Level"], cost = L["Cost"], value = L["AH value"], craftable = L["Can make"] }
-    return names[sort.key] .. (sort.desc and " v" or " ^")
-end
-
 local function updateControls()
-    page.sourceButton:SetText(L["Source: %s"]:format(state.source and ns.Recipes_SourceLabel(state.source) or L["All"]))
-    page.colorButton:SetText(L["Color: %s"]:format(difficultyLabel(filters.difficulty)))
-    page.skillButton:SetText(L["Skill: %s"]:format(skillLabel(filters.skill)))
-    page.sortButton:SetText(L["Sort: %s"]:format(sortLabel(filters.sort)))
+    page.filterBar.Update()
     page.viewButton:SetText(L["View: %s"]:format(viewLabel(viewName())))
-    page.canMakeCheck:SetChecked(filters.canMake)
-    page.hideGreyCheck:SetChecked(filters.hideGrey)
 end
 
 local function refreshRecipes()
     if not (page and state.copy) then return end
     local rows = ns.Recipes_Rows(state.copy, {
-        text = page.search:GetText(), known = true, unknown = true, source = state.source,
+        text = page.search:GetText(), known = true, unknown = true, source = filters.source,
         difficulty = filters.difficulty, canMake = filters.canMake, hideGrey = filters.hideGrey, skill = filters.skill,
         sort = filters.sort, collapsed = collapsed,
     })
@@ -202,51 +179,6 @@ local function changed()
     refreshRecipes()
 end
 
--- the value after `current` in `values` (a list that may hold a nil first: "no filter"), wrapping around
-local function nextValue(values, count, current)
-    for i = 1, count do
-        if values[i] == current then return values[i % count + 1] end
-    end
-    return values[1]
-end
-
-local function cycleSource()
-    if not state.copy then return end
-    local codes = {}
-    for code in pairs(state.copy.sources) do codes[#codes + 1] = code end
-    table.sort(codes)
-    state.source = nextValue({ nil, unpack(codes) }, #codes + 1, state.source)
-    refreshRecipes()
-end
-
-local function cycleSort(_, button)
-    if button == "RightButton" and filters.sort then
-        filters.sort = { key = filters.sort.key, desc = not filters.sort.desc }
-    else
-        local key = nextValue(SORT_KEYS, 6, filters.sort and filters.sort.key)
-        filters.sort = key and { key = key, desc = key == "craftable" or key == "value" } or nil
-    end
-    changed()
-end
-
--- a click on a column title of the table
-local function sortBy(key)
-    if filters.sort and filters.sort.key == key then
-        filters.sort = { key = key, desc = not filters.sort.desc }
-    else
-        filters.sort = { key = key, desc = key == "craftable" or key == "value" }
-    end
-    changed()
-end
-
-local function clearFilters()
-    ns.char.filters = nil
-    loadFilters()
-    state.source = nil
-    page.search:SetText("")
-    changed()
-end
-
 -- a click on the title of a group: folds or unfolds it, and remembers it
 local function toggleGroup(group)
     collapsed[group] = not collapsed[group]
@@ -254,30 +186,15 @@ local function toggleGroup(group)
     refreshRecipes()
 end
 
+-- a click on a column title of the table
+local function sortBy(key)
+    ns.FilterBar_SortBy(filters, key)
+    changed()
+end
+
 local function cycleView()
-    ns.char.view = nextValue(VIEW_NAMES, 3, viewName())
+    ns.char.view = ns.FilterBar_NextValue(VIEW_NAMES, 3, viewName())
     refreshRecipes()
-end
-
-local function createCheck(parent, label, key)
-    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-    check:SetSize(24, 24)
-    check.text = check.Text or check.text
-    if check.text then check.text:SetText(label) end
-    check:SetChecked(filters[key])
-    check:SetScript("OnClick", function(self)
-        filters[key] = self:GetChecked() and true or false
-        changed()
-    end)
-    return check
-end
-
-local function createButton(parent, width, onClick)
-    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    button:SetSize(width, 22)
-    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    button:SetScript("OnClick", onClick)
-    return button
 end
 
 local function createPage(parent, top)
@@ -318,55 +235,26 @@ local function createPage(parent, top)
     search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     page.updateHint = updateHint
 
-    -- row of checkboxes, with the view on the right (the groups of the list fold from their titles)
-    local checks = CreateFrame("Frame", nil, page)
-    checks:SetHeight(26)
-    checks:SetPoint("TOPLEFT", search, "BOTTOMLEFT", -6, -4)
-    checks:SetPoint("RIGHT", page, "RIGHT", 0, 0)
-    local previous
-    local function addCheck(key, label)
-        local check = createCheck(checks, label, key)
-        if previous then
-            check:SetPoint("LEFT", previous, "RIGHT", previous.text and (previous.text:GetStringWidth() + 14) or 90, 0)
-        else
-            check:SetPoint("LEFT", 0, 0)
-        end
-        previous = check
-        return check
-    end
-    page.canMakeCheck = addCheck("canMake", L["Can make now"])
-    page.hideGreyCheck = addCheck("hideGrey", L["Hide grey"])
-    page.viewButton = createButton(checks, 130, cycleView)
+    -- the filters and sorting (FilterBar.lua), with the view on the right of the first row
+    page.filterBar = ns.FilterBar_Create(page, search, {
+        filters = filters,
+        sources = function() return state.copy and state.copy.sources or {} end,
+        onChange = function() saveFilters(); refreshRecipes() end,
+        onClear = function()
+            page.search:SetText("")
+            page.updateHint()
+        end,
+    })
+    page.viewButton = CreateFrame("Button", nil, page.filterBar.checks, "UIPanelButtonTemplate")
+    page.viewButton:SetSize(130, 22)
     page.viewButton:SetPoint("RIGHT", 0, 0)
-
-    -- row of filters and sorting: each button goes to the next value on a click
-    local buttons = CreateFrame("Frame", nil, page)
-    buttons:SetHeight(24)
-    buttons:SetPoint("TOPLEFT", checks, "BOTTOMLEFT", 0, -2)
-    buttons:SetPoint("RIGHT", page, "RIGHT", 0, 0)
-    page.sourceButton = createButton(buttons, 130, cycleSource)
-    page.sourceButton:SetPoint("LEFT", 0, 0)
-    page.colorButton = createButton(buttons, 120, function()
-        filters.difficulty = nextValue({ nil, 0, 1, 2, 3 }, 5, filters.difficulty)
-        changed()
-    end)
-    page.colorButton:SetPoint("LEFT", page.sourceButton, "RIGHT", 6, 0)
-    page.skillButton = createButton(buttons, 160, function()
-        filters.skill = nextValue(SKILL_MODES, 3, filters.skill)
-        changed()
-    end)
-    page.skillButton:SetPoint("LEFT", page.colorButton, "RIGHT", 6, 0)
-    page.sortButton = createButton(buttons, 140, cycleSort)
-    page.sortButton:SetPoint("LEFT", page.skillButton, "RIGHT", 6, 0)
-    page.clearButton = createButton(buttons, 90, clearFilters)
-    page.clearButton:SetPoint("RIGHT", 0, 0)
-    page.clearButton:SetText(L["Clear"])
+    page.viewButton:SetScript("OnClick", cycleView)
 
     page.count = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     page.count:SetPoint("BOTTOMLEFT", 4, 0)
 
     local list = ns.RecipeList_Create(page, sortBy, toggleGroup)
-    list.header:SetPoint("TOPLEFT", buttons, "BOTTOMLEFT", 0, -4)
+    list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
     list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
     list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
     list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
@@ -389,7 +277,7 @@ end
 function ns.UI_ShowRecipes(profession)
     if not frame then return end
     local skillLine = profession.skillLine
-    state.skillLine, state.source = skillLine, nil
+    state.skillLine, filters.source = skillLine, nil
     state.copy = ns.Recipes_Cached(skillLine)
     overview:Hide()
     ns.SearchPage_Hide()
@@ -602,9 +490,12 @@ end
 
 -- Filters back to nothing filtered.
 function ns.UI_ResetFilters()
-    if page then
-        clearFilters()
-    else
-        ns.char.filters = nil
+    ns.char.filters, ns.char.searchFilters = nil, nil
+    loadFilters()
+    if page and state.skillLine then
+        page.search:SetText("")
+        page.updateHint()
+        refreshRecipes()
     end
+    ns.SearchPage_ResetFilters()
 end

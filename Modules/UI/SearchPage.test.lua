@@ -99,7 +99,7 @@ describe("SearchPage", function()
             assert.is_true(_G.FabrikaoFrame:IsShown())
             local results = ns.SearchPage_Results()
             assert.are.equal(1, #results)
-            assert.are.equal("Iron Sword", results[1].recipe.n)
+            assert.are.equal("Iron Sword", results[1].recipe.name)
         end)
 
         it("lists a recipe the character can use in its difficulty color, and marks the ones it knows", function()
@@ -133,7 +133,7 @@ describe("SearchPage", function()
             local box = searchBox()
             typeInto(box, "flask")
             assert.are.equal(1, #ns.SearchPage_Results())
-            assert.are.equal("Mighty Flask", ns.SearchPage_Results()[1].recipe.n)
+            assert.are.equal("Mighty Flask", ns.SearchPage_Results()[1].recipe.name)
             assert.are.equal("", box:GetText())
             assert.are.equal(0, #framesWith("profession"))
         end)
@@ -145,7 +145,7 @@ describe("SearchPage", function()
             button._scripts.OnClick(button) -- alchemy
             local results = ns.SearchPage_Results()
             assert.are.equal(2, #results)
-            assert.are.equal("Elixir of Wisdom", results[1].recipe.n) -- needs less skill
+            assert.are.equal("Elixir of Wisdom", results[1].recipe.name) -- needs less skill
             button._scripts.OnClick(button) -- blacksmithing
             assert.are.equal(1, #ns.SearchPage_Results())
             button._scripts.OnClick(button) -- back to all

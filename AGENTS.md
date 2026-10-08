@@ -26,7 +26,8 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   added to the TOC. Every `X.lua` has `X.test.lua` next to it
 - `Modules/Data/Prices.lua` — approximate prices for the table view: auction prices from Auctionator's public API when it is installed,
   else what vendors pay; `Modules/UI/RecipeList.lua` — the three views of the recipe list (list, table with sortable columns, detailed
-  with a big icon); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
+  with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search
+  of every recipe (each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
 - `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing) and `Recipes.lua`
   (a profession's recipes for the lists: from the data, with "known" from the spell book; the live answer of the game's window
   instead when that profession's tab is open; filtering, search and the "how many can I make" count from the bags)

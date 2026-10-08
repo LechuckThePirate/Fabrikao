@@ -77,6 +77,7 @@ function ns.ResetSettings()
     local store = activeStore()
     for key in pairs(SWITCHABLE) do store[key] = nil end
     FabrikaoCharDB.filters = nil
+    FabrikaoCharDB.searchFilters = nil
     FabrikaoCharDB.collapsed = nil
     if ns.UI_ResetWindow then ns.UI_ResetWindow() else FabrikaoCharDB.window = nil end
     if ns.Minimap_Init then ns.Minimap_Init() end

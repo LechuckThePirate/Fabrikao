@@ -259,8 +259,8 @@ function ns.RecipeDB_Search(text, opts)
     if not db then return results end
     text = strtrim((text or ""):lower())
     local skill = opts and opts.skill
-    -- no text: nothing, unless asked for everything of one profession (to browse it)
-    if text == "" and not (skill and opts.all) then return results end
+    -- no text: nothing, unless asked for everything (of a profession, or of all of them) to browse it
+    if text == "" and not (opts and opts.all) then return results end
     local words = {}
     for word in text:gmatch("%S+") do words[#words + 1] = word end
 

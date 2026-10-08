@@ -22,6 +22,7 @@ Modules\Data\Prices.lua
 Modules\Professions\Professions.lua
 Modules\Professions\Recipes.lua
 Modules\UI\RecipeList.lua
+Modules\UI\FilterBar.lua
 Modules\UI\SearchPage.lua
 Modules\UI\Preferences.lua
 Modules\UI\MainWindow.lua

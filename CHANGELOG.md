@@ -15,6 +15,9 @@
 - New: filters on a profession's recipes (where they are learned, color for your skill, learnable now / needs more skill, only what you can
   make now with your bags, hide grey), sorting (name, level, cost, auction value, how many you can make) and a "Clear" button.
   The "Known recipes" and "Not known" titles fold and unfold with a click.
+- New: the search of every recipe has the same filters and sorting (source, color for your skill in each profession, learnable
+  now / needs more skill, can make now, hide grey); with no text it lists everything that passes them. It knows which recipes you
+  know and colors the others for your skill in their profession.
 - New: three views of the recipe lists, chosen in the preferences or with the "View" button: list, table (icon, name, components,
   approximate cost, approximate auction value, level; click a title to sort) and detailed (big icon, three lines).
 - New: preferences window (the gear next to the X): view, window scale, minimap button, chat messages, reset window position and

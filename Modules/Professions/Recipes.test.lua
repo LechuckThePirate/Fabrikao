@@ -317,7 +317,7 @@ describe("Recipes", function()
         end)
 
         it("by whether the skill is enough to learn them, or not", function()
-            copy.rank = 220
+            copy = ns.Recipes_FromData(171, 220)
             assert.are.same({ "Elixir of Giants" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, skill = "learnable" })))
             assert.are.same({ "Flask of the Titans" }, listed(ns.Recipes_Rows(copy, { known = true, unknown = true, skill = "higher" })))
         end)

@@ -13,7 +13,8 @@ local GOLD = "|cffffd100"
 
 local page
 local rowButtons = {}
-local state = { skill = nil, results = {}, selected = nil, truncated = 0 }
+local state = { skill = nil, results = {}, selected = nil, truncated = 0, sources = {} }
+local filters = {} -- the filters of the page (FilterBar.lua), kept for the next time in ns.char.searchFilters
 
 local function colorCode(color)
     return ("|cff%02x%02x%02x"):format(math.floor(color[1] * 255), math.floor(color[2] * 255), math.floor(color[3] * 255))
@@ -182,51 +183,99 @@ local function newRow()
     return b
 end
 
+local function saveFilters()
+    ns.char.searchFilters = {
+        canMake = filters.canMake, hideGrey = filters.hideGrey,
+        difficulty = filters.difficulty, skill = filters.skill, sort = filters.sort,
+    }
+end
+
+local function loadFilters()
+    local saved = ns.char.searchFilters or {}
+    filters.canMake = saved.canMake and true or false
+    filters.hideGrey = saved.hideGrey and true or false
+    filters.difficulty, filters.skill, filters.sort = saved.difficulty, saved.skill, saved.sort
+    filters.source = nil
+end
+
+-- every source code of the data, for the source filter before anything is listed
+local allSources
+local function sourcesOfAll()
+    if not allSources then
+        allSources = {}
+        for _, recipe in ns.RecipeDB_Each() do
+            for _, code in ipairs(ns.RecipeDB_Sources(recipe)) do allSources[code] = true end
+        end
+    end
+    return allSources
+end
+
 local function refresh()
     if not page then return end
     local text = page.search:GetText()
-    local results = ns.RecipeDB_Search(text, { skill = state.skill, all = true })
-    state.truncated = math.max(0, #results - MAX_RESULTS)
-    for i = #results, MAX_RESULTS + 1, -1 do results[i] = nil end
+    -- with filters on and no text, everything that passes them is listed
+    local browse = state.skill ~= nil or ns.FilterBar_Active(filters)
+    local found = ns.RecipeDB_Search(text, { skill = state.skill, all = browse })
+
+    -- the recipes as the lists see them (known or not, colored for the character's skill in each profession), so the
+    -- filters of the profession's page work here too
+    local mine = myProfessions()
+    local objects = {}
+    state.sources = {}
+    for _, result in ipairs(found) do
+        local profession = mine[result.recipe.s]
+        local object = ns.Recipes_FromRecord(result.id, result.recipe, knows(result.id), profession and profession.rank)
+        objects[#objects + 1] = object
+        if object.sourceType then state.sources[object.sourceType] = true end
+    end
+    if not browse then state.sources = sourcesOfAll() end
+    local results = ns.Recipes_Rows({ all = objects }, {
+        flat = true, source = filters.source, difficulty = filters.difficulty, canMake = filters.canMake,
+        hideGrey = filters.hideGrey, skill = filters.skill, sort = filters.sort,
+    })
+    local total = #results
+    state.truncated = math.max(0, total - MAX_RESULTS)
+    for i = total, MAX_RESULTS + 1, -1 do results[i] = nil end
     state.results = results
 
-    local mine = myProfessions()
-    for i, result in ipairs(results) do
+    for i, row in ipairs(results) do
         local b = rowButtons[i] or newRow()
         rowButtons[i] = b
-        local recipe = result.recipe
-        b.spellID, b.recipe = result.id, recipe
+        local object = row.recipe
+        b.spellID, b.recipe = object.id, object.db
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", page.content, "TOPLEFT", 0, -(i - 1) * ROW_H)
         b:SetPoint("RIGHT", page.content, "RIGHT", 0, 0)
-        b.icon:SetTexture(iconOf(result.id, recipe))
-        b.text:SetText(recipe.n)
-        local mineHere = mine[recipe.s]
+        b.icon:SetTexture(object.icon)
+        b.text:SetText(object.name)
         local color = { 0.9, 0.9, 0.9 }
-        if mineHere and mineHere.rank >= ns.RecipeDB_Required(recipe) then
-            color = ns.DIFFICULTY_COLORS[ns.RecipeDB_Difficulty(recipe, mineHere.rank)]
+        if object.learned then
+            color = ns.DIFFICULTY_COLORS[object.difficulty or ns.DIFFICULTY_LAST]
+        elseif object.rank and object.rank >= object.required then
+            color = ns.DIFFICULTY_COLORS[ns.RecipeDB_Difficulty(object.db, object.rank)]
         end
         b.text:SetTextColor(color[1], color[2], color[3])
-        b.info:SetText((knows(result.id) and (CHECK .. " ") or "") .. ("%s %d"):format(ns.RecipeDB_SkillName(recipe.s), ns.RecipeDB_Required(recipe)))
+        b.info:SetText((object.learned and (CHECK .. " ") or "") .. ("%s %d"):format(ns.RecipeDB_SkillName(object.db.s), object.required))
         b:Show()
     end
     for i = #results + 1, #rowButtons do rowButtons[i]:Hide() end
     page.content:SetHeight(math.max(1, #results * ROW_H))
 
     local count
-    if #results == 0 then
-        count = (text == "" and not state.skill) and L["Type to search every recipe."] or L["No recipes found"]
+    if total == 0 then
+        count = (text == "" and not browse) and L["Type to search every recipe."] or L["No recipes found"]
     elseif state.truncated > 0 then
-        count = L["%d recipes (showing the first %d)"]:format(#results + state.truncated, MAX_RESULTS)
+        count = L["%d recipes (showing the first %d)"]:format(total, MAX_RESULTS)
     else
-        count = L["%d recipes"]:format(#results)
+        count = L["%d recipes"]:format(total)
     end
     page.count:SetText(count)
+    page.filterBar.Update()
 
     -- keep the selection if it is still in the list, else the first result
     local keep
-    for _, result in ipairs(results) do if result.id == state.selected then keep = result.id end end
-    selectRecipe(keep or (results[1] and results[1].id))
+    for _, row in ipairs(results) do if row.recipe.id == state.selected then keep = row.recipe.id end end
+    selectRecipe(keep or (results[1] and results[1].recipe.id))
 end
 
 local function cycleSkill()
@@ -273,20 +322,27 @@ function ns.SearchPage_Create(parent, top)
     search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
     search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 
-    local skillButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    -- the same filters and sorting as a profession's page (FilterBar.lua); the profession to look in goes on the right
+    loadFilters()
+    page.filterBar = ns.FilterBar_Create(page, back, {
+        filters = filters, x = 0,
+        sources = function() return state.sources end,
+        onChange = function() saveFilters(); refresh() end,
+    })
+    local skillButton = CreateFrame("Button", nil, page.filterBar.checks, "UIPanelButtonTemplate")
     skillButton:SetSize(190, 22)
-    skillButton:SetPoint("TOPLEFT", back, "BOTTOMLEFT", 0, -8)
+    skillButton:SetPoint("RIGHT", 0, 0)
     skillButton:SetText(L["Profession: %s"]:format(L["All"]))
     skillButton:SetScript("OnClick", cycleSkill)
     page.skillButton = skillButton
 
     page.count = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    page.count:SetPoint("LEFT", skillButton, "RIGHT", 10, 0)
+    page.count:SetPoint("BOTTOMLEFT", 4, 0)
 
     -- results, on the left
     local scroll = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", skillButton, "BOTTOMLEFT", 0, -8)
-    scroll:SetPoint("BOTTOM", page, "BOTTOM", 0, 0)
+    scroll:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -8)
+    scroll:SetPoint("BOTTOM", page, "BOTTOM", 0, 18)
     scroll:SetWidth(LIST_W)
     page.content = CreateFrame("Frame", nil, scroll)
     page.content:SetSize(LIST_W - 4, 1)
@@ -296,7 +352,7 @@ function ns.SearchPage_Create(parent, top)
     -- the selected recipe, on the right
     local detail = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
     detail:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 30, -48)
-    detail:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 0)
+    detail:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
     page.detailScroll = detail
     page.detailChild = CreateFrame("Frame", nil, detail)
     page.detailChild:SetSize(300, 1)
@@ -365,6 +421,15 @@ end
 
 function ns.SearchPage_Hide()
     if page then page:Hide() end
+end
+
+-- the filters of the page back to nothing
+function ns.SearchPage_ResetFilters()
+    ns.char.searchFilters = nil
+    if not page then return end
+    ns.FilterBar_Reset(filters)
+    page.filterBar.Update()
+    if page:IsVisible() then refresh() end
 end
 
 function ns.SearchPage_Results()

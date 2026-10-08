@@ -177,13 +177,13 @@ end
 --   canMake = only what the bags allow, hideGrey = hide what gives no skill points,
 --   skill = "learnable" (not known, skill enough to learn) or "higher" (not known, needs more skill),
 --   sort = { key = name | level | cost | value | craftable, desc = bool } (nil: the list's own order),
---   collapsed = { known = bool, unknown = bool } (a group collapsed keeps its header, with the count, and no rows) }
+--   collapsed = { known = bool, unknown = bool } (a group collapsed keeps its header, with the count, and no rows),
+--   flat = true: just the rows of the recipes of copy.all (any mix of professions), no groups and no titles }
+-- Each recipe has its own `rank` (the character's skill in its profession), else the copy's.
 -- The header rows carry their group ("known" or "unknown") and whether it is collapsed.
 function ns.Recipes_Rows(copy, opts)
     local rows = {}
     local text = strtrim((opts.text or ""):lower())
-    local rank = copy.rank
-
     local function matches(recipe)
         if text == "" then return true end
         if recipe.name:lower():find(text, 1, true) then return true end
@@ -193,6 +193,7 @@ function ns.Recipes_Rows(copy, opts)
 
     -- how the recipe looks for the character's skill (0 orange .. 3 grey), nil when it needs more skill than it has
     local function difficultyOf(recipe)
+        local rank = recipe.rank or copy.rank
         if recipe.learned then return recipe.difficulty or ns.DIFFICULTY_LAST end
         if recipe.db and rank and recipe.required and recipe.required <= rank then
             return ns.RecipeDB_Difficulty(recipe.db, rank)
@@ -204,7 +205,9 @@ function ns.Recipes_Rows(copy, opts)
         if opts.source ~= nil and recipe.sourceType ~= opts.source then return false end
         if opts.difficulty ~= nil and difficultyOf(recipe) ~= opts.difficulty then return false end
         if opts.hideGrey and difficultyOf(recipe) == ns.DIFFICULTY_LAST then return false end
-        local needsMore = not recipe.learned and rank and recipe.required and recipe.required > rank
+        local rank = recipe.rank or copy.rank
+        -- without the profession (no rank at all) a recipe can't be learned: it needs more than skill
+        local needsMore = not recipe.learned and recipe.required and (not rank or recipe.required > rank)
         if opts.skill == "learnable" and (recipe.learned or needsMore) then return false end
         if opts.skill == "higher" and not needsMore then return false end
         if opts.canMake and craftable == 0 then return false end
@@ -230,6 +233,8 @@ function ns.Recipes_Rows(copy, opts)
         return out
     end
 
+    if opts.flat then return group(copy.all or {}) end
+
     local collapsed = opts.collapsed or {}
     for _, part in ipairs({
         { "known", opts.known, copy.known, ns.L["Known recipes"] },
@@ -250,15 +255,22 @@ function ns.Recipes_Rows(copy, opts)
 end
 
 -- A recipe of the data as the window's lists use it.
-local function fromData(id, db, learned, rank)
+local function fromData(id, db, learned, rank, withSearch)
     local recipe = {
-        id = id, name = db.n, icon = ns.RecipeDB_Icon(id, db), learned = learned, db = db,
+        id = id, name = db.n, icon = ns.RecipeDB_Icon(id, db), learned = learned, db = db, rank = rank,
         required = ns.RecipeDB_Required(db), colors = ns.RecipeDB_Colors(db), trivial = db.c and db.c[4],
-        search = ns.RecipeDB_SearchText(id), sourceType = ns.RecipeDB_Sources(db)[1],
+        sourceType = ns.RecipeDB_Sources(db)[1],
     }
+    if withSearch then recipe.search = ns.RecipeDB_SearchText(id) end
     recipe.reagents = reagentsOfData(db)
     if learned then recipe.difficulty = ns.RecipeDB_Difficulty(db, rank or 0) end
     return recipe
+end
+
+-- A recipe of the data (any profession) as the lists use it, for the filters. `rank` is the character's skill in
+-- that profession, nil when it doesn't have it.
+function ns.Recipes_FromRecord(id, db, learned, rank)
+    return fromData(id, db, learned, rank, false)
 end
 
 -- Every recipe of the data for a profession, known ones (by the spell book) apart from the rest. `rank` is the
@@ -268,7 +280,7 @@ function ns.Recipes_FromData(skillLine, rank)
     for id, db in ns.RecipeDB_Each() do
         if db.s == skillLine then
             local learned = ns.RecipeDB_Known(id)
-            local recipe = fromData(id, db, learned, rank)
+            local recipe = fromData(id, db, learned, rank, true)
             if recipe.sourceType then copy.sources[recipe.sourceType] = true end
             local list = learned and copy.known or copy.unknown
             list[#list + 1] = recipe
