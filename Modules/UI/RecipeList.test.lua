@@ -164,6 +164,62 @@ describe("RecipeList", function()
         end)
     end)
 
+    describe("many recipes", function()
+        local function manyRows(count)
+            local out = {}
+            for i = 1, count do
+                local recipe = { id = i, name = "R" .. i, icon = 5, learned = false, required = i, reagents = {},
+                    db = { s = 171, n = "R" .. i, k = { 5 } } }
+                out[i] = { kind = "recipe", recipe = recipe, craftable = 0 }
+            end
+            return out
+        end
+        local function scroll() return WowMock.Find(function(f) return f._kind == "ScrollFrame" end) end
+        local function content() return WowMock.Find(function(f) return f._kind == "Frame" and f._parent and f._parent._kind == "ScrollFrame" end) end
+        local function made()
+            return #WowMock.FindAll(function(f) return f._parent == content() and f.compIcons ~= nil end)
+        end
+        local function names()
+            local out = {}
+            for _, f in ipairs(WowMock.FindAll(function(f) return f._parent == content() and f.compIcons ~= nil and f:IsShown() end)) do
+                out[#out + 1] = f.data.recipe.name
+            end
+            table.sort(out)
+            return out
+        end
+
+        it("only makes frames for the rows in view, however many recipes there are", function()
+            ns.RecipeList_Set(manyRows(600), "list", nil, 60)
+            assert.is_true(made() < 60)
+            assert.are.equal(24 * 600, content()._h) -- the scroll is as tall as all of them
+        end)
+
+        it("the same few frames show other rows as the list scrolls", function()
+            ns.RecipeList_Set(manyRows(600), "list", nil, 60)
+            local before = made()
+            scroll():SetVerticalScroll(24 * 300)
+            WowMock.Fire(scroll(), "OnVerticalScroll", 24 * 300)
+            assert.are.equal(before, made()) -- reused, none new
+            local shown = names()
+            local found301 = false
+            for _, name in ipairs(shown) do if name == "R301" then found301 = true end end
+            assert.is_true(found301)
+            for _, name in ipairs(shown) do assert.is_not.equal("R1", name) end
+        end)
+
+        it("the detailed view makes fewer frames still (the rows are taller)", function()
+            ns.RecipeList_Set(manyRows(600), "detailed", nil, 60)
+            assert.is_true(made() <= 20)
+        end)
+
+        it("with fewer rows after a filter, the list is not left scrolled past the end", function()
+            ns.RecipeList_Set(manyRows(600), "list", nil, 60)
+            scroll():SetVerticalScroll(24 * 500)
+            ns.RecipeList_Set(manyRows(10), "list", nil, 60)
+            assert.is_true(scroll():GetVerticalScroll() <= 24 * 10)
+        end)
+    end)
+
     describe("resizing the window", function()
         local timers, draws
 

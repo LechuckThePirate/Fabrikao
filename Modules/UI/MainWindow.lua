@@ -8,6 +8,7 @@ local L = ns.L
 
 local WIDTH, HEIGHT = 760, 620
 local MIN_WIDTH, MIN_HEIGHT = 640, 420
+local MAX_WIDTH, MAX_HEIGHT = 1600, 1200
 local PROFESSION_H = 56
 
 local frame, overview, page
@@ -331,7 +332,7 @@ local function createFrame()
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:SetResizable(true)
-    if frame.SetResizeBounds then frame:SetResizeBounds(MIN_WIDTH, MIN_HEIGHT) end
+    if frame.SetResizeBounds then frame:SetResizeBounds(MIN_WIDTH, MIN_HEIGHT, MAX_WIDTH, MAX_HEIGHT) end
     frame:SetScale(ns.char.scale or 1)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
@@ -344,20 +345,31 @@ local function createFrame()
     tinsert(UISpecialFrames, "FabrikaoFrame")
     frame:Hide()
 
-    -- the corner to resize from
-    local grip = CreateFrame("Button", nil, frame)
-    grip:SetSize(16, 16)
-    grip:SetPoint("BOTTOMRIGHT", -3, 3)
-    grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
-    grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
-    grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
-    grip:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMRIGHT") end)
-    grip:SetScript("OnMouseUp", function()
-        frame:StopMovingOrSizing()
-        saveGeometry()
-        relayout()
-    end)
-    frame.grip = grip
+    -- the corner to resize from: Blizzard's own resize button where the client has it (as Embolsao's window), else a grip of ours
+    local okResize, resizer = pcall(CreateFrame, "Button", nil, frame, "PanelResizeButtonTemplate")
+    if okResize and resizer and resizer.Init then
+        resizer:SetPoint("BOTTOMRIGHT", -4, 4)
+        resizer:Init(frame, MIN_WIDTH, MIN_HEIGHT, MAX_WIDTH, MAX_HEIGHT)
+        resizer:HookScript("OnMouseUp", function()
+            saveGeometry()
+            relayout()
+        end)
+        frame.grip = resizer
+    else
+        local grip = CreateFrame("Button", nil, frame)
+        grip:SetSize(16, 16)
+        grip:SetPoint("BOTTOMRIGHT", -3, 3)
+        grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+        grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+        grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+        grip:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMRIGHT") end)
+        grip:SetScript("OnMouseUp", function()
+            frame:StopMovingOrSizing()
+            saveGeometry()
+            relayout()
+        end)
+        frame.grip = grip
+    end
 
     if hasPortrait then
         frame:SetPortraitToAsset("Interface\\AddOns\\" .. ADDON .. "\\Icons\\Fabrikao.png")

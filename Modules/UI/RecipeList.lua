@@ -20,7 +20,9 @@ local GAP = 8
 local ICON_X = 6
 local COMP_ICON, COMP_GAP = 20, 3 -- the ingredient icons of the table's components column
 
+local MIN_VISIBLE_HEIGHT = 600 -- rows are made for at least this much height (the scroll frame can still say 0 before it is laid out)
 local list, rows, view, sort, onSort, onToggle
+local tops, total = {}, 0 -- where each row starts (from the top of the content) and how tall they all are
 local rowButtons = {}
 local columnButtons = {}
 
@@ -376,22 +378,47 @@ local function heightOf(data)
     return VIEWS[view].height
 end
 
+-- Where each row starts and how tall they all are: the scroll's content is that tall, but only the rows in view exist as frames.
+local function computeTops()
+    tops, total = {}, 0
+    for i, data in ipairs(rows) do
+        tops[i] = total
+        total = total + heightOf(data)
+    end
+    list.content:SetHeight(math.max(1, total))
+end
+
+-- The first row that ends below `offset` (binary search over the tops).
+local function firstVisible(offset)
+    local low, high = 1, #rows
+    while low < high do
+        local middle = math.floor((low + high) / 2)
+        if tops[middle] + heightOf(rows[middle]) <= offset then low = middle + 1 else high = middle end
+    end
+    return low
+end
+
+-- Draws the rows in view -- a few dozen frames, reused as the list scrolls -- instead of one per recipe: with hundreds of
+-- recipes, laying out a frame per row made resizing and filtering crawl.
 local function draw()
     if not list then return end
     local width = list.content:GetWidth()
-    local y = 0
-    for i, data in ipairs(rows) do
-        local b = rowButtons[i] or newRow()
-        rowButtons[i] = b
+    local offset = list.scroll:GetVerticalScroll() or 0
+    local limit = offset + math.max(list.scroll:GetHeight() or 0, MIN_VISIBLE_HEIGHT)
+    local used = 0
+    local index = #rows > 0 and firstVisible(offset) or 1
+    while index <= #rows and tops[index] < limit do
+        used = used + 1
+        local b = rowButtons[used] or newRow()
+        rowButtons[used] = b
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", list.content, "TOPLEFT", 0, -y)
+        b:SetPoint("TOPLEFT", list.content, "TOPLEFT", 0, -tops[index])
         b:SetPoint("RIGHT", list.content, "RIGHT", 0, 0)
-        renderRow(b, data, width)
+        renderRow(b, rows[index], width)
         b:Show()
-        y = y + heightOf(data)
+        index = index + 1
     end
-    for i = #rows + 1, #rowButtons do rowButtons[i]:Hide() end
-    list.content:SetHeight(math.max(1, y))
+    for i = used + 1, #rowButtons do rowButtons[i]:Hide() end
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -479,6 +506,7 @@ function ns.RecipeList_Create(parent, onSortCallback, onToggleCallback)
     list.content:SetSize(600, 1)
     list.scroll:SetScrollChild(list.content)
     list.scroll:SetScript("OnSizeChanged", followWidth)
+    list.scroll:HookScript("OnVerticalScroll", function() draw() end) -- the rows in view change as it scrolls
 
     local events = CreateFrame("Frame")
     events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
@@ -504,6 +532,10 @@ function ns.RecipeList_Set(newRows, newView, currentSort, rank)
     rows, view, sort = newRows or {}, VIEWS[newView] and newView or "list", currentSort
     list.rank = rank
     updateColumnHeader()
+    computeTops()
+    -- fewer rows than before: the scroll can't be left past the end
+    local beyond = (list.scroll:GetVerticalScroll() or 0) - math.max(0, total - (list.scroll:GetHeight() or 0))
+    if beyond > 0 then list.scroll:SetVerticalScroll(math.max(0, total - (list.scroll:GetHeight() or 0))) end
     draw()
 end
 
