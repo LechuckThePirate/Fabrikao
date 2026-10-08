@@ -95,6 +95,31 @@ describe("RecipeDB", function()
         end)
     end)
 
+    it("tells how a recipe looks at a given skill", function()
+        local r = ns.RecipeDB_Get(100) -- 1, 55, 75, 95
+        assert.are.equal(0, ns.RecipeDB_Difficulty(r, 1))
+        assert.are.equal(0, ns.RecipeDB_Difficulty(r, 54))
+        assert.are.equal(1, ns.RecipeDB_Difficulty(r, 55))
+        assert.are.equal(2, ns.RecipeDB_Difficulty(r, 75))
+        assert.are.equal(3, ns.RecipeDB_Difficulty(r, 95))
+        assert.are.equal(3, ns.RecipeDB_Difficulty(r, 300))
+    end)
+
+    it("a recipe that skips colors goes from orange to grey", function()
+        local r = { s = 165, n = "Medium Leather", c = { 100, 0, 0, 120 } }
+        assert.are.equal(0, ns.RecipeDB_Difficulty(r, 119))
+        assert.are.equal(3, ns.RecipeDB_Difficulty(r, 120))
+        assert.are.equal(0, ns.RecipeDB_Difficulty({ s = 1, n = "No colors" }, 50))
+    end)
+
+    it("lists the professions in the data in order, with their names", function()
+        assert.are.same({ 171, 164 }, ns.RecipeDB_Skills())
+        assert.are.equal("Alchemy", ns.RecipeDB_SkillName(171))
+        assert.are.equal("#999", ns.RecipeDB_SkillName(999))
+        _G.C_TradeSkillUI = { GetProfessionInfoBySkillLineID = function() return { professionName = "Alquimia" } end }
+        assert.are.equal("Alquimia", ns.RecipeDB_SkillName(171))
+    end)
+
     describe("search", function()
         local function names(results)
             local out = {}

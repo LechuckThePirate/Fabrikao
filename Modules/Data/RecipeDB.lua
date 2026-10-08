@@ -239,3 +239,45 @@ function ns.RecipeDB_Search(text, opts)
     end)
     return results
 end
+
+-- 0 orange, 1 yellow, 2 green, 3 grey: how the recipe looks for a character with that skill. A level of 0 in
+-- the data means the recipe skips that color (it stays orange until it turns grey, say).
+function ns.RecipeDB_Difficulty(recipe, skill)
+    local c = recipe.c
+    if not c then return 0 end
+    if c[4] > 0 and skill >= c[4] then return 3 end
+    if c[3] > 0 and skill >= c[3] then return 2 end
+    if c[2] > 0 and skill >= c[2] then return 1 end
+    return 0
+end
+
+local SKILL_NAMES = {
+    [171] = "Alchemy", [164] = "Blacksmithing", [333] = "Enchanting", [202] = "Engineering", [165] = "Leatherworking",
+    [197] = "Tailoring", [186] = "Mining", [185] = "Cooking", [129] = "First Aid",
+}
+-- the order the professions are listed in a filter
+local SKILL_ORDER = { 171, 164, 333, 202, 165, 197, 186, 185, 129 }
+
+-- the profession's name in the player's language (from the client), or its English one
+function ns.RecipeDB_SkillName(skill)
+    local info = C_TradeSkillUI and C_TradeSkillUI.GetProfessionInfoBySkillLineID
+        and C_TradeSkillUI.GetProfessionInfoBySkillLineID(skill)
+    local name = info and info.professionName
+    if name and name ~= "" then return name end
+    return SKILL_NAMES[skill] or ("#" .. skill)
+end
+
+-- the skill lines that have recipes in the data, in display order
+function ns.RecipeDB_Skills()
+    local db = data()
+    local present, list = {}, {}
+    for _, recipe in pairs(db and db.recipes or {}) do present[recipe.s] = true end
+    for _, skill in ipairs(SKILL_ORDER) do
+        if present[skill] then list[#list + 1] = skill; present[skill] = nil end
+    end
+    local extra = {}
+    for skill in pairs(present) do extra[#extra + 1] = skill end
+    table.sort(extra)
+    for _, skill in ipairs(extra) do list[#list + 1] = skill end
+    return list
+end
