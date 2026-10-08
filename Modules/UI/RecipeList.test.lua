@@ -103,12 +103,6 @@ describe("RecipeList", function()
             assert.are.equal(14, visibleIcons + tonumber(shown[2].compMore._text:sub(2)))
         end)
 
-        it("the detailed view shows no ingredient icons", function()
-            ns.RecipeList_Set(rows(), "table", nil, 60)
-            ns.RecipeList_Set(rows(), "detailed", nil, 60)
-            assert.is_false(rowsShown()[2].compIcons[1]:IsShown())
-        end)
-
         it("shows the column titles, which sort", function()
             ns.RecipeList_Set(rows(), "table", { key = "cost", desc = true }, 60)
             local cost = WowMock.Find(function(f) return f.sortKey == "cost" and f.text and f.text._text end)
@@ -140,11 +134,39 @@ describe("RecipeList", function()
             assert.matches("Skill 55", row.line2._text)
             assert.matches("|cffffff00", row.line2._text) -- the colors of the recipe
             assert.matches("Known", row.line2._text)
-            assert.matches("Peacebloom", row.line3._text)
             assert.matches("Cost", row.info._text)
             assert.matches("AH", row.info._text)
             assert.matches("Skill 250", rowsShown()[4].line2._text)
             assert.matches("Vendor", rowsShown()[4].line2._text)
+        end)
+    end)
+
+    describe("the detailed view's ingredients", function()
+        it("are icons with the item's tooltip, on the third line", function()
+            ns.RecipeList_Set(rows(), "detailed", nil, 60)
+            local row = rowsShown()[2]
+            local icon = row.compIcons[1]
+            assert.is_true(icon:IsShown())
+            assert.are.same({ 16, 16 }, { icon._w, icon._h })
+            assert.is_false(row.line3:IsShown())
+            icon._scripts.OnEnter(icon)
+            assert.are.same({ 10 }, GameTooltip._set.SetItemByID)
+        end)
+
+        it("give way to the table's when the view changes back", function()
+            ns.RecipeList_Set(rows(), "detailed", nil, 60)
+            ns.RecipeList_Set(rows(), "table", nil, 60)
+            local icon = rowsShown()[2].compIcons[1]
+            assert.is_true(icon:IsShown())
+            assert.are.same({ 20, 20 }, { icon._w, icon._h })
+        end)
+
+        it("show a dash for a recipe without known ingredients", function()
+            local plain = { id = 3, name = "Plain", icon = 7, learned = false, reagents = {}, db = { s = 171, n = "Plain" } }
+            ns.RecipeList_Set({ { kind = "recipe", recipe = plain, craftable = 0 } }, "detailed", nil, 60)
+            local row = rowsShown()[1]
+            assert.are.equal("-", row.line3._text)
+            assert.is_true(row.line3:IsShown())
         end)
     end)
 

@@ -17,6 +17,7 @@ local FIXED = { cost = 90, value = 90, level = 52 } -- widths of the numeric col
 local GAP = 8
 local ICON_X = 6
 local COMP_ICON, COMP_GAP = 20, 3 -- the ingredient icons of the table's components column
+local DETAIL_COMP_ICON = 16 -- and of the detailed view's third line
 
 local MIN_VISIBLE_HEIGHT = 600 -- rows are made for at least this much height (the scroll frame can still say 0 before it is laid out)
 local list, rows, view, sort, onSort, onToggle
@@ -259,7 +260,7 @@ local function layoutRow(b, data, width)
         place(b.cost, b, c.cost[1], c.cost[2])
         place(b.value, b, c.value[1], c.value[2])
         place(b.level, b, c.level[1], c.level[2])
-    else -- detailed: name, then skill and colors (prices to the right), then components
+    else -- detailed: name, then skill and colors (prices to the right), then components (icons, see showComponents)
         local x = ICON_X + spec.icon + 10
         b.text:SetFontObject("GameFontNormalLarge")
         b.text:SetPoint("TOPLEFT", b, "TOPLEFT", x, -5)
@@ -269,22 +270,21 @@ local function layoutRow(b, data, width)
         b.info:SetWidth(0)
         b.info:Show()
         place(b.line2, b, x, math.max(60, width - x - 200), -24)
-        place(b.line3, b, x, math.max(60, width - x - 12), -40)
     end
 end
 
--- The components column of the table: an icon per ingredient (as many as fit, then "+n"); "-" without ingredients. On a
--- recipe the character knows, an ingredient the bags don't cover is tinted red.
-local function showComponents(b, recipe, width, alts)
+-- The ingredients of a recipe as icons (as many as fit in `w`, then "+n"), from `x` on: in the table's components column (centered
+-- vertically in the row) and on the detailed view's third line (`top` is where it starts). "-" in `dash` without ingredients. On
+-- a recipe the character knows, an ingredient the bags don't cover is tinted red.
+local function showComponents(b, recipe, alts, x, w, size, top, dash)
     local reagents = recipe.reagents
     if not reagents or #reagents == 0 then
-        b.comp:SetText("-")
-        b.comp:Show()
+        dash:SetText("-")
+        dash:Show()
         return
     end
-    b.comp:Hide()
-    local c = columnsFor(width).comp
-    local fit = math.max(1, math.floor((c[2] + COMP_GAP) / (COMP_ICON + COMP_GAP)))
+    dash:Hide()
+    local fit = math.max(1, math.floor((w + COMP_GAP) / (size + COMP_GAP)))
     local shown = #reagents <= fit and #reagents or fit - 1 -- the last slot is for the "+n"
     for i = 1, shown do
         local reagent = reagents[i]
@@ -297,8 +297,13 @@ local function showComponents(b, recipe, width, alts)
         local owned = 0
         for _, id in ipairs(reagent.items) do owned = owned + itemCount(id, alts) end
         icon.itemID, icon.quantity, icon.owned = itemID, reagent.quantity, owned
+        icon:SetSize(size, size)
         icon:ClearAllPoints()
-        icon:SetPoint("LEFT", b, "LEFT", c[1] + (i - 1) * (COMP_ICON + COMP_GAP), 0)
+        if top then
+            icon:SetPoint("TOPLEFT", b, "TOPLEFT", x + (i - 1) * (size + COMP_GAP), top)
+        else
+            icon:SetPoint("LEFT", b, "LEFT", x + (i - 1) * (size + COMP_GAP), 0)
+        end
         icon.texture:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID) or 134400)
         if recipe.learned and owned < reagent.quantity then
             icon.texture:SetVertexColor(1, 0.35, 0.35)
@@ -313,7 +318,11 @@ local function showComponents(b, recipe, width, alts)
             b.compMore = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         end
         b.compMore:ClearAllPoints()
-        b.compMore:SetPoint("LEFT", b, "LEFT", c[1] + shown * (COMP_ICON + COMP_GAP), 0)
+        if top then
+            b.compMore:SetPoint("TOPLEFT", b, "TOPLEFT", x + shown * (size + COMP_GAP), top - 3)
+        else
+            b.compMore:SetPoint("LEFT", b, "LEFT", x + shown * (size + COMP_GAP), 0)
+        end
         b.compMore:SetText(("+%d"):format(#reagents - shown))
         b.compMore:Show()
     end
@@ -344,7 +353,8 @@ local function renderRow(b, data, width)
     b.text:SetTextColor(color[1], color[2], color[3])
 
     if view == "table" then
-        showComponents(b, recipe, width, data.alts)
+        local c = columnsFor(width).comp
+        showComponents(b, recipe, data.alts, c[1], c[2], COMP_ICON, nil, b.comp)
         b.cost:SetText(money(data.cost, data.incomplete))
         b.value:SetText(money(data.value))
         b.level:SetText(levelText(recipe, list.rank))
@@ -355,7 +365,9 @@ local function renderRow(b, data, width)
         parts[#parts + 1] = recipe.learned and L["Known"] or sourceText(recipe)
         b.line2:SetText(table.concat(parts, "   "))
         b.info:SetText(L["Cost %s   AH %s"]:format(money(data.cost, data.incomplete), money(data.value)))
-        b.line3:SetText(componentsText(recipe, recipe.learned, data.alts))
+        local x = ICON_X + VIEWS.detailed.icon + 10
+        showComponents(b, recipe, data.alts, x, math.max(60, width - x - 12), DETAIL_COMP_ICON, -39, b.line3)
+        if #(recipe.reagents or {}) == 0 then place(b.line3, b, x, 60, -40) end
     end
 end
 
