@@ -22,6 +22,8 @@
   include the bags and banks of your other characters, as Embolsao saved them (through Embolsao's new public API when it has it; without
   Embolsao nothing of this shows and everything works with the character's own items); the ingredient icons' tooltips say who has each
   item, and the details of the search show how many the others have. A preference turns it off.
+- Fix: the vendors and trainers shown for a recipe are the ones of your faction: the ones the data has no side for are left out when
+  they stand in the other faction's capitals or starting zones. Up to five vendors are listed, each with its zone, and how many more there are.
 - New: the filters are dropdowns like the ones of the game's options, and there is a new one by category: the slot of armor (hands,
   wrist, chest...), the kind of weapon, bags, potions, elixirs, food, gems, trade goods, the slot an enchantment goes on... in both
   the profession's page and the search of every recipe. "Clear" moved next to the view button, and the sort dropdown has a

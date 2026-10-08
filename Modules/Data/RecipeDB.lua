@@ -21,10 +21,27 @@ local function playerSide()
     return faction == "Alliance" and "A" or faction == "Horde" and "H" or nil
 end
 
--- is it for the character's side (or both)?
+-- Zones only one side can be in (its capitals and starting zones), by area id: many NPCs of the data carry no side, but a vendor
+-- standing in Orgrimmar is not for an Alliance character.
+local SIDE_ZONES = {
+    A = { [1519] = true, [1537] = true, [1657] = true, [3557] = true, [12] = true, [1] = true, [141] = true, [3524] = true },
+    H = { [1637] = true, [1497] = true, [1638] = true, [3487] = true, [14] = true, [85] = true, [215] = true, [3430] = true },
+}
+
+-- is it for the character's side (or both)? An NPC with no side of its own counts for the other one when every zone it is in is
+-- one that side owns.
 local function forMySide(entry)
     local mine = playerSide()
-    return entry.f == nil or mine == nil or entry.f == mine
+    if mine == nil then return true end
+    if entry.f ~= nil then return entry.f == mine end
+    local other = SIDE_ZONES[mine == "A" and "H" or "A"]
+    if entry.z and #entry.z > 0 then
+        for _, zone in ipairs(entry.z) do
+            if not other[zone] then return true end
+        end
+        return false
+    end
+    return true
 end
 
 local function zoneName(id)
@@ -213,14 +230,21 @@ function ns.RecipeDB_Where(recipe)
     end
 
     if item then
-        local vendors = {}
+        local vendors, vendorCount = {}, 0
         for _, vendor in ipairs(item.v or {}) do
-            if forMySide(vendor) and #vendors < 4 then
-                local price = money(vendor.g)
-                vendors[#vendors + 1] = named(vendor, true) .. (price and (" -- " .. price) or "")
+            if forMySide(vendor) then
+                vendorCount = vendorCount + 1
+                if #vendors < 5 then
+                    local price = money(vendor.g)
+                    vendors[#vendors + 1] = named(vendor, true) .. (price and (" -- " .. price) or "")
+                end
             end
         end
-        if #vendors > 0 then lines[#lines + 1] = { title = L["Vendor"], text = table.concat(vendors, "; ") } end
+        if #vendors > 0 then
+            local text = table.concat(vendors, "; ")
+            if vendorCount > #vendors then text = text .. "; " .. L["and %d more"]:format(vendorCount - #vendors) end
+            lines[#lines + 1] = { title = L["Vendor"], text = text }
+        end
 
         if item.qs then
             local quests = {}

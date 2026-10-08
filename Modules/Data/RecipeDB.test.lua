@@ -57,6 +57,11 @@ describe("RecipeDB", function()
     end)
 
     describe("where it is learned", function()
+        -- (the tests below change the vendors of an item of the shared data)
+        local vendors
+        before_each(function() vendors = DATA.items[901].v end)
+        after_each(function() DATA.items[901].v = vendors end)
+
         it("lists the trainers of the character's side, with their zone and the cost", function()
             local lines = ns.RecipeDB_Where(ns.RecipeDB_Get(100))
             assert.are.equal("Trainer", lines[1].title)
@@ -73,6 +78,32 @@ describe("RecipeDB", function()
             _G.UnitFactionGroup = function() return "Horde" end
             text = ns.RecipeDB_Where(ns.RecipeDB_Get(102))[1].text
             assert.matches("Horde Smith %(Orgrimmar%)", text)
+        end)
+
+        it("leaves out the vendors without a side that stand where only the other side can be", function()
+            ns.RECIPE_DATA.items[901].v = {
+                { id = 3, n = "Stormwind Smith", z = { 1519 } }, { id = 4, n = "Orgrimmar Smith", z = { 1637 } },
+                { id = 5, n = "Wandering Smith", z = { 46 } }, { id = 6, n = "Both Smith", z = { 1637, 46 } },
+            }
+            local text = ns.RecipeDB_Where(ns.RecipeDB_Get(102))[1].text
+            assert.matches("Stormwind Smith %(Stormwind City%)", text)
+            assert.matches("Wandering Smith %(Burning Steppes%)", text)
+            assert.matches("Both Smith", text) -- one of its zones is open to everybody
+            assert.is_nil(text:find("Orgrimmar Smith", 1, true))
+            _G.UnitFactionGroup = function() return "Horde" end
+            text = ns.RecipeDB_Where(ns.RecipeDB_Get(102))[1].text
+            assert.matches("Orgrimmar Smith %(Orgrimmar%)", text)
+            assert.is_nil(text:find("Stormwind Smith", 1, true))
+        end)
+
+        it("lists several vendors, and how many more there are past five", function()
+            local vendors = {}
+            for i = 1, 7 do vendors[i] = { id = 20 + i, n = "Smith " .. i, z = { 46 } } end
+            ns.RECIPE_DATA.items[901].v = vendors
+            local text = ns.RecipeDB_Where(ns.RecipeDB_Get(102))[1].text
+            assert.matches("Smith 5 %(Burning Steppes%)", text)
+            assert.is_nil(text:find("Smith 6", 1, true))
+            assert.matches("and 2 more", text)
         end)
 
         it("lists the quests of the character's side", function()
