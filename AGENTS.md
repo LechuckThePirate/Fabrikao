@@ -4,7 +4,7 @@ World of Warcraft professions addon (name: "Fabrikao" ~ Spanish "fabricar", to c
 built**; this repo is the skeleton cloned from the sibling addons' infra (TOC, entry point, localization, per-character/shared settings,
 tests, CI, release). Targets Retail, TBC Anniversary, Classic Era and the Classic "Forever" beta (`## Interface: 120100, 20506, 11509, 16001`);
 development targets Forever first.
-Public repo `LechuckThePirate/Fabrikao` (branch `master`), GPLv3, no CurseForge project yet (see "Infra and release"). Siblings with the
+Public repo `LechuckThePirate/Fabrikao` (branch `master`), GPLv3, CurseForge project id 1733457. Siblings with the
 same conventions: `Completao` (the original template), `Embolsao` and `Aggreao`, under `D:\Source\WowAddons\`.
 
 ## How to work with the maintainer
@@ -57,7 +57,7 @@ No deploy script: copy or symlink the repo root as `Fabrikao` into
   `git tag vX.Y.Z`, push `master` and the tag, and
   `gh workflow run release.yml --repo LechuckThePirate/Fabrikao --ref vX.Y.Z` (workflow_dispatch only; BigWigsMods/packager uploads to
   CurseForge with repo secret `CF_API_KEY` and creates the GitHub release). Watch with `gh run watch`.
-  **Pending before the first release:** create the CurseForge project and add `## X-Curse-Project-ID: <id>` to the TOC; add the
+  **Pending before the first release:** add the
   repo secret `CF_API_KEY` (same key as the sibling repos).
 - **Screenshots:** `images/screencaps/*.png` are shrunk and rsynced by `.github/workflows/sync-media.yml` (push to master touching that
   path, or `gh workflow run sync-media.yml`; skipped while there is no PNG) to

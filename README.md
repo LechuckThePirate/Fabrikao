@@ -35,7 +35,7 @@ request.
 `Release to CurseForge` (`.github/workflows/release.yml`, run by hand from the
 Actions tab) packages the repo with [BigWigsMods/packager](https://github.com/BigWigsMods/packager)
 as the `Fabrikao` folder (`.pkgmeta`) and uploads it to CurseForge using the
-`X-Curse-Project-ID` in the TOC (to be added once the CurseForge project exists). Needs the
+`X-Curse-Project-ID` in the TOC. Needs the
 `CF_API_KEY` repository secret.
 
 ### Description images

@@ -14,6 +14,7 @@
 ## IconTexture: Interface\AddOns\Fabrikao\Icons\Fabrikao.png
 ## SavedVariables: FabrikaoDB
 ## SavedVariablesPerCharacter: FabrikaoCharDB
+## X-Curse-Project-ID: 1733457
 
 Localization\Locale.lua
 Modules\Settings\Settings.lua
