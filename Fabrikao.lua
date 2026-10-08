@@ -33,19 +33,30 @@ events:SetScript("OnEvent", function(_, event, arg1)
         if arg1 ~= ADDON then return end
         ns.InitSettings()
         announce(ns.L["initializing..."])
+        ns.Minimap_Init()
     elseif event == "PLAYER_ENTERING_WORLD" then
         -- also fires after /reload; announced once per UI load
         C_Timer.After(1, announceReady)
     end
 end)
 
+-- key binding (Bindings.xml)
+BINDING_NAME_FABRIKAO_TOGGLE = ns.L["Open / close the window"]
+function Fabrikao_Toggle() ns.UI_Toggle() end
+
 SLASH_FABRIKAO1 = "/fabrikao"
 SLASH_FABRIKAO2 = "/fab"
 SlashCmdList.FABRIKAO = function(msg)
     msg = strtrim((msg or ""):lower())
-    if msg == "version" then
+    if msg == "" or msg == "toggle" then
+        ns.UI_Toggle()
+    elseif msg == "version" then
         ns.Print("v" .. ns.Version())
+    elseif msg == "minimap" then
+        ns.Minimap_Toggle()
+    elseif msg == "probe" then
+        ns.Probe()
     else
-        ns.Print(ns.L["Usage: /fabrikao | version"])
+        ns.Print(ns.L["Usage: /fabrikao | minimap | version"])
     end
 end

@@ -4,7 +4,41 @@ local _, ns = ...
 local es = {
     ["initializing..."] = "inicializando...",
     ["initialization complete"] = "inicialización completa",
-    ["Usage: /fabrikao | version"] = "Uso: /fabrikao | version",
+    ["Usage: /fabrikao | minimap | version"] = "Uso: /fabrikao | minimap | version",
+    ["Open / close the window"] = "Abrir / cerrar la ventana",
+
+    -- minimap button
+    ["Left-click: open"] = "Clic izquierdo: abrir",
+    ["Drag: move"] = "Arrastrar: mover",
+    ["Minimap button hidden."] = "Botón del minimapa oculto.",
+    ["Minimap button shown."] = "Botón del minimapa mostrado.",
+
+    -- professions
+    ["Professions"] = "Profesiones",
+    ["Secondary professions"] = "Profesiones secundarias",
+    ["Skill: %d / %d"] = "Habilidad: %d / %d",
+    ["Click to see its recipes"] = "Clic para ver sus recetas",
+    ["This profession has no recipes"] = "Esta profesión no tiene recetas",
+    ["No professions learned yet."] = "Todavía no has aprendido ninguna profesión.",
+    ["< Professions"] = "< Profesiones",
+
+    -- recipes
+    ["Known"] = "Conocidas",
+    ["Not known"] = "No conocidas",
+    ["Known recipes"] = "Recetas conocidas",
+    ["%d known, %d not known"] = "%d conocidas, %d no conocidas",
+    ["Search recipes (name or where to learn them)..."] = "Buscar recetas (nombre o dónde aprenderlas)...",
+    ["Source: %s"] = "Origen: %s",
+    ["All"] = "Todos",
+    ["Other"] = "Otro",
+    ["Where to learn it"] = "Dónde aprenderla",
+    ["Turns grey at skill %d"] = "Se vuelve gris con habilidad %d",
+    ["Reading recipes..."] = "Leyendo recetas...",
+    ["Could not read this profession's recipes."] = "No se pudieron leer las recetas de esta profesión.",
+    ["No recipes match"] = "Ninguna receta coincide",
+
+    -- diagnostic
+    ["Probe finished. Type /reload to save it."] = "Diagnóstico terminado. Escribe /reload para guardarlo.",
 }
 
 ns.L = setmetatable({}, { __index = function(_, k) return k end })

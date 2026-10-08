@@ -9,8 +9,7 @@ character or shared, Spanish/English locale, tests, CI and release); the feature
 - Help with crafting.
 - Where to find recipes and ingredients.
 
-Supported clients (see `Fabrikao.toc`): Retail, TBC Anniversary, Classic Era and
-the Classic "Forever" beta. Development targets Forever for now.
+Only for WoW Forever (`Fabrikao.toc`: interface 16001).
 
 ## Install (development)
 

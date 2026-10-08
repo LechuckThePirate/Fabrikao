@@ -14,12 +14,15 @@ exclude_files = {
 globals = {
     "FabrikaoDB", "FabrikaoCharDB",
     "SlashCmdList", "SLASH_FABRIKAO1", "SLASH_FABRIKAO2",
+    "BINDING_NAME_FABRIKAO_TOGGLE", "Fabrikao_Toggle",
 }
 
 -- the game's API and frames it uses (add here as the addon grows)
 read_globals = {
-    "C_AddOns", "C_Timer", "CreateFrame", "GetAddOnMetadata", "GetLocale",
-    "strtrim",
+    "C_AddOns", "C_Item", "C_PetJournal", "C_SpellBook", "C_Timer", "C_TradeSkillUI", "ChatEdit_InsertLink", "CreateFrame", "Enum",
+    "GameTooltip", "GameTooltip_Hide", "GetAddOnMetadata", "GetBuildInfo", "GetCursorPosition", "GetItemCount", "GetLocale",
+    "GetProfessionInfo", "GetProfessions", "IsModifiedClick", "Minimap", "ProfessionsFrame", "UIParent", "UISpecialFrames",
+    "WOW_PROJECT_ID", "strtrim", "tinsert",
 }
 
 -- tests (busted): they define and change the simulated game's globals on purpose

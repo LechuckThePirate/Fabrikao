@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="FABRIKAO_TOGGLE" category="Fabrikao!!">
+        Fabrikao_Toggle()
+    </Binding>
+</Bindings>

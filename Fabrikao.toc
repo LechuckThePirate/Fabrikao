@@ -1,6 +1,4 @@
-## Interface: 120100, 20506, 11509, 16001
-## Interface-TBC: 20506
-## Interface-Classic: 11509
+## Interface: 16001
 ## Title: Fabrikao!!
 ## Notes: Your professions companion: browse recipes, plan what to craft, and find out where to get every recipe and ingredient.
 ## Notes-esES: Tu compañero de profesiones: consulta recetas, planifica qué fabricar y localiza dónde conseguir cada receta e ingrediente.
@@ -18,4 +16,10 @@
 
 Localization\Locale.lua
 Modules\Settings\Settings.lua
+Modules\Professions\Professions.lua
+Modules\Professions\Recipes.lua
+Modules\UI\MainWindow.lua
+Modules\UI\MinimapButton.lua
+Modules\Debug\Probe.lua
+Bindings.xml
 Fabrikao.lua

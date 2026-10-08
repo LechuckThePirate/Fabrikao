@@ -1,10 +1,8 @@
 # Fabrikao!! — agent guide
 
 World of Warcraft professions addon (name: "Fabrikao" ~ Spanish "fabricar", to craft). CurseForge summary: "Your professions companion: browse recipes, plan what to craft, and find out where to get every recipe and ingredient."
-Planned features: information about professions and recipes, help with crafting, locating recipes and ingredients. **Not built yet**:
-this repo is the skeleton cloned from the sibling addons' infra (TOC, entry point, localization, per-character/shared settings,
-tests, CI, release). Targets Retail, TBC Anniversary, Classic Era and the Classic "Forever" beta (`## Interface: 120100, 20506, 11509, 16001`);
-development targets Forever first.
+Features: information about professions and recipes (built: professions window, known and unknown recipes, search), help with
+crafting and locating recipes and ingredients (planned; the maintainer adds ideas as they come). **Only for WoW Forever** (`## Interface: 16001`): no compatibility with other clients is needed, so code against Forever's API only.
 Public repo `LechuckThePirate/Fabrikao` (branch `master`), GPLv3, CurseForge project id 1733457. Siblings with the
 same conventions: `Completao` (the original template), `Embolsao` and `Aggreao`, under `D:\Source\WowAddons\`.
 
@@ -26,8 +24,22 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
 - `Localization/Locale.lua` — English text is the key, with the Spanish (esES/esMX) table; more locales can be added as files
 - `Modules/Settings/` — settings per character or shared by the account; new modules go in their own `Modules/<Area>/` folder and are
   added to the TOC. Every `X.lua` has `X.test.lua` next to it
+- `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing) and `Recipes.lua`
+  (opens a profession's game window out of sight, copies its recipes into plain tables, closes it; filtering, search and the
+  "how many can I make" count from the bags)
+- `Modules/UI/` — `MainWindow.lua` (professions page, recipes page with search) and `MinimapButton.lua`; `Bindings.xml` has the key binding
+- `Modules/Debug/Probe.lua` — `/fab probe` writes what the client's profession API really answers into `FabrikaoDB.probe`
+  (read it from `WTF/Account/<account>/SavedVariables/Fabrikao.lua` after `/reload`)
 - `test/` (WoW API mock + local runner), `setupTests.lua`, `Icons/` (addon icon), `images/screencaps/` (CurseForge description images),
   `images/fabrikao_propuesta_iconos.jpg` (the four icon proposals; `Icons/Fabrikao.png` is the top-left one, cut round and transparent, 256x256)
+
+## Forever's API (what the code relies on)
+
+Forever runs on the retail engine: professions use `GetProfessions()` / `GetProfessionInfo(index)` for the list and `C_TradeSkillUI` for
+recipes, which only answers while that profession's window is open (`C_TradeSkillUI.OpenTradeSkill(skillLine)`, then
+`GetFilteredRecipeIDs`, `GetRecipeInfo`, `GetRecipeSchematic`, `GetRecipeSourceText`). The game's own UI code for Forever (to check
+anything about the API) is the `forever` branch of https://github.com/Gethe/wow-ui-source (`Interface/AddOns/Blizzard_Professions*`,
+`Blizzard_APIDocumentationGenerated`). Anything the docs don't settle is verified in game with `/fab probe`.
 
 ## Commands (PowerShell, repo root)
 
