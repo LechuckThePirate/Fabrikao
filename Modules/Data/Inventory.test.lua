@@ -119,8 +119,8 @@ describe("Inventory", function()
                 _G["TestTooltipTextLeft" .. i] = { GetText = function() return text end }
             end
             local tip = { added = {} }
-            function tip:GetName() return "TestTooltip" end
-            function tip:NumLines() return #lines end
+            tip.GetName = function() return "TestTooltip" end
+            tip.NumLines = function() return #lines end
             function tip:AddLine(text) self.added[#self.added + 1] = text end
             return tip
         end
