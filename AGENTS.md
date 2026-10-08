@@ -58,8 +58,10 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
 never written in anything tracked**: README, CHANGELOG, CurseForge text, commit messages, code comments — credit it only as "public
 databases", like Completao). Steps: `node tools/local/recipes_fetch.mjs` (a spell listing and a skill page per profession),
 `node tools/local/recipes_items.mjs` (slow: one page per recipe item whose source isn't named yet; resumable; one request every 3 s,
-the source answers 403 beyond that), then `node tools/local/recipes_write.mjs <worktree>/Data/Generated/Recipes.lua`. Pages are cached
-in `tools/local/cache/`. Source codes in the data: 1 crafted, 2 drop, 3 PvP, 4 quest, 5 vendor, 6 trainer, 16 gathered, 21 salvaged.
+the source answers 403 beyond that), then `node tools/local/recipes_write.mjs <worktree>/Data/Generated/Recipes.lua` (which also writes
+`cache/npc_wanted.json`: the vendors, trainers and creatures of the data), `node tools/local/npc_coords.mjs` (where each stands: one page
+each, for the map and TomTom buttons) and `recipes_write.mjs` again to put the positions in. Pages are cached in `tools/local/cache/`
+(`CACHE_TTL_DAYS` and `REFRESH_BUDGET` make a run download the oldest ones again, a few at a time). Source codes in the data: 1 crafted, 2 drop, 3 PvP, 4 quest, 5 vendor, 6 trainer, 16 gathered, 21 salvaged.
 
 ## Forever's API (what the code relies on)
 
@@ -95,6 +97,14 @@ No deploy script: copy or symlink the repo root as `Fabrikao` into
 ## Infra and release
 
 - **CI:** `.github/workflows/ci.yml` (luacheck + busted on every push and PR).
+- **Daily data refresh**, as in Completao: a cron job on the maintainer's VPS (`/etc/cron.d/fabrikao-data`, 03:20; `/opt/fabrikao-data/run.sh`,
+  kept as `tools/local/vps/fabrikao-run.sh`) runs the tools above in a node container against a clone of this repo (the scripts and the page
+  cache live in the clone's git-ignored `tools/local`; `tools/local/vps/deploy.ps1` copies them there, `-Cache` seeds the cache, `-Cron`
+  installs the cron entry) and publishes `Recipes.lua` + `updated.txt` at `https://media.joanvilarino.online/fabrikao-data/` (a run
+  that lost more than 5 % of the recipes publishes nothing). `.github/workflows/update-recipe-data.yml` (cron 05:50) fetches it, checks
+  its shape and age, runs busted and opens the pull request `auto/recipe-data`, which the maintainer merges; nothing merges by itself.
+  The server holds no credentials for this repo. Needs the repo setting "Allow GitHub Actions to create and approve pull requests".
+  When the generator's output changes shape, update the scripts on the VPS with `deploy.ps1`. Log: `/var/log/fabrikao-data.log`.
 - **Release** (only when asked): one commit `release: X.Y.Z -- short summary` that bumps `## Version` in `Fabrikao.toc` and adds the
   section to `CHANGELOG.md` (once a welcome/changelog window exists, as in Aggreao, also its `LATEST_CHANGELOG_TEXT`); then
   `git tag vX.Y.Z`, push `master` and the tag, and
