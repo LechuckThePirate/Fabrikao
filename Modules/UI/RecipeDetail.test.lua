@@ -1,13 +1,13 @@
 dofile("setupTests.lua")
 
--- The panel of a recipe: what it says, and how a click on a recipe of the list opens and closes it.
+-- The panel of a recipe: what it says, how a click on a recipe of the list opens and closes it, and the TomTom waypoints.
 describe("Recipe detail", function()
-    local ns, known, prices
+    local ns, known, prices, waypoints
 
     local DATA = {
         recipes = {
             [1] = { s = 171, n = "Elixir of Wisdom", c = { 1, 55, 75, 95 }, p = { 200, 1, 2 }, m = { { 10, 2 }, { 11, 1 } }, k = { 6 }, g = 5000, u = true },
-            [2] = { s = 171, n = "Flask of the Titans", c = { 250, 270, 290, 310 }, l = 240, p = { 201, 1, 1 }, m = { { 12, 3 } }, k = { 5 }, i = 900 },
+            [2] = { s = 171, n = "Flask of the Titans", c = { 250, 270, 290, 310 }, l = 240, p = { 201, 1, 1 }, m = { { 12, 3 } }, k = { 5, 6 }, i = 900 },
             [3] = { s = 171, n = "Plain", c = { 1, 2, 3, 4 } },
         },
         items = {
@@ -17,7 +17,8 @@ describe("Recipe detail", function()
                 { id = 6, n = "Vendor 6", z = { 46 } }, { id = 7, n = "Vendor 7", z = { 46 } },
             } },
         },
-        trainers = { [171] = { { id = 9, n = "Alchemist Anna", z = { 1519 }, f = "A" } } },
+        trainers = { [171] = { { id = 9, n = "Alchemist Anna", z = { 1519 }, f = "A" }, { id = 10, n = "Alchemist Ben", z = { 46 } } } },
+        npcs = { [1] = { 1453, 74.4, 36.4 }, [9] = { 1453, 40, 60 }, [10] = { 36, 30, 20 } },
     }
 
     local function visible(field)
@@ -38,11 +39,20 @@ describe("Recipe detail", function()
 
     local function panel() return _G.FabrikaoDetailFrame end
 
+    local function factValue(detail, label)
+        for _, f in ipairs(detail.facts) do if f.label == label then return f.value end end
+    end
+
+    local function source(detail, title)
+        for _, line in ipairs(detail.sources) do if line.title == title then return line end end
+    end
+
     before_each(function()
         WowMock.Reset()
-        _G.FabrikaoDetailFrame, _G.IsModifiedClick, _G.ChatEdit_InsertLink = nil, nil, nil -- (the game's globals outlive a test)
+        _G.FabrikaoDetailFrame, _G.IsModifiedClick, _G.ChatEdit_InsertLink, _G.TomTom = nil, nil, nil, nil -- (the game's globals outlive a test)
         known = { [1] = true }
         prices = { [10] = 100, [11] = 200, [200] = 5000 }
+        waypoints = {}
         _G.GetProfessions = function() return 1 end
         _G.GetProfessionInfo = function() return "Alchemy", 5, 100, 300, 1, 10, 171, 0 end
         _G.Enum = { SpellBookSpellBank = { Player = 0 }, CraftingReagentType = { Basic = 1 } }
@@ -73,79 +83,149 @@ describe("Recipe detail", function()
         it("tells the status, the skill needed and how the colors look for the character", function()
             local detail = build(1, true)
             assert.are.equal("Elixir of Wisdom", detail.name)
-            assert.matches("You know this recipe", detail.info)
-            assert.matches("Skill needed:|r 1  %(.-you have 100", detail.info)
-            assert.matches("Difficulty:", detail.info)
-            assert.matches("For your skill:", detail.info)
+            assert.matches("You know this recipe", detail.status)
+            assert.matches("1   %(.-you have 100", factValue(detail, "Skill needed:"))
+            assert.is_not_nil(factValue(detail, "Difficulty:"))
+            assert.is_not_nil(factValue(detail, "For your skill:"))
             assert.matches("Alchemy", detail.subtitle)
             detail = build(2, false)
-            assert.matches("You don't know this recipe yet", detail.info)
-            assert.matches("Skill needed:|r 240", detail.info)
+            assert.matches("You don't know this recipe yet", detail.status)
+            assert.matches("^240", factValue(detail, "Skill needed:"))
         end)
 
         it("without the profession it says so", function()
             local recipe = ns.Recipes_FromRecord(1, DATA.recipes[1], false, nil)
-            assert.matches("You don't have this profession", ns.RecipeDetail_Build(recipe).info)
+            assert.matches("You don't have this profession", ns.RecipeDetail_Build(recipe).status)
         end)
 
         it("tells what it makes, how many can be made, the training cost, the teacher and what is new", function()
-            local info = build(1, true).info
-            assert.matches("Makes:|r .-Item200 x1%-2", info)
-            assert.matches("Crafts possible:|r 0", info) -- no Silverleaf
-            assert.matches("Training cost:", info)
-            assert.matches("New in Forever", info)
-            info = build(2, false).info
-            assert.matches("Taught by:|r Item900 %(item level 50%)", info)
+            local detail = build(1, true)
+            assert.matches("Item200 x1%-2", factValue(detail, "Makes:"))
+            assert.are.equal("0", factValue(detail, "Crafts possible:")) -- no Silverleaf
+            assert.is_not_nil(factValue(detail, "Training cost:"))
+            assert.is_not_nil(factValue(detail, "New in Forever"))
+            detail = build(2, false)
+            assert.matches("Recipe: Flask of the Titans.-item level 50", factValue(detail, "Taught by:")) -- the name from the data
         end)
 
-        it("lists the ingredients with how many the character has, and the price of each", function()
+        it("lists the ingredients with how many the character has, and the price of what they need", function()
             local reagents = build(1, true).reagents
             assert.are.equal(2, #reagents)
             assert.are.equal(10, reagents[1].itemID)
             assert.are.equal(5, reagents[1].have)
-            assert.matches("Item10 x2", reagents[1].text)
-            assert.matches("you have 5", reagents[1].text)
-            assert.matches("|cff40bf40", reagents[1].text) -- enough
-            assert.matches("|cffff4040", reagents[2].text) -- none
-            assert.matches("each", reagents[1].text)
+            assert.are.equal(2, reagents[1].needed)
+            assert.matches("you have 5", reagents[1].status)
+            assert.matches("|cff40bf40", reagents[1].status) -- enough
+            assert.matches("|cffff4040", reagents[2].status) -- none
+            assert.are.equal(200, reagents[1].total) -- 2 x 100
         end)
 
         it("counts the bank and the other characters", function()
             ns.Inventory_Mine = function() return 1, 4 end
             ns.Inventory_OthersTotal = function() return 7 end
             ns.Inventory_Available = function() return true end
-            local reagents = build(1, true, { alts = true }).reagents
-            assert.matches("4 in your bank", reagents[1].text)
-            assert.matches("%+7 on other characters", reagents[1].text)
-            assert.matches("counting your other characters", build(1, true, { alts = true }).info)
+            local detail = build(1, true, { alts = true })
+            assert.matches("4 in your bank", detail.reagents[1].status)
+            assert.matches("%+7 on other characters", detail.reagents[1].status)
+            assert.matches("counting your other characters", factValue(detail, "Crafts possible:"))
         end)
 
         it("shows the cost, what it sells for and the profit", function()
-            local summary = build(1, true).summary
-            assert.matches("Ingredients cost:", summary)
-            assert.matches("Sells for about:", summary)
-            assert.matches("Profit:|r |cff40bf40", summary)
+            local economy = build(1, true).economy
+            assert.are.same({ "Ingredients cost:", "Sells for about:", "Profit:" }, { economy[1].label, economy[2].label, economy[3].label })
+            assert.matches("|cff40bf40", economy[3].value)
         end)
 
         it("says when there is no auction data", function()
             _G.Auctionator = nil
-            assert.matches("No auction data", build(1, true).summary)
+            assert.matches("No auction data", build(1, true).note)
         end)
 
-        it("lists where it is learned, in full: the vendors of the character's side with their zones", function()
-            local tail = build(2, false).tail
-            assert.matches("Where to learn it", tail)
-            assert.matches("Alliance Vendor %(Stormwind City%)", tail)
-            assert.is_nil(tail:find("Horde Vendor", 1, true))
-            assert.matches("Vendor 7", tail) -- more than the tooltips list
-            assert.matches("Recipe ID: 2", tail)
-            assert.matches("Item ID: 201", tail)
+        it("lists where it is learned in full: the vendors of the character's side with their zones, each one apart", function()
+            local vendors = source(build(2, false), "Vendor")
+            assert.matches("^Alliance Vendor %(Stormwind City%) %-%- 1g", vendors.npcs[1].text)
+            assert.are.equal(1, vendors.npcs[1].id)
+            assert.are.equal(6, #vendors.npcs) -- the 6 of the side (the tooltips list five)
+            for _, npc in ipairs(vendors.npcs) do assert.is_nil(npc.text:find("Horde Vendor", 1, true)) end
+            local trainers = source(build(2, false), "Trainer")
+            assert.are.equal(2, #trainers.npcs)
+        end)
+
+        it("has the ids at the end", function()
+            local detail = build(2, false)
+            assert.matches("Recipe ID: 2", detail.ids)
+            assert.matches("Item ID: 201", detail.ids)
         end)
 
         it("copes with a recipe the data does not know", function()
             local detail = ns.RecipeDetail_Build({ id = 99, name = "Odd", icon = 1, learned = true, reagents = {} })
             assert.are.equal("Odd", detail.name)
-            assert.matches("Recipe ID: 99", detail.tail)
+            assert.matches("Recipe ID: 99", detail.ids)
+            assert.are.same({}, detail.sources)
+        end)
+    end)
+
+    describe("the waypoints (TomTom)", function()
+        local function install()
+            _G.TomTom = { AddWaypoint = function(_, map, x, y, options) waypoints[#waypoints + 1] = { map = map, x = x, y = y, options = options } end }
+        end
+
+        it("the location of an NPC comes from the data", function()
+            assert.are.same({ map = 1453, x = 74.4, y = 36.4 }, ns.RecipeDB_NpcLocation(1))
+            assert.is_nil(ns.RecipeDB_NpcLocation(2))
+        end)
+
+        it("a waypoint is set at the NPC, with its coordinates as fractions of the map", function()
+            install()
+            assert.is_true(ns.RecipeDetail_Waypoint({ id = 1, name = "Alliance Vendor" }))
+            assert.are.equal(1453, waypoints[1].map)
+            assert.is_true(math.abs(waypoints[1].x - 0.744) < 1e-9)
+            assert.is_true(math.abs(waypoints[1].y - 0.364) < 1e-9)
+            assert.are.equal("Alliance Vendor", waypoints[1].options.title)
+        end)
+
+        it("nothing is set without TomTom or without the location", function()
+            assert.is_false(ns.RecipeDetail_Waypoint({ id = 1, name = "x" }))
+            install()
+            assert.is_false(ns.RecipeDetail_Waypoint({ id = 2, name = "x" })) -- no coordinates
+            assert.are.equal(0, #waypoints)
+        end)
+
+        local function waypointButtons()
+            local found = {}
+            for _, f in ipairs(WowMock.frames) do
+                if f.npc and f._scripts.OnClick and f:IsVisible() then found[#found + 1] = f end
+            end
+            return found
+        end
+
+        it("a recipe not known shows a button at each trainer and vendor with a location, when TomTom is there", function()
+            install()
+            click(recipeRow("Flask of the Titans"))
+            local buttons = waypointButtons()
+            local ids = {}
+            for _, b in ipairs(buttons) do ids[#ids + 1] = b.npc.id end
+            table.sort(ids)
+            assert.are.same({ 1, 9, 10 }, ids) -- the other vendors and trainers have no known location
+            click(buttons[1])
+            assert.are.equal(1, #waypoints)
+        end)
+
+        it("without TomTom there are no buttons", function()
+            click(recipeRow("Flask of the Titans"))
+            assert.are.equal(0, #waypointButtons())
+        end)
+
+        it("a recipe the character knows has none", function()
+            install()
+            click(recipeRow("Elixir of Wisdom"))
+            assert.are.equal(0, #waypointButtons())
+        end)
+
+        it("the trainers and vendors of the zone the character is in come first", function()
+            _G.C_Map.GetBestMapForUnit = function() return 36 end
+            local lines = ns.RecipeDB_Where(DATA.recipes[1], true)
+            assert.are.equal(10, lines[1].npcs[1].id) -- Alchemist Ben stands in map 36
         end)
     end)
 
@@ -156,7 +236,7 @@ describe("Recipe detail", function()
             assert.is_true(panel():IsShown())
             assert.are.equal("Elixir of Wisdom", panel().name._text)
             assert.are.equal("Elixir of Wisdom", ns.RecipeDetail_Current().name)
-            assert.matches("You know this recipe", panel().info._text)
+            assert.matches("You know this recipe", panel().status._text)
             local anchors = {}
             for _, point in ipairs(panel()._points) do anchors[point[1]] = point[3] end
             assert.are.same({ TOPLEFT = "TOPRIGHT", BOTTOMLEFT = "BOTTOMRIGHT" }, anchors)
@@ -180,8 +260,19 @@ describe("Recipe detail", function()
             end
             assert.are.equal(2, #rows)
             local row = rows[1]
+            assert.matches("Item10 x2", row.name._text)
             row._scripts.OnEnter(row)
             assert.are.same({ row.itemID }, GameTooltip._set.SetItemByID)
+        end)
+
+        it("shows fewer rows when the next recipe has fewer ingredients", function()
+            click(recipeRow("Elixir of Wisdom"))
+            click(recipeRow("Flask of the Titans"))
+            local rows = {}
+            for _, f in ipairs(WowMock.frames) do
+                if f.itemID and f.icon and f._parent == panel().child and f:IsShown() then rows[#rows + 1] = f end
+            end
+            assert.are.equal(1, #rows)
         end)
 
         it("the group titles do not open it", function()

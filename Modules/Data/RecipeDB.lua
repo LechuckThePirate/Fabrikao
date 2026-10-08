@@ -206,8 +206,28 @@ local function named(entry, withZones)
     return entry.n
 end
 
--- where the recipe is learned, as lines { title =, text = } for a tooltip or detail panel; `full` lists far more of each (the
--- recipe's own panel has the room)
+-- Where an NPC of the data stands: { map = map id, x =, y = } (x and y in percent of the map), or nil when it is not known.
+function ns.RecipeDB_NpcLocation(id)
+    local db = data()
+    local spot = db and db.npcs and db.npcs[id]
+    return spot and { map = spot[1], x = spot[2], y = spot[3] } or nil
+end
+
+-- The NPCs standing in the zone the character is in first (a trainer next door beats one in another continent).
+local function nearestFirst(list)
+    local here = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    if not here then return list end
+    local near, far = {}, {}
+    for _, npc in ipairs(list) do
+        local spot = ns.RecipeDB_NpcLocation(npc.id)
+        if spot and spot.map == here then near[#near + 1] = npc else far[#far + 1] = npc end
+    end
+    for _, npc in ipairs(far) do near[#near + 1] = npc end
+    return near
+end
+
+-- where the recipe is learned, as lines { title =, text =, npcs = { { id =, name =, text = }... } (trainers and vendors) } for a
+-- tooltip or detail panel; `full` lists far more of each (the recipe's own panel has the room)
 function ns.RecipeDB_Where(recipe, full)
     local lines = {}
     local maxTrainers, maxVendors, maxQuests, maxDrops, maxObjects = 3, 5, 3, 4, 3
@@ -218,35 +238,44 @@ function ns.RecipeDB_Where(recipe, full)
     local trainable = false
     for _, code in ipairs(recipe.k or {}) do if code == 6 then trainable = true end end
     if trainable then
-        local names, count = {}, 0
+        local names, npcs, count = {}, {}, 0
+        local mine = {}
         for _, trainer in ipairs(db and db.trainers[recipe.s] or {}) do
-            if forMySide(trainer) then
-                count = count + 1
-                if count <= maxTrainers then names[#names + 1] = named(trainer, true) end
+            if forMySide(trainer) then mine[#mine + 1] = trainer end
+        end
+        for _, trainer in ipairs(nearestFirst(mine)) do
+            count = count + 1
+            if count <= maxTrainers then
+                names[#names + 1] = named(trainer, true)
+                npcs[#npcs + 1] = { id = trainer.id, name = trainer.n, text = named(trainer, true) }
             end
         end
         local text = table.concat(names, "; ")
         if count > #names then text = text .. "; " .. L["and %d more"]:format(count - #names) end
         local cost = money(recipe.g)
         if cost then text = (text ~= "" and (text .. " -- ") or "") .. L["costs %s"]:format(cost) end
-        lines[#lines + 1] = { title = L["Trainer"], text = text }
+        lines[#lines + 1] = { title = L["Trainer"], text = text, npcs = npcs, more = count - #names }
     end
 
     if item then
-        local vendors, vendorCount = {}, 0
+        local vendors, npcs, vendorCount = {}, {}, 0
+        local mine = {}
         for _, vendor in ipairs(item.v or {}) do
-            if forMySide(vendor) then
-                vendorCount = vendorCount + 1
-                if #vendors < maxVendors then
-                    local price = money(vendor.g)
-                    vendors[#vendors + 1] = named(vendor, true) .. (price and (" -- " .. price) or "")
-                end
+            if forMySide(vendor) then mine[#mine + 1] = vendor end
+        end
+        for _, vendor in ipairs(nearestFirst(mine)) do
+            vendorCount = vendorCount + 1
+            if #vendors < maxVendors then
+                local price = money(vendor.g)
+                local text = named(vendor, true) .. (price and (" -- " .. price) or "")
+                vendors[#vendors + 1] = text
+                npcs[#npcs + 1] = { id = vendor.id, name = vendor.n, text = text }
             end
         end
         if #vendors > 0 then
             local text = table.concat(vendors, "; ")
             if vendorCount > #vendors then text = text .. "; " .. L["and %d more"]:format(vendorCount - #vendors) end
-            lines[#lines + 1] = { title = L["Vendor"], text = text }
+            lines[#lines + 1] = { title = L["Vendor"], text = text, npcs = npcs, more = vendorCount - #vendors }
         end
 
         if item.qs then
