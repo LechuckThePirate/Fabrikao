@@ -144,7 +144,8 @@ function ns.RecipeDetail_Build(recipe, opts)
 
     -- what it costs and brings
     local summary = {}
-    local cost, incomplete = ns.Prices_RecipeCost and ns.Prices_RecipeCost(recipe)
+    local cost, incomplete
+    if ns.Prices_RecipeCost then cost, incomplete = ns.Prices_RecipeCost(recipe) end
     local value = ns.Prices_RecipeValue and ns.Prices_RecipeValue(recipe)
     if cost then
         summary[#summary + 1] = ("%s%s|r %s%s"):format(GOLD, L["Ingredients cost:"], ns.FormatMoney(cost), incomplete and "+" or "")
