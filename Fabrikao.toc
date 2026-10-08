@@ -1,0 +1,20 @@
+## Interface: 120100, 20506, 11509, 16001
+## Interface-TBC: 20506
+## Interface-Classic: 11509
+## Title: Fabrikao!!
+## Notes: Professions helper. Work in progress.
+## Notes-esES: Ayudante de profesiones. En desarrollo.
+## Notes-esMX: Ayudante de profesiones. En desarrollo.
+## Category: Professions
+## Category-esES: Profesiones
+## Category-esMX: Profesiones
+## Author: LechuckThePirate
+## Version: 0.1.0
+## X-License: GPL-3.0
+## IconTexture: Interface\AddOns\Fabrikao\Icons\Fabrikao.png
+## SavedVariables: FabrikaoDB
+## SavedVariablesPerCharacter: FabrikaoCharDB
+
+Localization\Locale.lua
+Modules\Settings\Settings.lua
+Fabrikao.lua
