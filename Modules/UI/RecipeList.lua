@@ -20,7 +20,7 @@ local COMP_ICON, COMP_GAP = 20, 3 -- the ingredient icons of the table's compone
 local DETAIL_COMP_ICON = 16 -- and of the detailed view's third line
 
 local MIN_VISIBLE_HEIGHT = 600 -- rows are made for at least this much height (the scroll frame can still say 0 before it is laid out)
-local list, rows, view, sort, onSort, onToggle
+local list, rows, view, sort, onSort, onToggle, onSelect, selectedID
 local tops, total = {}, 0 -- where each row starts (from the top of the content) and how tall they all are
 local rowButtons = {}
 local columnButtons = {}
@@ -175,12 +175,20 @@ local function newRow()
     for _, key in ipairs({ "info", "cost", "value", "level" }) do b[key]:SetJustifyH("RIGHT") end
     for _, key in ipairs({ "comp", "line2", "line3" }) do b[key]:SetJustifyH("LEFT") end
     b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    b.selected = b:CreateTexture(nil, "BACKGROUND") -- the recipe whose panel is open
+    b.selected:SetAllPoints()
+    b.selected:SetColorTexture(1, 0.82, 0, 0.16)
+    b.selected:Hide()
     b:SetScript("OnEnter", showRecipeTooltip)
     b:SetScript("OnLeave", GameTooltip_Hide)
+    -- a click on a recipe: shift-click puts its link in the chat, any other opens its panel
     local function onClick(self)
         local data = self.data
-        if data and data.kind == "recipe" and data.recipe.link and IsModifiedClick and IsModifiedClick("CHATLINK") then
-            ChatEdit_InsertLink(data.recipe.link)
+        if not (data and data.kind == "recipe") then return end
+        if IsModifiedClick and IsModifiedClick("CHATLINK") then
+            if data.recipe.link then ChatEdit_InsertLink(data.recipe.link) end
+        elseif onSelect then
+            onSelect(data)
         end
     end
     b:SetScript("OnClick", function(self)
@@ -331,6 +339,7 @@ end
 local function renderRow(b, data, width)
     b.data = data
     layoutRow(b, data, width)
+    b.selected:SetShown(data.kind == "recipe" and data.recipe.id == selectedID)
     if data.kind == "header" then
         -- a plus when it is folded, a minus when it is open
         b.icon:SetTexture(data.collapsed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
@@ -493,9 +502,10 @@ local function followWidth()
     C_Timer.After(REDRAW_DELAY, settle)
 end
 
-function ns.RecipeList_Create(parent, onSortCallback, onToggleCallback)
+function ns.RecipeList_Create(parent, onSortCallback, onToggleCallback, onSelectCallback)
     onSort = onSortCallback
     onToggle = onToggleCallback
+    onSelect = onSelectCallback -- (given the data of the row: { recipe =, craftable =, cost =, value =, alts = })
     list = {}
     list.header = CreateFrame("Frame", nil, parent)
     list.header:SetHeight(1)
@@ -534,6 +544,12 @@ function ns.RecipeList_Set(newRows, newView, currentSort, rank)
     -- fewer rows than before: the scroll can't be left past the end
     local beyond = (list.scroll:GetVerticalScroll() or 0) - math.max(0, total - (list.scroll:GetHeight() or 0))
     if beyond > 0 then list.scroll:SetVerticalScroll(math.max(0, total - (list.scroll:GetHeight() or 0))) end
+    draw()
+end
+
+-- Marks the recipe (by id) whose panel is open; nil for none.
+function ns.RecipeList_Select(id)
+    selectedID = id
     draw()
 end
 

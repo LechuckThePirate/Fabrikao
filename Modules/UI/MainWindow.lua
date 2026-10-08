@@ -199,6 +199,15 @@ local function cycleView()
     refreshRecipes()
 end
 
+-- a click on a recipe: its panel opens next to the window
+local function selectRecipe(data)
+    ns.RecipeDetail_Show(data.recipe, {
+        parent = frame, alts = data.alts, rank = state.copy and state.copy.rank,
+        onClose = function() ns.RecipeList_Select(nil) end,
+    })
+    ns.RecipeList_Select(data.recipe.id)
+end
+
 local function createPage(parent, top)
     loadFilters()
     page = CreateFrame("Frame", nil, parent)
@@ -256,7 +265,7 @@ local function createPage(parent, top)
     page.count = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     page.count:SetPoint("BOTTOMLEFT", 4, 0)
 
-    local list = ns.RecipeList_Create(page, sortBy, toggleGroup)
+    local list = ns.RecipeList_Create(page, sortBy, toggleGroup, selectRecipe)
     list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
     list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
     list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
@@ -270,6 +279,7 @@ end
 
 function ns.UI_ShowOverview()
     if not frame then return end
+    ns.RecipeDetail_Hide()
     state.skillLine, state.copy = nil, nil
     page:Hide()
     ns.SearchPage_Hide()
@@ -280,6 +290,7 @@ end
 function ns.UI_ShowRecipes(profession)
     if not frame then return end
     local skillLine = profession.skillLine
+    ns.RecipeDetail_Hide()
     state.skillLine, filters.source, filters.category = skillLine, nil, nil
     state.copy = ns.Recipes_Cached(skillLine)
     overview:Hide()
@@ -461,6 +472,7 @@ end
 -- the search page of every recipe in the data, optionally starting with a text
 function ns.UI_ShowSearch(text)
     ns.UI_Show()
+    ns.RecipeDetail_Hide()
     state.skillLine, state.copy = nil, nil
     overview:Hide()
     page:Hide()

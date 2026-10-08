@@ -24,6 +24,11 @@
   item, and the details of the search show how many the others have. A preference turns it off.
 - Fix: the vendors and trainers shown for a recipe are the ones of your faction: the ones the data has no side for are left out when
   they stand in the other faction's capitals or starting zones. Up to five vendors are listed, each with its zone, and how many more there are.
+- New: a click on a recipe of the list (table or detailed view) opens its panel next to the window with everything known about it:
+  whether you know it, the skill it needs and how its colors look for you, what it makes, how many you can make, the ingredients
+  with how many you have (bags, bank and other characters) and their prices, what the ingredients cost, what it sells for and
+  the profit, the training cost, the item that teaches it and the full list of where it is learned (trainers, vendors, quests, drops).
+  Shift-click still puts the recipe's link in the chat.
 - New: the filters are dropdowns like the ones of the game's options, and there is a new one by category: the slot of armor (hands,
   wrist, chest...), the kind of weapon, bags, potions, elixirs, food, gems, trade goods, the slot an enchantment goes on... in both
   the profession's page and the search of every recipe. "Clear" moved next to the view button, and the sort dropdown has a
