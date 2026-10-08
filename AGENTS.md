@@ -27,7 +27,7 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
 - `Modules/Settings/` — settings per character or shared by the account; new modules go in their own `Modules/<Area>/` folder and are
   added to the TOC. Every `X.lua` has `X.test.lua` next to it
 - `test/` (WoW API mock + local runner), `setupTests.lua`, `Icons/` (addon icon), `images/screencaps/` (CurseForge description images),
-  `images/fabrikao_propuesta_iconos.jpg` (the four icon proposals; `Icons/Fabrikao.png` is the top-left one, cut round and transparent, 256x256)
+  `images/fabrikao_propuesta_iconos.jpg` (the four icon proposals; `Icons/Fabrikao.png` is the top-left one, cut round and transparent, 256x256, with the gold background hue-shifted to red so the four sibling addons are easy to tell apart: Completao green, Embolsao gold, Aggreao blue, Fabrikao red)
 
 ## Commands (PowerShell, repo root)
 
