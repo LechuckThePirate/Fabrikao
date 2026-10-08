@@ -99,7 +99,7 @@ describe("Other characters' items", function()
         icon._scripts.OnEnter(icon)
         local text = table.concat(tooltipLines, "\n")
         assert.matches("Needs 2, you have 1", text)
-        assert.matches("Therzok: 1 in bags", text)
+        assert.matches("Therzok|r: 1 in bags", text)
         assert.matches("Elsa|r: 4 in bags", text)
     end)
 
