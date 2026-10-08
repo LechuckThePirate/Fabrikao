@@ -2,9 +2,9 @@
 ## Interface-TBC: 20506
 ## Interface-Classic: 11509
 ## Title: Fabrikao!!
-## Notes: Professions helper. Work in progress.
-## Notes-esES: Ayudante de profesiones. En desarrollo.
-## Notes-esMX: Ayudante de profesiones. En desarrollo.
+## Notes: Your professions companion: browse recipes, plan what to craft, and find out where to get every recipe and ingredient.
+## Notes-esES: Tu compañero de profesiones: consulta recetas, planifica qué fabricar y localiza dónde conseguir cada receta e ingrediente.
+## Notes-esMX: Tu compañero de profesiones: consulta recetas, planifica qué fabricar y localiza dónde conseguir cada receta e ingrediente.
 ## Category: Professions
 ## Category-esES: Profesiones
 ## Category-esMX: Profesiones

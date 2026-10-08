@@ -1,7 +1,8 @@
 # Fabrikao!! — agent guide
 
-World of Warcraft professions addon (name: "Fabrikao" ~ Spanish "fabricar", to craft). **The functionality is still to be decided and
-built**; this repo is the skeleton cloned from the sibling addons' infra (TOC, entry point, localization, per-character/shared settings,
+World of Warcraft professions addon (name: "Fabrikao" ~ Spanish "fabricar", to craft). CurseForge summary: "Your professions companion: browse recipes, plan what to craft, and find out where to get every recipe and ingredient."
+Planned features: information about professions and recipes, help with crafting, locating recipes and ingredients. **Not built yet**:
+this repo is the skeleton cloned from the sibling addons' infra (TOC, entry point, localization, per-character/shared settings,
 tests, CI, release). Targets Retail, TBC Anniversary, Classic Era and the Classic "Forever" beta (`## Interface: 120100, 20506, 11509, 16001`);
 development targets Forever first.
 Public repo `LechuckThePirate/Fabrikao` (branch `master`), GPLv3, CurseForge project id 1733457. Siblings with the

@@ -1,8 +1,13 @@
 # Fabrikao!!
 
-World of Warcraft professions addon. **Work in progress**: this is the skeleton (TOC, `/fabrikao` and `/fab`,
-saved variables per character or shared, Spanish/English locale, tests, CI and release); the profession
-features come next.
+World of Warcraft professions addon. Your professions companion: browse recipes, plan what to craft, and find out where to get every recipe and ingredient.
+
+**Work in progress**: for now this is the skeleton (TOC, `/fabrikao` and `/fab`, saved variables per
+character or shared, Spanish/English locale, tests, CI and release); the features come next:
+
+- Information about professions and recipes.
+- Help with crafting.
+- Where to find recipes and ingredients.
 
 Supported clients (see `Fabrikao.toc`): Retail, TBC Anniversary, Classic Era and
 the Classic "Forever" beta. Development targets Forever for now.

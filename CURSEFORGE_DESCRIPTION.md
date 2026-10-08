@@ -1,7 +1,12 @@
 # Fabrikao!!
 
-A professions addon for World of Warcraft. **Work in progress** -- the description will
-be written together with the features.
+**Your professions companion: browse recipes, plan what to craft, and find out where to get every recipe and ingredient.**
+
+- **Professions and recipes:** information about your professions and their recipes.
+- **Crafting help:** work out what to craft and what you need for it.
+- **Where to get it:** locate every recipe and ingredient.
+
+*Work in progress: the features above are being built, so not all of them are in yet.*
 
 Works on Retail, TBC Anniversary, Classic Era and WoW Forever.
 
