@@ -21,5 +21,4 @@ Modules\Professions\Recipes.lua
 Modules\UI\MainWindow.lua
 Modules\UI\MinimapButton.lua
 Modules\Debug\Probe.lua
-Bindings.xml
 Fabrikao.lua
