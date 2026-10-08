@@ -411,7 +411,8 @@ function ns.SearchPage_Relayout()
     local width = math.max(120, page.detailScroll:GetWidth() - 8)
     page.detailText:SetWidth(width)
     page.detailChild:SetWidth(width)
-    if page:IsVisible() then renderDetail() end
+    -- the text wraps by itself; only the height it needs (cheap: no need to build the text again at every step of a resize)
+    page.detailChild:SetHeight(math.max(1, page.detailText:GetStringHeight() + 8))
 end
 
 function ns.SearchPage_Show(text)

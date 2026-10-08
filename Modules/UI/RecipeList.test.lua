@@ -164,6 +164,67 @@ describe("RecipeList", function()
         end)
     end)
 
+    describe("resizing the window", function()
+        local timers, draws
+
+        before_each(function()
+            timers, draws = {}, 0
+            _G.C_Timer = { After = function(_, f) timers[#timers + 1] = f end }
+            local original = ns.RecipeDB_ShortSource
+            -- the list view asks it once for every unknown recipe it draws: a count of the redraws
+            ns.RecipeDB_ShortSource = function(...) draws = draws + 1; return original(...) end
+            ns.RecipeList_Set(rows(), "list", nil, 60)
+            draws, timers = 0, {}
+        end)
+
+        local function scroll() return WowMock.Find(function(f) return f._kind == "ScrollFrame" end) end
+        local function runTimers()
+            local pending = timers
+            timers = {}
+            for _, f in ipairs(pending) do f() end
+        end
+
+        it("does not redraw the rows at every step of the drag, only the content's width follows", function()
+            for width = 700, 720, 5 do
+                scroll():SetWidth(width)
+                scroll()._scripts.OnSizeChanged(scroll(), width)
+                ns.RecipeList_Relayout()
+            end
+            assert.are.equal(0, draws)
+            assert.are.equal(1, #timers) -- one wait, however many steps
+            local content = WowMock.Find(function(f) return f._kind == "Frame" and f._parent and f._parent._kind == "ScrollFrame" end)
+            assert.are.equal(720, content._w) -- the rows stretch with it
+        end)
+
+        it("redraws once when the size has stopped changing", function()
+            scroll():SetWidth(700)
+            ns.RecipeList_Relayout()
+            runTimers()
+            assert.are.equal(1, draws)
+            assert.are.equal(0, #timers)
+        end)
+
+        it("keeps waiting while the size still changes", function()
+            scroll():SetWidth(700)
+            ns.RecipeList_Relayout()
+            scroll():SetWidth(710)
+            ns.RecipeList_Relayout() -- another step of the drag, before the wait ended
+            runTimers()
+            assert.are.equal(0, draws)
+            assert.are.equal(1, #timers) -- waiting again
+            runTimers()
+            assert.are.equal(1, draws)
+        end)
+
+        it("a later resize waits and redraws again", function()
+            ns.RecipeList_Relayout()
+            runTimers()
+            ns.RecipeList_Relayout()
+            runTimers()
+            assert.are.equal(2, draws)
+        end)
+    end)
+
     it("the scroll's content is as tall as the rows of the view", function()
         local content = WowMock.Find(function(f) return f._kind == "Frame" and f._parent and f._parent._kind == "ScrollFrame" end)
         ns.RecipeList_Set(rows(), "list", nil, 60)

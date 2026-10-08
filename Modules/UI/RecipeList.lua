@@ -444,6 +444,30 @@ end
 ---------------------------------------------------------------------------------------------------
 -- Public
 ---------------------------------------------------------------------------------------------------
+-- The width changes at every step of a resize drag: laying out and redrawing every row each time froze the game. While the width keeps
+-- changing only the content's width follows (the rows are anchored to it and stretch by themselves); the redraw of the rows --
+-- the table's columns, the icons that fit -- happens once, when the width has stopped changing.
+local REDRAW_DELAY = 0.1
+local function followWidth()
+    list.content:SetWidth(math.max(100, list.scroll:GetWidth()))
+    list.widthChanges = (list.widthChanges or 0) + 1
+    if list.redrawWaiting then return end
+    list.redrawWaiting = true
+    local seen = list.widthChanges
+    local function settle()
+        if list.widthChanges ~= seen then -- it changed again while waiting: wait some more
+            seen = list.widthChanges
+            C_Timer.After(REDRAW_DELAY, settle)
+            return
+        end
+        list.redrawWaiting = false
+        list.content:SetWidth(math.max(100, list.scroll:GetWidth()))
+        updateColumnHeader()
+        draw()
+    end
+    C_Timer.After(REDRAW_DELAY, settle)
+end
+
 function ns.RecipeList_Create(parent, onSortCallback, onToggleCallback)
     onSort = onSortCallback
     onToggle = onToggleCallback
@@ -454,11 +478,7 @@ function ns.RecipeList_Create(parent, onSortCallback, onToggleCallback)
     list.content = CreateFrame("Frame", nil, list.scroll)
     list.content:SetSize(600, 1)
     list.scroll:SetScrollChild(list.content)
-    list.scroll:SetScript("OnSizeChanged", function(_, width)
-        list.content:SetWidth(math.max(100, width))
-        updateColumnHeader()
-        draw()
-    end)
+    list.scroll:SetScript("OnSizeChanged", followWidth)
 
     local events = CreateFrame("Frame")
     events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
@@ -487,11 +507,10 @@ function ns.RecipeList_Set(newRows, newView, currentSort, rank)
     draw()
 end
 
+-- The window changed size: the rows follow once it has settled (see followWidth).
 function ns.RecipeList_Relayout()
     if not list then return end
-    list.content:SetWidth(math.max(100, list.scroll:GetWidth()))
-    updateColumnHeader()
-    draw()
+    followWidth()
 end
 
 -- how tall the column titles are, to place the scroll under them
