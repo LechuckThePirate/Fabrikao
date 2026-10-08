@@ -102,25 +102,30 @@ describe("Inventory", function()
             return tip
         end
 
-        it("adds a line for each character that has the item", function()
+        it("adds a line for each other character that has the item, not for the one playing", function()
             local tip = tooltip()
             ns.Inventory_AddTooltipLines(tip, 10)
-            assert.are.equal(2, #tip.added) -- the character and Elsa (Bad Yuyu has none)
-            assert.matches("Therzok", tip.added[1])
+            assert.are.equal(1, #tip.added) -- Elsa (Bad Yuyu has none; Therzok is the one playing)
+            assert.matches("Elsa", tip.added[1])
         end)
 
         it("leaves out the characters the tooltip already lists (Embolsao adds them itself)", function()
             local tip = tooltip({ "|cff3fc7ebElsa|r: 4 in bags" })
             ns.Inventory_AddTooltipLines(tip, 10)
-            assert.are.equal(1, #tip.added)
-            assert.matches("Therzok", tip.added[1])
-            assert.is_nil(tip.added[1]:find("Elsa", 1, true))
+            assert.are.same({}, tip.added)
         end)
 
         it("also recognizes a name without a color", function()
             local tip = tooltip({ "Elsa: 4 in bags" })
             ns.Inventory_AddTooltipLines(tip, 10)
+            assert.are.same({}, tip.added)
+        end)
+
+        it("adds the characters the tooltip doesn't list", function()
+            local tip = tooltip({ "Elsa: 4 in bags" })
+            ns.Inventory_AddTooltipLines(tip, 11) -- Elsa has it in the bank, Bad Yuyu in the bags
             assert.are.equal(1, #tip.added)
+            assert.matches("Bad Yuyu", tip.added[1])
         end)
 
         it("adds nothing when there are no other characters", function()

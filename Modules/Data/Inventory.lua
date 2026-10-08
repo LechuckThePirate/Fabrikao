@@ -123,8 +123,9 @@ function ns.Inventory_Breakdown(itemID)
     return list
 end
 
--- Adds who has the item to a tooltip, one line per character, leaving out the ones the tooltip already lists: Embolsao puts
--- the other characters in every item tooltip itself, so they would show twice.
+-- Adds who has the item to a tooltip, one line per OTHER character, leaving out the ones the tooltip already lists: Embolsao puts
+-- them in every item tooltip itself, so they would show twice. The character playing is not added either: its bags are in
+-- front of the player and Embolsao's "In your bank" line is already in the tooltip.
 function ns.Inventory_AddTooltipLines(tooltip, itemID)
     local list = ns.Inventory_Breakdown(itemID)
     if not list then return end
@@ -136,7 +137,7 @@ function ns.Inventory_AddTooltipLines(tooltip, itemID)
         if text then present[#present + 1] = text end
     end
     for _, entry in ipairs(list) do
-        local listed = false
+        local listed = entry.me or false
         for _, text in ipairs(present) do
             if text:find(entry.name .. "|r: ", 1, true) or text:find(entry.name .. ": ", 1, true) then listed = true break end
         end
