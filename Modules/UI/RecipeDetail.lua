@@ -6,7 +6,8 @@ local L = ns.L
 -- recipe of the lists opens it; ns.RecipeDetail_Show(recipe, opts) fills it, with `recipe` as the lists see it (ns.Recipes_FromData...)
 -- and opts = { parent = the window to dock to, alts = count the other characters too, rank = the character's skill in the
 -- profession (when the recipe has none of its own), onClose = function() }.
--- With TomTom installed, the trainers and vendors of a recipe the character doesn't know have a button that sets a waypoint.
+-- The trainers and vendors of a recipe the character doesn't know have a button that shows them on the map and, with TomTom
+-- installed, another that sets a waypoint (Modules/Map/Map.lua).
 
 local WIDTH = 520
 local MARGIN = 22
@@ -51,19 +52,15 @@ local function holdings(itemID)
     return bags, bank, ns.Inventory_OthersTotal and ns.Inventory_OthersTotal(itemID) or 0
 end
 
-local function tomtom()
-    return _G.TomTom and _G.TomTom.AddWaypoint and _G.TomTom or nil
-end
-
 -- Sets a TomTom waypoint at the NPC ({ id =, name = }); false when TomTom or its location is missing.
 function ns.RecipeDetail_Waypoint(npc)
+    return ns.Map_TomTom(ns.RecipeDB_NpcLocation(npc.id), npc.name)
+end
+
+-- Opens the world map on the NPC; false when its location is missing.
+function ns.RecipeDetail_ViewOnMap(npc)
     local spot = ns.RecipeDB_NpcLocation(npc.id)
-    local addon = tomtom()
-    if not (addon and spot) then return false end
-    addon:AddWaypoint(spot.map, spot.x / 100, spot.y / 100, {
-        title = npc.name, from = "Fabrikao", persistent = false, minimap = true, world = true, crazy = true,
-    })
-    return true
+    return spot ~= nil and ns.Map_Show(spot)
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -309,36 +306,42 @@ local function newNpc()
     row.text:SetJustifyH("LEFT")
     row.text:SetJustifyV("TOP")
     row.text:SetWordWrap(true)
-    row.button = CreateFrame("Button", nil, row)
-    row.button:SetSize(24, 24)
-    row.button:SetPoint("TOPRIGHT", 0, 0)
-    row.button.icon = row.button:CreateTexture(nil, "ARTWORK")
-    row.button.icon:SetAllPoints()
-    row.button.icon:SetTexture("Interface\\Icons\\INV_Misc_Map_01")
-    row.button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    row.button:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText(L["Set a TomTom waypoint"], 1, 1, 1)
-        GameTooltip:AddLine(self.npc.name, 1, 0.82, 0)
-        GameTooltip:Show()
-    end)
-    row.button:SetScript("OnLeave", GameTooltip_Hide)
-    row.button:SetScript("OnClick", function(self) ns.RecipeDetail_Waypoint(self.npc) end)
+    local function button(text, width, tooltip, action)
+        local b = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        b:SetSize(width, 22)
+        b:SetText(text)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:SetText(tooltip, 1, 1, 1)
+            GameTooltip:AddLine(self.npc.name, 1, 0.82, 0)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", GameTooltip_Hide)
+        b:SetScript("OnClick", function(self) action(self.npc) end)
+        return b
+    end
+    row.tomButton = button("TomTom", 66, L["Set a TomTom waypoint"], ns.RecipeDetail_Waypoint)
+    row.tomButton:SetPoint("TOPRIGHT", 0, 0)
+    row.mapButton = button(L["Map"], 52, L["View on map"], ns.RecipeDetail_ViewOnMap)
     return row
 end
 
 -- A trainer or vendor on its own line, with the waypoint button when it can be used.
 local function npcRow(y, npc, withWaypoint)
     local row = acquire("npc", newNpc)
-    local spot = withWaypoint and tomtom() and ns.RecipeDB_NpcLocation(npc.id)
+    local spot = withWaypoint and ns.RecipeDB_NpcLocation(npc.id)
+    local withTomTom = spot and ns.Map_HasTomTom()
     row:ClearAllPoints()
     row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 14, -y)
     row:SetWidth(TEXT_W - 14)
-    row.text:SetWidth(TEXT_W - 14 - (spot and 30 or 0))
+    row.text:SetWidth(TEXT_W - 14 - (spot and (withTomTom and 130 or 64) or 0))
     row.text:SetText(npc.text)
-    row.button.npc = npc
-    row.button:SetShown(spot and true or false)
-    local height = math.max(row.text:GetStringHeight(), spot and 24 or 0)
+    row.tomButton.npc, row.mapButton.npc = npc, npc
+    row.tomButton:SetShown(withTomTom and true or false)
+    row.mapButton:ClearAllPoints()
+    row.mapButton:SetPoint("TOPRIGHT", withTomTom and -72 or 0, 0)
+    row.mapButton:SetShown(spot and true or false)
+    local height = math.max(row.text:GetStringHeight(), spot and 22 or 0)
     row:SetHeight(height)
     return y + height + 6
 end

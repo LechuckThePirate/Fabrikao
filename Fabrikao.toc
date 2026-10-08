@@ -21,6 +21,7 @@ Data\Generated\Recipes.lua
 Modules\Data\RecipeDB.lua
 Modules\Data\Prices.lua
 Modules\Data\Inventory.lua
+Modules\Map\Map.lua
 Modules\Professions\Professions.lua
 Modules\Professions\Recipes.lua
 Modules\UI\RecipeList.lua

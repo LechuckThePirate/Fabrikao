@@ -191,35 +191,46 @@ describe("Recipe detail", function()
             assert.are.equal(0, #waypoints)
         end)
 
-        local function waypointButtons()
-            local found = {}
+        -- the visible buttons of the NPC lines with that text ("TomTom" or "Map"): their NPC ids, and the buttons
+        local function buttons(text)
+            local found, ids = {}, {}
             for _, f in ipairs(WowMock.frames) do
-                if f.npc and f._scripts.OnClick and f:IsVisible() then found[#found + 1] = f end
+                if f.npc and f._text == text and f._scripts.OnClick and f:IsVisible() then found[#found + 1] = f end
             end
-            return found
+            for _, b in ipairs(found) do ids[#ids + 1] = b.npc.id end
+            table.sort(ids)
+            return ids, found
         end
 
-        it("a recipe not known shows a button at each trainer and vendor with a location, when TomTom is there", function()
+        it("a recipe not known shows a TomTom button at each trainer and vendor with a location, when TomTom is there", function()
             install()
             click(recipeRow("Flask of the Titans"))
-            local buttons = waypointButtons()
-            local ids = {}
-            for _, b in ipairs(buttons) do ids[#ids + 1] = b.npc.id end
-            table.sort(ids)
+            local ids, found = buttons("TomTom")
             assert.are.same({ 1, 9, 10 }, ids) -- the other vendors and trainers have no known location
-            click(buttons[1])
+            click(found[1])
             assert.are.equal(1, #waypoints)
         end)
 
-        it("without TomTom there are no buttons", function()
+        it("and a Map button too, with or without TomTom", function()
             click(recipeRow("Flask of the Titans"))
-            assert.are.equal(0, #waypointButtons())
+            assert.are.same({ 1, 9, 10 }, (buttons("Map")))
+            assert.are.same({}, (buttons("TomTom")))
         end)
 
-        it("a recipe the character knows has none", function()
+        it("the Map button opens the world map on the NPC", function()
+            local opened
+            _G.OpenWorldMap = function(map) opened = map end
+            click(recipeRow("Flask of the Titans"))
+            local _, found = buttons("Map")
+            click(found[1])
+            assert.are.equal(1453, opened) -- the vendor, or the trainer: both stand in map 1453 or 36
+        end)
+
+        it("a recipe the character knows has no buttons", function()
             install()
             click(recipeRow("Elixir of Wisdom"))
-            assert.are.equal(0, #waypointButtons())
+            assert.are.same({}, (buttons("TomTom")))
+            assert.are.same({}, (buttons("Map")))
         end)
 
         it("the trainers and vendors of the zone the character is in come first", function()
