@@ -1,17 +1,27 @@
 local _, ns = ...
 local L = ns.L
 
--- What the other characters carry and keep in their banks, to count ingredients across the account. Embolsao saves it for
--- every character (account-wide, at logout and after every bag change) in EmbolsaoDB.characterItems:
---   [key] = { name =, class = "MAGE", time =, bags = { [itemID] = count }, bank = { [itemID] = count }, ... }
--- It is read as it is saved: Embolsao has no public API for it yet. Without Embolsao (or with the preference off) none of
--- this exists and every count is the character's own.
+-- What the other characters carry and keep in their banks, to count ingredients across the account. It comes from Embolsao,
+-- which saves it for every character (account-wide, at logout and after every bag change):
+--   * through its public API, EmbolsaoAPI (version 1: GetCharacters, GetOthersItemCount, GetItemHolders), when the installed
+--     Embolsao has it;
+--   * else by reading its saved variable as it is saved, for Embolsao versions without the API:
+--       EmbolsaoDB.characterItems[key] = { name =, class = "MAGE", time =, bags = { [itemID] = n }, bank = { [itemID] = n } }
+-- Without Embolsao (or with the preference off) none of this exists and every count is the character's own.
 
-local function saved()
-    if ns.char and ns.char.useAlts == false then return nil end
-    return EmbolsaoDB and EmbolsaoDB.characterItems
+local function api()
+    local a = EmbolsaoAPI
+    if a and (a.version or 0) >= 1 and a.GetCharacters and a.GetOthersItemCount and a.GetItemHolders then return a end
+    return nil
 end
 
+local function enabled()
+    return not (ns.char and ns.char.useAlts == false)
+end
+
+---------------------------------------------------------------------------------------------------
+-- The saved variable, for Embolsao versions without the API
+---------------------------------------------------------------------------------------------------
 local function identity(name)
     return ((name or ""):gsub("%s", "")):lower()
 end
@@ -20,13 +30,12 @@ local function nameOf(key, info)
     return (info and info.name) or (key or ""):match("^(.-)%-") or key
 end
 
--- Every OTHER character with something saved, each once (the newest copy when one is saved under several keys), by name:
+-- Every other character with something saved, each once (the newest copy when one is saved under several keys), by name:
 -- { { key =, name =, class =, time =, bags =, bank = }, ... }
-function ns.Inventory_Others()
-    local others = {}
+local function othersFromSavedVariable()
     local mine = identity(UnitName and UnitName("player"))
     local newest = {}
-    for key, info in pairs(saved() or {}) do
+    for key, info in pairs((EmbolsaoDB and EmbolsaoDB.characterItems) or {}) do
         local name = nameOf(key, info)
         local id = identity(name)
         local seen = newest[id]
@@ -34,9 +43,22 @@ function ns.Inventory_Others()
             newest[id] = { key = key, name = name, class = info.class, time = info.time, bags = info.bags or {}, bank = info.bank or {} }
         end
     end
+    local others = {}
     for _, character in pairs(newest) do others[#others + 1] = character end
     table.sort(others, function(a, b) return a.name < b.name end)
     return others
+end
+
+---------------------------------------------------------------------------------------------------
+-- What the rest of the addon asks
+---------------------------------------------------------------------------------------------------
+-- The other characters with items saved, by name: { { key =, name =, class =, time = }, ... } (the saved-variable path also
+-- carries their bags and bank).
+function ns.Inventory_Others()
+    if not enabled() then return {} end
+    local embolsao = api()
+    if embolsao then return embolsao.GetCharacters() end
+    return othersFromSavedVariable()
 end
 
 -- Are there other characters to count?
@@ -52,16 +74,27 @@ function ns.Inventory_Mine(itemID)
     return bags, math.max(0, both - bags)
 end
 
+-- How many of an item the OTHER characters have in all (bags and banks).
+function ns.Inventory_OthersTotal(itemID)
+    if not enabled() then return 0 end
+    local embolsao = api()
+    if embolsao then
+        local bags, bank = embolsao.GetOthersItemCount(itemID)
+        return (bags or 0) + (bank or 0)
+    end
+    local total = 0
+    for _, character in ipairs(othersFromSavedVariable()) do
+        total = total + (character.bags[itemID] or 0) + (character.bank[itemID] or 0)
+    end
+    return total
+end
+
 -- How many of an item there are: only in the character's bags by default, or with `alts`, everything: its own bags and
 -- bank and the bags and banks of the other characters.
 function ns.Inventory_Count(itemID, alts)
     local bags, bank = ns.Inventory_Mine(itemID)
     if not alts then return bags end
-    local total = bags + bank
-    for _, character in ipairs(ns.Inventory_Others()) do
-        total = total + (character.bags[itemID] or 0) + (character.bank[itemID] or 0)
-    end
-    return total
+    return bags + bank + ns.Inventory_OthersTotal(itemID)
 end
 
 -- Who has the item: { { name =, class =, bags =, bank =, me = true or nil }, ... }, the character first, then the others by
@@ -74,7 +107,14 @@ function ns.Inventory_Breakdown(itemID)
         local class = UnitClass and select(2, UnitClass("player"))
         list[#list + 1] = { name = UnitName("player"), class = class, bags = bags, bank = bank, me = true }
     end
-    for _, character in ipairs(ns.Inventory_Others()) do
+    local embolsao = api()
+    if embolsao then
+        for _, holder in ipairs(embolsao.GetItemHolders(itemID)) do
+            list[#list + 1] = { name = holder.name, class = holder.class, bags = holder.bags or 0, bank = holder.bank or 0 }
+        end
+        return list
+    end
+    for _, character in ipairs(othersFromSavedVariable()) do
         local inBags, inBank = character.bags[itemID] or 0, character.bank[itemID] or 0
         if inBags > 0 or inBank > 0 then
             list[#list + 1] = { name = character.name, class = character.class, bags = inBags, bank = inBank }
@@ -91,13 +131,4 @@ function ns.Inventory_Line(entry)
     if entry.bags > 0 then parts[#parts + 1] = L["%d in bags"]:format(entry.bags) end
     if entry.bank > 0 then parts[#parts + 1] = L["%d in bank"]:format(entry.bank) end
     return name .. ": " .. table.concat(parts, ", ")
-end
-
--- How many of an item the OTHER characters have in all (bags and banks).
-function ns.Inventory_OthersTotal(itemID)
-    local total = 0
-    for _, character in ipairs(ns.Inventory_Others()) do
-        total = total + (character.bags[itemID] or 0) + (character.bank[itemID] or 0)
-    end
-    return total
 end

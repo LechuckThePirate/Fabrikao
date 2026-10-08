@@ -24,10 +24,11 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
 - `Localization/Locale.lua` — English text is the key, with the Spanish (esES/esMX) table; more locales can be added as files
 - `Modules/Settings/` — settings per character or shared by the account; new modules go in their own `Modules/<Area>/` folder and are
   added to the TOC. Every `X.lua` has `X.test.lua` next to it
-- `Modules/Data/Inventory.lua` — what the OTHER characters carry and keep in their banks, read from Embolsao's saved copies
-  (`EmbolsaoDB.characterItems[key] = { name, class, time, bags = { [itemID] = n }, bank = { [itemID] = n } }`, account-wide; Embolsao has
-  no public API for it yet, so this reads its saved variable as it is and must follow it if the format changes). Counts for "can make"
-  go through `ns.Inventory_Count(itemID, alts)`; the `useAlts` preference turns it all off
+- `Modules/Data/Inventory.lua` — what the OTHER characters carry and keep in their banks, from Embolsao's saved copies (account-wide):
+  through Embolsao's public API (`EmbolsaoAPI`, since its branch `claude/public-api`: GetCharacters, GetOthersItemCount, GetItemHolders)
+  when installed, else by reading its saved variable (`EmbolsaoDB.characterItems[key] = { name, class, time, bags = { [itemID] = n },
+  bank = { [itemID] = n } }`), which older Embolsao versions need. Counts for "can make" go through `ns.Inventory_Count(itemID, alts)`;
+  the `useAlts` preference turns it all off
 - `Modules/Data/Prices.lua` — approximate prices for the table view: auction prices from Auctionator's public API when it is installed,
   else what vendors pay; `Modules/UI/RecipeList.lua` — the three views of the recipe list (list, table with sortable columns, detailed
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search
