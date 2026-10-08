@@ -76,6 +76,35 @@ describe("Settings", function()
         assert.are.equal(before + 1, applied)
     end)
 
+    it("the view and the window scale are switchable settings with their defaults", function()
+        local char, account = {}, {}
+        login(char, account)
+        assert.are.equal("list", ns.char.view)
+        assert.are.equal(1, ns.char.scale)
+        ns.char.view = "table"
+        assert.are.equal("table", char.view)
+        ns.SetPerCharacter(false)
+        assert.are.equal("list", ns.char.view) -- the shared ones
+    end)
+
+    it("restoring the defaults clears the settings, the window and the filters, and tells the window", function()
+        local char = { view = "detailed", scale = 1.2, quiet = true, window = { w = 900 }, filters = { canMake = true }, collapsed = { known = true } }
+        local account = {}
+        login(char, account)
+        local applied, minimap = 0, 0
+        ns.UI_ApplySettings = function() applied = applied + 1 end
+        ns.Minimap_Init = function() minimap = minimap + 1 end
+        ns.ResetSettings()
+        assert.are.equal("list", ns.char.view)
+        assert.are.equal(1, ns.char.scale)
+        assert.is_nil(char.quiet)
+        assert.is_nil(char.window)
+        assert.is_nil(char.filters)
+        assert.is_nil(char.collapsed)
+        assert.are.equal(1, applied)
+        assert.are.equal(1, minimap)
+    end)
+
     it("keys outside the switchable ones always belong to the character", function()
         local char, account = {}, {}
         login(char, account)

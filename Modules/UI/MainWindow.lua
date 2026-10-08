@@ -4,16 +4,23 @@ local L = ns.L
 -- The addon's window. First page: the character's professions (the ones it has, primary first, then First Aid,
 -- Cooking and Fishing), with the game's own icons. Click one for its recipes: the ones the character knows
 -- (colored by difficulty, with how many it can make from the bags) and, below, the ones it doesn't know, with
--- a search box and where each is learned.
+-- a search box, filters, sorting and three views to choose from (RecipeList.lua). The gear opens the preferences.
 
-local WIDTH, HEIGHT = 720, 600
-local ROW_H = 24
+local WIDTH, HEIGHT = 760, 620
+local MIN_WIDTH, MIN_HEIGHT = 640, 420
 local PROFESSION_H = 56
 
 local frame, overview, page
 local professionButtons, headerTexts = {}, {}
-local rowButtons = {}
-local state = { skillLine = nil, copy = nil, known = true, unknown = true, source = nil }
+local state = { skillLine = nil, copy = nil, source = nil }
+
+-- what the page filters by: kept for the next time (ns.char.filters)
+local filters = {}
+local collapsed = {} -- the groups of the list folded: { known = bool, unknown = bool }
+
+local VIEW_NAMES = { "list", "table", "detailed" }
+local SKILL_MODES = { nil, "learnable", "higher" }
+local SORT_KEYS = { nil, "name", "level", "cost", "value", "craftable" } -- nil: the list's own order
 
 ---------------------------------------------------------------------------------------------------
 -- Overview: the professions
@@ -122,154 +129,133 @@ local function setStatus(text)
     page.status:SetShown(text ~= nil)
 end
 
--- "orange yellow green grey" skill levels, each in its color
-local function colorsText(colors)
-    local out = {}
-    for i, level in ipairs(colors) do
-        local c = ns.DIFFICULTY_COLORS[i - 1]
-        local shown = (level > 0 or i == 1) and tostring(level) or "-" -- a color the recipe skips
-        out[#out + 1] = ("|cff%02x%02x%02x%s|r"):format(math.floor(c[1] * 255), math.floor(c[2] * 255), math.floor(c[3] * 255), shown)
-    end
-    return table.concat(out, "  ")
+local function saveFilters()
+    ns.char.filters = {
+        canMake = filters.canMake, hideGrey = filters.hideGrey,
+        difficulty = filters.difficulty, skill = filters.skill, sort = filters.sort,
+    }
 end
 
-local function showRecipeTooltip(row)
-    local data = row.data
-    if not data or data.kind ~= "recipe" then return end
-    local recipe = data.recipe
-    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-    local shown = recipe.link and pcall(GameTooltip.SetHyperlink, GameTooltip, recipe.link)
-    if not shown then GameTooltip:SetText(recipe.name, 1, 1, 1) end
-    if recipe.colors then
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(L["Skill needed: %d"]:format(recipe.required or recipe.colors[1]), 1, 0.82, 0)
-        GameTooltip:AddLine(colorsText(recipe.colors), 1, 1, 1)
-    end
-    if not recipe.learned then
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(L["Where to learn it"], 1, 0.82, 0)
-        if recipe.db then
-            for _, line in ipairs(ns.RecipeDB_Where(recipe.db)) do
-                GameTooltip:AddLine(line.title .. ": " .. line.text, 1, 1, 1, true)
-            end
-        elseif recipe.sourceText and recipe.sourceText ~= "" then
-            GameTooltip:AddLine(recipe.sourceText, 1, 1, 1, true)
-        else
-            GameTooltip:AddLine(ns.Recipes_SourceLabel(recipe.sourceType), 1, 1, 1)
-        end
-        if not recipe.colors and recipe.trivial and recipe.trivial > 0 then
-            GameTooltip:AddLine(L["Turns grey at skill %d"]:format(recipe.trivial), 0.7, 0.7, 0.7)
-        end
-    end
-    GameTooltip:Show()
+local function loadFilters()
+    local saved = ns.char.filters or {}
+    local fold = ns.char.collapsed or {}
+    collapsed.known, collapsed.unknown = fold.known and true or false, fold.unknown and true or false
+    filters.canMake = saved.canMake and true or false
+    filters.hideGrey = saved.hideGrey and true or false
+    filters.difficulty, filters.skill, filters.sort = saved.difficulty, saved.skill, saved.sort
 end
 
-local function newRow()
-    local b = CreateFrame("Button", nil, page.content)
-    b:SetHeight(ROW_H)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(20, 20)
-    b.icon:SetPoint("LEFT", 6, 0)
-    b.info = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    b.info:SetPoint("RIGHT", -8, 0)
-    b.info:SetJustifyH("RIGHT")
-    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
-    b.text:SetPoint("RIGHT", b.info, "LEFT", -8, 0)
-    b.text:SetJustifyH("LEFT")
-    b.text:SetWordWrap(false)
-    b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    b:SetScript("OnEnter", showRecipeTooltip)
-    b:SetScript("OnLeave", GameTooltip_Hide)
-    local function onClick(self)
-        local data = self.data
-        if data and data.kind == "recipe" and data.recipe.link and IsModifiedClick and IsModifiedClick("CHATLINK") then
-            ChatEdit_InsertLink(data.recipe.link)
-        end
-    end
-    b:SetScript("OnClick", onClick)
-    -- over the icon: the tooltip of what the recipe makes
-    b.iconButton = CreateFrame("Button", nil, b)
-    b.iconButton:SetAllPoints(b.icon)
-    b.iconButton:SetScript("OnEnter", function(self)
-        local data = b.data
-        local recipe = data and data.kind == "recipe" and data.recipe
-        if not (recipe and recipe.db and ns.RecipeDB_ShowProductTooltip(self, recipe.id, recipe.db)) then showRecipeTooltip(b) end
-    end)
-    b.iconButton:SetScript("OnLeave", GameTooltip_Hide)
-    b.iconButton:SetScript("OnClick", function() onClick(b) end)
-    return b
+local function viewName()
+    local view = ns.char.view
+    for _, name in ipairs(VIEW_NAMES) do if name == view then return view end end
+    return "list"
 end
 
-local function renderRow(b, data)
-    b.data = data
-    if data.kind == "header" then
-        b.icon:Hide()
-        b.iconButton:Hide()
-        b.info:SetText("")
-        b.text:SetText(("%s (%d)"):format(data.text, data.count))
-        b.text:SetTextColor(1, 0.82, 0)
-        b:EnableMouse(false)
-        return
-    end
-    local recipe = data.recipe
-    b:EnableMouse(true)
-    b.icon:Show()
-    b.iconButton:Show()
-    b.icon:SetTexture(recipe.icon)
-    if recipe.learned then
-        local color = ns.DIFFICULTY_COLORS[recipe.difficulty or ns.DIFFICULTY_LAST]
-        b.text:SetText(data.craftable > 0 and ("%s (%d)"):format(recipe.name, data.craftable) or recipe.name)
-        b.text:SetTextColor(color[1], color[2], color[3])
-        b.info:SetText("")
-    else
-        b.text:SetText(recipe.name)
-        b.text:SetTextColor(0.85, 0.85, 0.85)
-        local source = recipe.db and ns.RecipeDB_ShortSource(recipe.db) or ns.Recipes_SourceLabel(recipe.sourceType)
-        b.info:SetText(recipe.required and (L["Skill %d"]:format(recipe.required) .. "  " .. source) or source)
-    end
+local function viewLabel(view)
+    return ({ list = L["List"], table = L["Table"], detailed = L["Detailed"] })[view]
+end
+
+local function difficultyLabel(difficulty)
+    if difficulty == nil then return L["All"] end
+    local c = ns.DIFFICULTY_COLORS[difficulty]
+    local names = { [0] = L["orange"], L["yellow"], L["green"], L["grey"] }
+    return ("|cff%02x%02x%02x%s|r"):format(math.floor(c[1] * 255), math.floor(c[2] * 255), math.floor(c[3] * 255), names[difficulty])
+end
+
+local function skillLabel(mode)
+    return mode == "learnable" and L["Learnable now"] or mode == "higher" and L["Needs more skill"] or L["All"]
+end
+
+local function sortLabel(sort)
+    if not sort then return L["Default"] end
+    local names = { name = L["Name"], level = L["Level"], cost = L["Cost"], value = L["AH value"], craftable = L["Can make"] }
+    return names[sort.key] .. (sort.desc and " v" or " ^")
+end
+
+local function updateControls()
+    page.sourceButton:SetText(L["Source: %s"]:format(state.source and ns.Recipes_SourceLabel(state.source) or L["All"]))
+    page.colorButton:SetText(L["Color: %s"]:format(difficultyLabel(filters.difficulty)))
+    page.skillButton:SetText(L["Skill: %s"]:format(skillLabel(filters.skill)))
+    page.sortButton:SetText(L["Sort: %s"]:format(sortLabel(filters.sort)))
+    page.viewButton:SetText(L["View: %s"]:format(viewLabel(viewName())))
+    page.canMakeCheck:SetChecked(filters.canMake)
+    page.hideGreyCheck:SetChecked(filters.hideGrey)
 end
 
 local function refreshRecipes()
     if not (page and state.copy) then return end
     local rows = ns.Recipes_Rows(state.copy, {
-        text = page.search:GetText(), known = state.known, unknown = state.unknown, source = state.source,
+        text = page.search:GetText(), known = true, unknown = true, source = state.source,
+        difficulty = filters.difficulty, canMake = filters.canMake, hideGrey = filters.hideGrey, skill = filters.skill,
+        sort = filters.sort, collapsed = collapsed,
     })
-    for i, data in ipairs(rows) do
-        local b = rowButtons[i] or newRow()
-        rowButtons[i] = b
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", page.content, "TOPLEFT", 0, -(i - 1) * ROW_H)
-        b:SetPoint("RIGHT", page.content, "RIGHT", 0, 0)
-        renderRow(b, data)
-        b:Show()
+    ns.RecipeList_Set(rows, viewName(), filters.sort, state.copy.rank)
+    local shown = 0
+    for _, row in ipairs(rows) do if row.kind == "recipe" then shown = shown + 1 end end
+    setStatus(shown == 0 and L["No recipes match"] or nil)
+    page.count:SetText(L["%d shown, %d known, %d not known"]:format(shown, #state.copy.known, #state.copy.unknown))
+    updateControls()
+end
+
+local function changed()
+    saveFilters()
+    refreshRecipes()
+end
+
+-- the value after `current` in `values` (a list that may hold a nil first: "no filter"), wrapping around
+local function nextValue(values, count, current)
+    for i = 1, count do
+        if values[i] == current then return values[i % count + 1] end
     end
-    for i = #rows + 1, #rowButtons do rowButtons[i]:Hide() end
-    page.content:SetHeight(math.max(1, #rows * ROW_H))
-    setStatus(#rows == 0 and L["No recipes match"] or nil)
-    page.count:SetText(L["%d known, %d not known"]:format(#state.copy.known, #state.copy.unknown))
+    return values[1]
 end
 
-local function updateSourceButton()
-    page.sourceButton:SetText(L["Source: %s"]:format(state.source and ns.Recipes_SourceLabel(state.source) or L["All"]))
-end
-
--- All -> each source the profession's unknown recipes come from -> All
 local function cycleSource()
     if not state.copy then return end
-    local sources = {}
-    for sourceType in pairs(state.copy.sources) do sources[#sources + 1] = sourceType end
-    table.sort(sources)
-    local nextSource
-    if state.source == nil then
-        nextSource = sources[1]
+    local codes = {}
+    for code in pairs(state.copy.sources) do codes[#codes + 1] = code end
+    table.sort(codes)
+    state.source = nextValue({ nil, unpack(codes) }, #codes + 1, state.source)
+    refreshRecipes()
+end
+
+local function cycleSort(_, button)
+    if button == "RightButton" and filters.sort then
+        filters.sort = { key = filters.sort.key, desc = not filters.sort.desc }
     else
-        for i, s in ipairs(sources) do
-            if s == state.source then nextSource = sources[i + 1] break end
-        end
+        local key = nextValue(SORT_KEYS, 6, filters.sort and filters.sort.key)
+        filters.sort = key and { key = key, desc = key == "craftable" or key == "value" } or nil
     end
-    state.source = nextSource
-    updateSourceButton()
+    changed()
+end
+
+-- a click on a column title of the table
+local function sortBy(key)
+    if filters.sort and filters.sort.key == key then
+        filters.sort = { key = key, desc = not filters.sort.desc }
+    else
+        filters.sort = { key = key, desc = key == "craftable" or key == "value" }
+    end
+    changed()
+end
+
+local function clearFilters()
+    ns.char.filters = nil
+    loadFilters()
+    state.source = nil
+    page.search:SetText("")
+    changed()
+end
+
+-- a click on the title of a group: folds or unfolds it, and remembers it
+local function toggleGroup(group)
+    collapsed[group] = not collapsed[group]
+    ns.char.collapsed = { known = collapsed.known, unknown = collapsed.unknown }
+    refreshRecipes()
+end
+
+local function cycleView()
+    ns.char.view = nextValue(VIEW_NAMES, 3, viewName())
     refreshRecipes()
 end
 
@@ -278,15 +264,24 @@ local function createCheck(parent, label, key)
     check:SetSize(24, 24)
     check.text = check.Text or check.text
     if check.text then check.text:SetText(label) end
-    check:SetChecked(state[key])
+    check:SetChecked(filters[key])
     check:SetScript("OnClick", function(self)
-        state[key] = self:GetChecked() and true or false
-        refreshRecipes()
+        filters[key] = self:GetChecked() and true or false
+        changed()
     end)
     return check
 end
 
+local function createButton(parent, width, onClick)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    button:SetSize(width, 22)
+    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    button:SetScript("OnClick", onClick)
+    return button
+end
+
 local function createPage(parent, top)
+    loadFilters()
     page = CreateFrame("Frame", nil, parent)
     page:SetPoint("TOPLEFT", 12, -top)
     page:SetPoint("BOTTOMRIGHT", -12, 12)
@@ -323,34 +318,62 @@ local function createPage(parent, top)
     search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     page.updateHint = updateHint
 
-    local filters = CreateFrame("Frame", nil, page)
-    filters:SetHeight(26)
-    filters:SetPoint("TOPLEFT", search, "BOTTOMLEFT", -6, -4)
-    filters:SetPoint("RIGHT", page, "RIGHT", 0, 0)
-    local known = createCheck(filters, L["Known"], "known")
-    known:SetPoint("LEFT", 0, 0)
-    local unknown = createCheck(filters, L["Not known"], "unknown")
-    unknown:SetPoint("LEFT", known, "RIGHT", 70, 0)
-    page.knownCheck, page.unknownCheck = known, unknown
-    local sourceButton = CreateFrame("Button", nil, filters, "UIPanelButtonTemplate")
-    sourceButton:SetSize(170, 22)
-    sourceButton:SetPoint("RIGHT", 0, 0)
-    sourceButton:SetScript("OnClick", cycleSource)
-    page.sourceButton = sourceButton
+    -- row of checkboxes, with the view on the right (the groups of the list fold from their titles)
+    local checks = CreateFrame("Frame", nil, page)
+    checks:SetHeight(26)
+    checks:SetPoint("TOPLEFT", search, "BOTTOMLEFT", -6, -4)
+    checks:SetPoint("RIGHT", page, "RIGHT", 0, 0)
+    local previous
+    local function addCheck(key, label)
+        local check = createCheck(checks, label, key)
+        if previous then
+            check:SetPoint("LEFT", previous, "RIGHT", previous.text and (previous.text:GetStringWidth() + 14) or 90, 0)
+        else
+            check:SetPoint("LEFT", 0, 0)
+        end
+        previous = check
+        return check
+    end
+    page.canMakeCheck = addCheck("canMake", L["Can make now"])
+    page.hideGreyCheck = addCheck("hideGrey", L["Hide grey"])
+    page.viewButton = createButton(checks, 130, cycleView)
+    page.viewButton:SetPoint("RIGHT", 0, 0)
+
+    -- row of filters and sorting: each button goes to the next value on a click
+    local buttons = CreateFrame("Frame", nil, page)
+    buttons:SetHeight(24)
+    buttons:SetPoint("TOPLEFT", checks, "BOTTOMLEFT", 0, -2)
+    buttons:SetPoint("RIGHT", page, "RIGHT", 0, 0)
+    page.sourceButton = createButton(buttons, 130, cycleSource)
+    page.sourceButton:SetPoint("LEFT", 0, 0)
+    page.colorButton = createButton(buttons, 120, function()
+        filters.difficulty = nextValue({ nil, 0, 1, 2, 3 }, 5, filters.difficulty)
+        changed()
+    end)
+    page.colorButton:SetPoint("LEFT", page.sourceButton, "RIGHT", 6, 0)
+    page.skillButton = createButton(buttons, 160, function()
+        filters.skill = nextValue(SKILL_MODES, 3, filters.skill)
+        changed()
+    end)
+    page.skillButton:SetPoint("LEFT", page.colorButton, "RIGHT", 6, 0)
+    page.sortButton = createButton(buttons, 140, cycleSort)
+    page.sortButton:SetPoint("LEFT", page.skillButton, "RIGHT", 6, 0)
+    page.clearButton = createButton(buttons, 90, clearFilters)
+    page.clearButton:SetPoint("RIGHT", 0, 0)
+    page.clearButton:SetText(L["Clear"])
 
     page.count = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     page.count:SetPoint("BOTTOMLEFT", 4, 0)
 
-    local scroll = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", filters, "BOTTOMLEFT", 0, -6)
-    scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
-    page.content = CreateFrame("Frame", nil, scroll)
-    page.content:SetSize(WIDTH - 24 - 24, 1)
-    scroll:SetScrollChild(page.content)
-    page.scroll = scroll
+    local list = ns.RecipeList_Create(page, sortBy, toggleGroup)
+    list.header:SetPoint("TOPLEFT", buttons, "BOTTOMLEFT", 0, -4)
+    list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
+    list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
+    list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
+    page.scroll, page.content = list.scroll, list.content
 
     page.status = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    page.status:SetPoint("CENTER", scroll, "CENTER", 0, 20)
+    page.status:SetPoint("CENTER", list.scroll, "CENTER", 0, 20)
     page:Hide()
 end
 
@@ -376,14 +399,7 @@ function ns.UI_ShowRecipes(profession)
     page.rank:SetText(L["Skill: %d / %d"]:format(profession.rank, profession.maxRank))
     page.search:SetText("")
     page.updateHint()
-    updateSourceButton()
-    if state.copy then
-        refreshRecipes()
-    else
-        for _, b in ipairs(rowButtons) do b:Hide() end
-        page.count:SetText("")
-        setStatus(L["Reading recipes..."])
-    end
+    updateControls()
     ns.Recipes_Request(skillLine, function(copy, reason)
         if state.skillLine ~= skillLine then return end -- went back, or to another profession
         if copy then
@@ -400,7 +416,12 @@ end
 ---------------------------------------------------------------------------------------------------
 local function saveGeometry()
     local point, _, relPoint, x, y = frame:GetPoint()
-    ns.char.window = { point = point, relPoint = relPoint, x = x, y = y }
+    ns.char.window = { point = point, relPoint = relPoint, x = x, y = y, w = frame:GetWidth(), h = frame:GetHeight() }
+end
+
+local function relayout()
+    ns.RecipeList_Relayout()
+    ns.SearchPage_Relayout()
 end
 
 local function createFrame()
@@ -410,8 +431,8 @@ local function createFrame()
     frame = okPortrait and portraitFrame or CreateFrame("Frame", "FabrikaoFrame", UIParent, "BasicFrameTemplateWithInset")
     local top = hasPortrait and 66 or 34 -- the portrait sticks out at the top left
 
-    frame:SetSize(WIDTH, HEIGHT)
     local saved = ns.char.window
+    frame:SetSize(saved and saved.w and math.max(MIN_WIDTH, saved.w) or WIDTH, saved and saved.h and math.max(MIN_HEIGHT, saved.h) or HEIGHT)
     if saved then
         frame:SetPoint(saved.point, UIParent, saved.relPoint, saved.x, saved.y)
     else
@@ -420,6 +441,9 @@ local function createFrame()
     frame:SetFrameStrata("HIGH")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
+    frame:SetResizable(true)
+    if frame.SetResizeBounds then frame:SetResizeBounds(MIN_WIDTH, MIN_HEIGHT) end
+    frame:SetScale(ns.char.scale or 1)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
@@ -427,14 +451,56 @@ local function createFrame()
         self:StopMovingOrSizing()
         saveGeometry()
     end)
+    frame:HookScript("OnSizeChanged", relayout)
     tinsert(UISpecialFrames, "FabrikaoFrame")
     frame:Hide()
+
+    -- the corner to resize from
+    local grip = CreateFrame("Button", nil, frame)
+    grip:SetSize(16, 16)
+    grip:SetPoint("BOTTOMRIGHT", -3, 3)
+    grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+    grip:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMRIGHT") end)
+    grip:SetScript("OnMouseUp", function()
+        frame:StopMovingOrSizing()
+        saveGeometry()
+        relayout()
+    end)
+    frame.grip = grip
 
     if hasPortrait then
         frame:SetPortraitToAsset("Interface\\AddOns\\" .. ADDON .. "\\Icons\\Fabrikao.png")
     end
     local title = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText
     if title then title:SetText(("Fabrikao!! v%s"):format(ns.Version())) end
+
+    -- the gear next to the X opens the preferences: our own icon, tinted gold
+    local gear = CreateFrame("Button", nil, frame)
+    gear:SetSize(20, 20)
+    local closeButton = frame.CloseButton
+    local level = frame:GetFrameLevel() + 10
+    if frame.NineSlice then level = math.max(level, frame.NineSlice:GetFrameLevel() + 10) end -- Blizzard's border would cover it
+    if closeButton then level = math.max(level, closeButton:GetFrameLevel()) end
+    gear:SetFrameLevel(level)
+    if closeButton then
+        gear:SetPoint("RIGHT", closeButton, "LEFT", -2, 0)
+    else
+        gear:SetPoint("TOPRIGHT", -32, -5)
+    end
+    local gearTexture = "Interface\\AddOns\\" .. ADDON .. "\\Icons\\Gear.png"
+    gear:SetNormalTexture(gearTexture)
+    gear:GetNormalTexture():SetVertexColor(0.95, 0.82, 0.3)
+    gear:SetHighlightTexture(gearTexture, "ADD")
+    gear:SetScript("OnClick", function() ns.Prefs_Toggle() end)
+    gear:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText(L["Preferences"])
+        GameTooltip:Show()
+    end)
+    gear:SetScript("OnLeave", GameTooltip_Hide)
+    frame.gear = gear
 
     overview = CreateFrame("Frame", nil, frame)
     overview:SetPoint("TOPLEFT", 12, -top)
@@ -511,4 +577,34 @@ end
 
 function ns.UI_Hide()
     if frame then frame:Hide() end
+end
+
+-- After a preference changed (scale, view) or the settings were reset: the window follows.
+function ns.UI_ApplySettings()
+    if not frame then return end
+    frame:SetScale(ns.char.scale or 1)
+    loadFilters()
+    if state.skillLine then
+        updateControls()
+        refreshRecipes()
+    end
+end
+
+-- Window back to its default place and size.
+function ns.UI_ResetWindow()
+    ns.char.window = nil
+    if not frame then return end
+    frame:ClearAllPoints()
+    frame:SetPoint("CENTER")
+    frame:SetSize(WIDTH, HEIGHT)
+    relayout()
+end
+
+-- Filters back to nothing filtered.
+function ns.UI_ResetFilters()
+    if page then
+        clearFilters()
+    else
+        ns.char.filters = nil
+    end
 end

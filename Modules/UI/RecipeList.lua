@@ -1,0 +1,417 @@
+local _, ns = ...
+local L = ns.L
+
+-- The scrolling list of recipes of a profession page, in the three views the player can choose in the preferences:
+--   list      one line per recipe (icon, name, skill and where it is learned)
+--   table     columns: icon, name, components, approximate cost, approximate auction value, level; the headers sort
+--   detailed  a big icon and three lines of information per recipe
+-- ns.RecipeList_Create(parent) builds it; ns.RecipeList_Set(rows, view, sort) draws the rows of ns.Recipes_Rows.
+
+local VIEWS = {
+    list = { height = 24, icon = 20 },
+    table = { height = 24, icon = 20 },
+    detailed = { height = 58, icon = 44 },
+}
+local HEADER_ROW_H = 24 -- the "Known recipes (38)" rows
+local COLUMN_H = 22 -- the column titles of the table view
+local FIXED = { cost = 90, value = 90, level = 52 } -- widths of the numeric columns
+local GAP = 8
+local ICON_X = 6
+
+local list, rows, view, sort, onSort, onToggle
+local rowButtons = {}
+local columnButtons = {}
+
+---------------------------------------------------------------------------------------------------
+-- Text of a row
+---------------------------------------------------------------------------------------------------
+local function itemName(itemID)
+    local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID)
+    if name then return name end
+    if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
+    return L["item %d"]:format(itemID)
+end
+
+local function itemCount(itemID)
+    local count = C_Item and C_Item.GetItemCount or GetItemCount
+    return count(itemID) or 0
+end
+
+-- "2x Peacebloom, 1x Silverleaf"; with `have`, each ingredient the bags cover is green and the others red
+local function componentsText(recipe, have)
+    if not recipe.reagents or #recipe.reagents == 0 then return "-" end
+    local parts = {}
+    for _, reagent in ipairs(recipe.reagents) do
+        local itemID = reagent.items[1]
+        local text = ("%dx %s"):format(reagent.quantity, itemName(itemID))
+        if have then
+            local owned = 0
+            for _, id in ipairs(reagent.items) do owned = owned + itemCount(id) end
+            text = ("%s%s|r"):format(owned >= reagent.quantity and "|cff40bf40" or "|cffff6060", text)
+        end
+        parts[#parts + 1] = text
+    end
+    return table.concat(parts, ", ")
+end
+
+local function money(copper, incomplete)
+    if not copper then return "-" end
+    return ns.FormatMoney(copper) .. (incomplete and "+" or "")
+end
+
+-- the skill the recipe needs, in the color it has for the character: red when the skill isn't enough yet
+local function levelText(recipe, rank)
+    if not recipe.required then return "-" end
+    local color
+    if recipe.learned then
+        color = ns.DIFFICULTY_COLORS[recipe.difficulty or ns.DIFFICULTY_LAST]
+    elseif rank and recipe.required > rank then
+        color = { 1, 0.3, 0.3 }
+    elseif rank and recipe.db then
+        color = ns.DIFFICULTY_COLORS[ns.RecipeDB_Difficulty(recipe.db, rank)]
+    else
+        color = { 0.85, 0.85, 0.85 }
+    end
+    return ("|cff%02x%02x%02x%d|r"):format(math.floor(color[1] * 255), math.floor(color[2] * 255), math.floor(color[3] * 255), recipe.required)
+end
+
+local function sourceText(recipe)
+    return recipe.db and ns.RecipeDB_ShortSource(recipe.db) or ns.Recipes_SourceLabel(recipe.sourceType)
+end
+
+---------------------------------------------------------------------------------------------------
+-- Tooltips
+---------------------------------------------------------------------------------------------------
+local function showRecipeTooltip(row)
+    local data = row.data
+    if not data or data.kind ~= "recipe" then return end
+    local recipe = data.recipe
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    local shown = recipe.link and pcall(GameTooltip.SetHyperlink, GameTooltip, recipe.link)
+    if not shown then GameTooltip:SetText(recipe.name, 1, 1, 1) end
+    if recipe.colors then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["Skill needed: %d"]:format(recipe.required or recipe.colors[1]), 1, 0.82, 0)
+        GameTooltip:AddLine(ns.DifficultyColorsText(recipe.colors), 1, 1, 1)
+    end
+    if recipe.reagents and #recipe.reagents > 0 then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["Ingredients:"], 1, 0.82, 0)
+        GameTooltip:AddLine(componentsText(recipe, true), 1, 1, 1, true)
+    end
+    if data.cost or data.value then
+        GameTooltip:AddLine(" ")
+        if data.cost then GameTooltip:AddLine(L["Ingredients cost: %s"]:format(money(data.cost, data.incomplete)), 1, 1, 1) end
+        if data.value then GameTooltip:AddLine(L["Sells for about: %s"]:format(money(data.value)), 1, 1, 1) end
+    end
+    if not recipe.learned then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["Where to learn it"], 1, 0.82, 0)
+        if recipe.db then
+            for _, line in ipairs(ns.RecipeDB_Where(recipe.db)) do
+                GameTooltip:AddLine(line.title .. ": " .. line.text, 1, 1, 1, true)
+            end
+        elseif recipe.sourceText and recipe.sourceText ~= "" then
+            GameTooltip:AddLine(recipe.sourceText, 1, 1, 1, true)
+        else
+            GameTooltip:AddLine(ns.Recipes_SourceLabel(recipe.sourceType), 1, 1, 1)
+        end
+        if not recipe.colors and recipe.trivial and recipe.trivial > 0 then
+            GameTooltip:AddLine(L["Turns grey at skill %d"]:format(recipe.trivial), 0.7, 0.7, 0.7)
+        end
+    end
+    GameTooltip:Show()
+end
+
+---------------------------------------------------------------------------------------------------
+-- Rows
+---------------------------------------------------------------------------------------------------
+local function newRow()
+    local b = CreateFrame("Button", nil, list.content)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    b.text:SetJustifyH("LEFT")
+    b.text:SetWordWrap(false)
+    for _, key in ipairs({ "info", "comp", "cost", "value", "level", "line2", "line3" }) do
+        b[key] = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        b[key]:SetWordWrap(false)
+    end
+    for _, key in ipairs({ "info", "cost", "value", "level" }) do b[key]:SetJustifyH("RIGHT") end
+    for _, key in ipairs({ "comp", "line2", "line3" }) do b[key]:SetJustifyH("LEFT") end
+    b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    b:SetScript("OnEnter", showRecipeTooltip)
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    local function onClick(self)
+        local data = self.data
+        if data and data.kind == "recipe" and data.recipe.link and IsModifiedClick and IsModifiedClick("CHATLINK") then
+            ChatEdit_InsertLink(data.recipe.link)
+        end
+    end
+    b:SetScript("OnClick", function(self)
+        local data = self.data
+        if data and data.kind == "header" then
+            if onToggle then onToggle(data.group) end -- a group's title folds and unfolds it
+            return
+        end
+        onClick(self)
+    end)
+    -- over the icon: the tooltip of what the recipe makes
+    b.iconButton = CreateFrame("Button", nil, b)
+    b.iconButton:SetAllPoints(b.icon)
+    b.iconButton:SetScript("OnEnter", function(self)
+        local data = b.data
+        local recipe = data and data.kind == "recipe" and data.recipe
+        if not (recipe and recipe.db and ns.RecipeDB_ShowProductTooltip(self, recipe.id, recipe.db)) then showRecipeTooltip(b) end
+    end)
+    b.iconButton:SetScript("OnLeave", GameTooltip_Hide)
+    b.iconButton:SetScript("OnClick", function() onClick(b) end)
+    return b
+end
+
+-- Where each column of the table goes, for a row `width` wide: { name = { x, w }, comp = ..., cost, value, level }
+local function columnsFor(width)
+    local left = ICON_X + VIEWS.table.icon + 6
+    local fixed = FIXED.cost + FIXED.value + FIXED.level + GAP * 3
+    local flex = math.max(160, width - left - 10 - fixed)
+    local nameW = math.floor(flex * 0.4)
+    local compW = flex - nameW - GAP
+    local c = {}
+    c.name = { left, nameW }
+    c.comp = { left + nameW + GAP, compW }
+    c.cost = { c.comp[1] + compW + GAP, FIXED.cost }
+    c.value = { c.cost[1] + FIXED.cost + GAP, FIXED.value }
+    c.level = { c.value[1] + FIXED.value + GAP, FIXED.level }
+    return c
+end
+
+local function place(fs, row, x, w, y)
+    fs:ClearAllPoints()
+    if y then fs:SetPoint("TOPLEFT", row, "TOPLEFT", x, y) else fs:SetPoint("LEFT", row, "LEFT", x, 0) end
+    fs:SetWidth(w)
+    fs:Show()
+end
+
+local function layoutRow(b, data, width)
+    for _, key in ipairs({ "info", "comp", "cost", "value", "level", "line2", "line3" }) do b[key]:Hide() end
+    b.text:ClearAllPoints()
+    b.text:SetWidth(0) -- the width is the anchors', except in the table
+    b.icon:ClearAllPoints()
+    if data.kind == "header" then
+        b:SetHeight(HEADER_ROW_H)
+        b.icon:SetSize(14, 14)
+        b.icon:SetPoint("LEFT", b, "LEFT", ICON_X, 0)
+        b.text:SetFontObject("GameFontNormal")
+        b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
+        b.text:SetPoint("RIGHT", b, "RIGHT", -8, 0)
+        return
+    end
+    local spec = VIEWS[view]
+    b:SetHeight(spec.height)
+    b.icon:SetSize(spec.icon, spec.icon)
+    if view == "detailed" then
+        b.icon:SetPoint("TOPLEFT", b, "TOPLEFT", ICON_X, -7)
+    else
+        b.icon:SetPoint("LEFT", b, "LEFT", ICON_X, 0)
+    end
+    if view == "list" then
+        b.info:ClearAllPoints()
+        b.info:SetPoint("RIGHT", b, "RIGHT", -8, 0)
+        b.info:SetWidth(0)
+        b.info:Show()
+        b.text:SetFontObject("GameFontNormal")
+        b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
+        b.text:SetPoint("RIGHT", b.info, "LEFT", -8, 0)
+    elseif view == "table" then
+        local c = columnsFor(width)
+        b.text:SetFontObject("GameFontNormal")
+        b.text:SetPoint("LEFT", b, "LEFT", c.name[1], 0)
+        b.text:SetWidth(c.name[2])
+        place(b.comp, b, c.comp[1], c.comp[2])
+        place(b.cost, b, c.cost[1], c.cost[2])
+        place(b.value, b, c.value[1], c.value[2])
+        place(b.level, b, c.level[1], c.level[2])
+    else -- detailed: name, then skill and colors (prices to the right), then components
+        local x = ICON_X + spec.icon + 10
+        b.text:SetFontObject("GameFontNormalLarge")
+        b.text:SetPoint("TOPLEFT", b, "TOPLEFT", x, -5)
+        b.text:SetPoint("RIGHT", b, "RIGHT", -8, 0)
+        b.info:ClearAllPoints()
+        b.info:SetPoint("TOPRIGHT", b, "TOPRIGHT", -8, -24)
+        b.info:SetWidth(0)
+        b.info:Show()
+        place(b.line2, b, x, math.max(60, width - x - 200), -24)
+        place(b.line3, b, x, math.max(60, width - x - 12), -40)
+    end
+end
+
+local function renderRow(b, data, width)
+    b.data = data
+    layoutRow(b, data, width)
+    if data.kind == "header" then
+        -- a plus when it is folded, a minus when it is open
+        b.icon:SetTexture(data.collapsed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
+        b.icon:Show()
+        b.iconButton:Hide()
+        b.text:SetText(("%s (%d)"):format(data.text, data.count))
+        b.text:SetTextColor(1, 0.82, 0)
+        b:EnableMouse(true)
+        return
+    end
+    local recipe = data.recipe
+    b:EnableMouse(true)
+    b.icon:Show()
+    b.iconButton:Show()
+    b.icon:SetTexture(recipe.icon)
+
+    local color = recipe.learned and ns.DIFFICULTY_COLORS[recipe.difficulty or ns.DIFFICULTY_LAST] or { 0.85, 0.85, 0.85 }
+    local name = (recipe.learned and data.craftable > 0) and ("%s (%d)"):format(recipe.name, data.craftable) or recipe.name
+    b.text:SetText(name)
+    b.text:SetTextColor(color[1], color[2], color[3])
+
+    if view == "list" then
+        local info = recipe.learned and "" or sourceText(recipe)
+        if not recipe.learned and recipe.required then info = L["Skill %d"]:format(recipe.required) .. "  " .. info end
+        b.info:SetText(info)
+    elseif view == "table" then
+        b.comp:SetText(componentsText(recipe, recipe.learned))
+        b.cost:SetText(money(data.cost, data.incomplete))
+        b.value:SetText(money(data.value))
+        b.level:SetText(levelText(recipe, list.rank))
+    else
+        local parts = {}
+        if recipe.required then parts[#parts + 1] = L["Skill %d"]:format(recipe.required) end
+        if recipe.colors then parts[#parts + 1] = ns.DifficultyColorsText(recipe.colors) end
+        parts[#parts + 1] = recipe.learned and L["Known"] or sourceText(recipe)
+        b.line2:SetText(table.concat(parts, "   "))
+        b.info:SetText(L["Cost %s   AH %s"]:format(money(data.cost, data.incomplete), money(data.value)))
+        b.line3:SetText(componentsText(recipe, recipe.learned))
+    end
+end
+
+local function heightOf(data)
+    if data.kind == "header" then return HEADER_ROW_H end
+    return VIEWS[view].height
+end
+
+local function draw()
+    if not list then return end
+    local width = list.content:GetWidth()
+    local y = 0
+    for i, data in ipairs(rows) do
+        local b = rowButtons[i] or newRow()
+        rowButtons[i] = b
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", list.content, "TOPLEFT", 0, -y)
+        b:SetPoint("RIGHT", list.content, "RIGHT", 0, 0)
+        renderRow(b, data, width)
+        b:Show()
+        y = y + heightOf(data)
+    end
+    for i = #rows + 1, #rowButtons do rowButtons[i]:Hide() end
+    list.content:SetHeight(math.max(1, y))
+end
+
+---------------------------------------------------------------------------------------------------
+-- Column titles (table view)
+---------------------------------------------------------------------------------------------------
+local COLUMN_TITLES = {
+    { key = "name", sort = "name" },
+    { key = "comp" },
+    { key = "cost", sort = "cost" },
+    { key = "value", sort = "value" },
+    { key = "level", sort = "level" },
+}
+
+local function columnTitle(key)
+    return ({ name = L["Name"], comp = L["Components"], cost = L["Cost"], value = L["AH value"], level = L["Level"] })[key]
+end
+
+local function updateColumnHeader()
+    if not list then return end
+    local isTable = view == "table"
+    list.header:SetHeight(isTable and COLUMN_H or 1)
+    list.header:SetShown(isTable)
+    if not isTable then return end
+    local c = columnsFor(list.content:GetWidth())
+    for i, col in ipairs(COLUMN_TITLES) do
+        local b = columnButtons[i]
+        if not b then
+            b = CreateFrame("Button", nil, list.header)
+            b:SetHeight(COLUMN_H)
+            b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            b.text:SetAllPoints()
+            b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+            b:SetScript("OnClick", function(self)
+                if self.sortKey and onSort then onSort(self.sortKey) end
+            end)
+            columnButtons[i] = b
+        end
+        b.sortKey = col.sort
+        b:ClearAllPoints()
+        b:SetPoint("LEFT", list.header, "LEFT", c[col.key][1], 0)
+        b:SetWidth(c[col.key][2])
+        b.text:SetJustifyH((col.key == "name" or col.key == "comp") and "LEFT" or "RIGHT")
+        local arrow = ""
+        if sort and col.sort and sort.key == col.sort then arrow = sort.desc and " v" or " ^" end
+        b.text:SetText(columnTitle(col.key) .. arrow)
+        b:Show()
+    end
+end
+
+---------------------------------------------------------------------------------------------------
+-- Public
+---------------------------------------------------------------------------------------------------
+function ns.RecipeList_Create(parent, onSortCallback, onToggleCallback)
+    onSort = onSortCallback
+    onToggle = onToggleCallback
+    list = {}
+    list.header = CreateFrame("Frame", nil, parent)
+    list.header:SetHeight(1)
+    list.scroll = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
+    list.content = CreateFrame("Frame", nil, list.scroll)
+    list.content:SetSize(600, 1)
+    list.scroll:SetScrollChild(list.content)
+    list.scroll:SetScript("OnSizeChanged", function(_, width)
+        list.content:SetWidth(math.max(100, width))
+        updateColumnHeader()
+        draw()
+    end)
+
+    local events = CreateFrame("Frame")
+    events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+    local pending = false
+    events:SetScript("OnEvent", function()
+        if pending or not list.scroll:IsVisible() then return end
+        pending = true -- item names arrive in a burst: one redraw for all
+        C_Timer.After(0.3, function()
+            pending = false
+            draw()
+        end)
+    end)
+
+    view, rows = "list", {}
+    return list
+end
+
+-- (A click on the title of a group, "Known recipes (38)", calls onToggleCallback(group).)
+-- Draws the rows of ns.Recipes_Rows in a view ("list", "table" or "detailed"); `currentSort` marks the sorted column;
+-- `rank` is the character's skill in the profession.
+function ns.RecipeList_Set(newRows, newView, currentSort, rank)
+    if not list then return end
+    rows, view, sort = newRows or {}, VIEWS[newView] and newView or "list", currentSort
+    list.rank = rank
+    updateColumnHeader()
+    draw()
+end
+
+function ns.RecipeList_Relayout()
+    if not list then return end
+    list.content:SetWidth(math.max(100, list.scroll:GetWidth()))
+    updateColumnHeader()
+    draw()
+end
+
+-- how tall the column titles are, to place the scroll under them
+function ns.RecipeList_HeaderFrame()
+    return list and list.header
+end

@@ -176,7 +176,9 @@ end
 --   difficulty = 0..3 (orange .. grey, for the character's skill),
 --   canMake = only what the bags allow, hideGrey = hide what gives no skill points,
 --   skill = "learnable" (not known, skill enough to learn) or "higher" (not known, needs more skill),
---   sort = { key = name | level | cost | value | craftable, desc = bool } (nil: the list's own order) }
+--   sort = { key = name | level | cost | value | craftable, desc = bool } (nil: the list's own order),
+--   collapsed = { known = bool, unknown = bool } (a group collapsed keeps its header, with the count, and no rows) }
+-- The header rows carry their group ("known" or "unknown") and whether it is collapsed.
 function ns.Recipes_Rows(copy, opts)
     local rows = {}
     local text = strtrim((opts.text or ""):lower())
@@ -228,15 +230,19 @@ function ns.Recipes_Rows(copy, opts)
         return out
     end
 
+    local collapsed = opts.collapsed or {}
     for _, part in ipairs({
-        { opts.known, copy.known, ns.L["Known recipes"] },
-        { opts.unknown, copy.unknown, ns.L["Not known"] },
+        { "known", opts.known, copy.known, ns.L["Known recipes"] },
+        { "unknown", opts.unknown, copy.unknown, ns.L["Not known"] },
     }) do
-        if part[1] then
-            local inGroup = group(part[2])
+        if part[2] then
+            local inGroup = group(part[3])
             if #inGroup > 0 then
-                rows[#rows + 1] = { kind = "header", text = part[3], count = #inGroup }
-                for _, row in ipairs(inGroup) do rows[#rows + 1] = row end
+                local isCollapsed = collapsed[part[1]] and true or false
+                rows[#rows + 1] = { kind = "header", text = part[4], count = #inGroup, group = part[1], collapsed = isCollapsed }
+                if not isCollapsed then
+                    for _, row in ipairs(inGroup) do rows[#rows + 1] = row end
+                end
             end
         end
     end

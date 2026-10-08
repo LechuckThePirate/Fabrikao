@@ -252,6 +252,15 @@ describe("Recipes", function()
             assert.are.equal(2, rows[2].craftable) -- 4 // 2, 4 // 1, 4
         end)
 
+        it("a folded group keeps its title with the count and shows no rows", function()
+            local rows = ns.Recipes_Rows(copy, { known = true, unknown = true, collapsed = { known = true } })
+            assert.are.same({ "# Known recipes 2", "# Not known 2", "Elixir of Giants", "Flask of the Titans" }, kinds(rows))
+            assert.are.equal("known", rows[1].group)
+            assert.is_true(rows[1].collapsed)
+            assert.are.equal("unknown", rows[2].group)
+            assert.is_false(rows[2].collapsed)
+        end)
+
         it("can hide either group", function()
             assert.are.same({ "# Known recipes 2", "Elixir of Wisdom", "Healing Potion" }, kinds(ns.Recipes_Rows(copy, { known = true })))
             assert.are.same({ "# Not known 2", "Elixir of Giants", "Flask of the Titans" }, kinds(ns.Recipes_Rows(copy, { unknown = true })))

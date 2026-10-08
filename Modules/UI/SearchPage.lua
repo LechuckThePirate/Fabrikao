@@ -19,16 +19,6 @@ local function colorCode(color)
     return ("|cff%02x%02x%02x"):format(math.floor(color[1] * 255), math.floor(color[2] * 255), math.floor(color[3] * 255))
 end
 
--- the skill levels, each in its color ("-" for a color the recipe skips)
-local function colorsText(colors)
-    local out = {}
-    for i, level in ipairs(colors) do
-        local shown = (level > 0 or i == 1) and tostring(level) or "-"
-        out[#out + 1] = colorCode(ns.DIFFICULTY_COLORS[i - 1]) .. shown .. "|r"
-    end
-    return table.concat(out, "  ")
-end
-
 local knows = ns.RecipeDB_Known
 
 -- skill line -> { rank, maxRank } of the character's professions
@@ -80,7 +70,7 @@ function ns.SearchPage_DetailText(spellID)
 
     local colors = ns.RecipeDB_Colors(recipe)
     if colors then
-        lines[#lines + 1] = ("%s%s|r %s"):format(GOLD, L["Difficulty:"], colorsText(colors))
+        lines[#lines + 1] = ("%s%s|r %s"):format(GOLD, L["Difficulty:"], ns.DifficultyColorsText(colors))
         if mine and mine.rank >= required then
             local d = ns.RecipeDB_Difficulty(recipe, mine.rank)
             local names = { [0] = L["orange"], L["yellow"], L["green"], L["grey"] }
@@ -307,6 +297,7 @@ function ns.SearchPage_Create(parent, top)
     local detail = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
     detail:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 30, -48)
     detail:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 0)
+    page.detailScroll = detail
     page.detailChild = CreateFrame("Frame", nil, detail)
     page.detailChild:SetSize(300, 1)
     detail:SetScrollChild(page.detailChild)
@@ -352,6 +343,15 @@ function ns.SearchPage_Create(parent, top)
 
     page:Hide()
     return page
+end
+
+-- The detail text takes the width the window gives it.
+function ns.SearchPage_Relayout()
+    if not page then return end
+    local width = math.max(120, page.detailScroll:GetWidth() - 8)
+    page.detailText:SetWidth(width)
+    page.detailChild:SetWidth(width)
+    if page:IsVisible() then renderDetail() end
 end
 
 function ns.SearchPage_Show(text)

@@ -6,10 +6,12 @@ local _, ns = ...
 -- character. The rest of the addon uses ns.char without knowing which one is behind it, and reads a key
 -- that was never set as its default (DEFAULTS), so a checkbox can store a plain true / false.
 ns.DEFAULTS = {
+    view = "list", -- the recipe lists: "list", "table" or "detailed"
+    scale = 1,     -- of the window
 }
 
 local SWITCHABLE = {
-    quiet = true, minimap = true,
+    quiet = true, minimap = true, view = true, scale = true,
 }
 
 local function deepCopy(value)
@@ -67,4 +69,16 @@ function ns.SetPerCharacter(enabled)
     end
     FabrikaoCharDB.perCharacter = enabled
     if ns.Minimap_Init then ns.Minimap_Init() end
+end
+
+-- Everything the preferences hold back to its default: the active store's settings, the window's place and size and the
+-- filters of the lists.
+function ns.ResetSettings()
+    local store = activeStore()
+    for key in pairs(SWITCHABLE) do store[key] = nil end
+    FabrikaoCharDB.filters = nil
+    FabrikaoCharDB.collapsed = nil
+    if ns.UI_ResetWindow then ns.UI_ResetWindow() else FabrikaoCharDB.window = nil end
+    if ns.Minimap_Init then ns.Minimap_Init() end
+    if ns.UI_ApplySettings then ns.UI_ApplySettings() end
 end

@@ -18,6 +18,17 @@ ns.DIFFICULTY_COLORS = {
 }
 ns.DIFFICULTY_LAST = 3
 
+-- The four skill levels of a recipe (orange, yellow, green, grey), each in its color; "-" for a color the recipe skips.
+function ns.DifficultyColorsText(colors)
+    local out = {}
+    for i, level in ipairs(colors) do
+        local c = ns.DIFFICULTY_COLORS[i - 1]
+        local shown = (level > 0 or i == 1) and tostring(level) or "-"
+        out[#out + 1] = ("|cff%02x%02x%02x%s|r"):format(math.floor(c[1] * 255), math.floor(c[2] * 255), math.floor(c[3] * 255), shown)
+    end
+    return table.concat(out, "  ")
+end
+
 -- GetProfessions() returns nil for the slots the character doesn't have, so the values can't go through ipairs.
 local function pack(...)
     return { ... }, select("#", ...)
