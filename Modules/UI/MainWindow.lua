@@ -377,7 +377,7 @@ function ns.UI_ShowRecipes(profession)
         elseif not state.copy then
             setStatus(L["Could not read this profession's recipes."] .. (reason and ("\n(" .. reason .. ")") or ""))
         end
-    end)
+    end, { slot = profession.slot, name = profession.name })
 end
 
 ---------------------------------------------------------------------------------------------------

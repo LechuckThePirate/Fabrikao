@@ -18,9 +18,12 @@ local function openSkillLine()
     return id
 end
 
-local function isReady(skillLine)
-    return C_TradeSkillUI and C_TradeSkillUI.IsTradeSkillReady and C_TradeSkillUI.IsTradeSkillReady()
-        and openSkillLine() == skillLine
+-- is that profession's window the one open and ready? (by skill line, or by name should the game number its lines differently)
+local function isReady(skillLine, name)
+    if not (C_TradeSkillUI and C_TradeSkillUI.IsTradeSkillReady and C_TradeSkillUI.IsTradeSkillReady()) then return false end
+    if openSkillLine() == skillLine then return true end
+    local info = C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
+    return name ~= nil and info ~= nil and (info.professionName == name or info.parentProfessionName == name)
 end
 
 -- What a recipe needs of each basic ingredient: { { items = { itemID, ... }, quantity = n }, ... }. Several
@@ -60,8 +63,8 @@ end
 -- one open. { skillLine =, known = { recipe, ... }, unknown = { recipe, ... }, sources = { [sourceType] = true } }
 -- recipe: { id, name, icon, link, learned, difficulty (0 orange .. 3 grey, known ones only), trivial (the skill
 -- at which it turns grey), sourceType, sourceText (not known ones), reagents (known ones) }
-function ns.Recipes_Read(skillLine)
-    if not isReady(skillLine) then return nil end
+function ns.Recipes_Read(skillLine, name)
+    if not isReady(skillLine, name) then return nil end
     local T = C_TradeSkillUI
     -- the lists in the game's window are filtered: ask for everything, and give its filters back
     local wasLearned = T.GetShowLearned and T.GetShowLearned()
@@ -75,7 +78,7 @@ function ns.Recipes_Read(skillLine)
         local info = T.GetRecipeInfo(id)
         -- a recipe with several ranks is one entry: the first rank
         if info and info.name and not info.previousRecipeID and not seen[info.recipeID or id]
-                and (not T.IsRecipeInSkillLine or T.IsRecipeInSkillLine(id, skillLine)) then
+                and (name or not T.IsRecipeInSkillLine or T.IsRecipeInSkillLine(id, skillLine)) then
             seen[info.recipeID or id] = true
             local recipe = {
                 id = info.recipeID or id, name = info.name, icon = info.icon, link = info.hyperlink,
@@ -174,8 +177,12 @@ end
 -- Asks for a profession's recipes: callback(copy) when read, callback(nil, reason) when it can't be.
 -- Opens the profession's window if it isn't, hidden while the copy is made, and closes it afterwards; a
 -- window the player had open is left as the player has it (showing the profession asked for).
+-- opts: { slot = spell book slot of the profession's spell, name = its name }. Forever opens a profession by
+-- casting its spell (what its own profession tabs do on a click), so that is tried first when there is a slot;
+-- OpenTradeSkill is the other way, tried when the first one doesn't get an answer.
 local pending
 local frame = CreateFrame("Frame")
+local SECOND_TRY = 1.5 -- seconds before trying the other way of opening it
 
 local function hideGameWindow(hide)
     if ProfessionsFrame and ProfessionsFrame.SetAlpha then ProfessionsFrame:SetAlpha(hide and 0 or 1) end
@@ -192,32 +199,64 @@ local function finish(copy, reason)
     request.callback(copy, reason)
 end
 
-local function check()
-    if not pending or not isReady(pending.skillLine) then return end
+-- what the game said, for the message when it never answers
+local function describe(request)
+    local info = C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
+    local events = {}
+    for event in pairs(request.events) do events[#events + 1] = event end
+    table.sort(events)
+    return ("tried %s, ready=%s, open=%s/%s, events=%s"):format(table.concat(request.tried, "+"),
+        tostring(C_TradeSkillUI.IsTradeSkillReady and C_TradeSkillUI.IsTradeSkillReady()),
+        tostring(info and info.professionID), tostring(info and info.professionName), table.concat(events, ","))
+end
+
+local function check(_, event)
+    if not pending then return end
+    if event then pending.events[event] = true end
+    if not isReady(pending.skillLine, pending.name) then return end
     if pending.openedByUs then hideGameWindow(true) end
-    local copy = ns.Recipes_Read(pending.skillLine)
+    local copy = ns.Recipes_Read(pending.skillLine, pending.name)
     -- the list can arrive empty and fill in a moment later
     if copy and (#copy.known + #copy.unknown > 0 or pending.expired) then finish(copy) end
 end
 
 frame:SetScript("OnEvent", check)
 
-function ns.Recipes_Request(skillLine, callback)
+-- one way of opening the profession; false when it isn't possible
+local function open(request, way)
+    request.tried[#request.tried + 1] = way
+    if way == "cast" then
+        if not (request.slot and C_SpellBook and C_SpellBook.CastSpellBookItem and Enum and Enum.SpellBookSpellBank) then return false end
+        C_SpellBook.CastSpellBookItem(request.slot, Enum.SpellBookSpellBank.Player)
+        return true
+    end
+    return C_TradeSkillUI.OpenTradeSkill(request.skillLine) ~= false
+end
+
+function ns.Recipes_Request(skillLine, callback, opts)
+    opts = opts or {}
     if not (C_TradeSkillUI and C_TradeSkillUI.OpenTradeSkill) then callback(nil, "no-api") return end
     if pending then finish(nil, "superseded") end
     local alreadyOpen = openSkillLine() ~= nil
-    pending = { skillLine = skillLine, callback = callback, openedByUs = not alreadyOpen }
-    if isReady(skillLine) then check() return end
+    local request = { skillLine = skillLine, name = opts.name, slot = opts.slot, callback = callback,
+        openedByUs = not alreadyOpen, events = {}, tried = {} }
+    pending = request
+    if isReady(skillLine, opts.name) then check() return end
     for _, event in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "TRADE_SKILL_DETAILS_UPDATE" }) do
         frame:RegisterEvent(event)
     end
-    local request = pending
-    if C_TradeSkillUI.OpenTradeSkill(skillLine) == false then finish(nil, "not-opened") return end
+    local first, second = "cast", "open"
+    if not opts.slot then first, second = "open", "cast" end
+    if not open(request, first) and not open(request, second) then finish(nil, "not-opened") return end
     if request.openedByUs then C_Timer.After(0, function() if pending == request then hideGameWindow(true) end end) end
+    C_Timer.After(SECOND_TRY, function()
+        if pending ~= request or isReady(skillLine, opts.name) or #request.tried > 1 then return end
+        open(request, second)
+    end)
     C_Timer.After(REQUEST_TIMEOUT, function()
         if pending ~= request then return end
         request.expired = true
         check()
-        if pending == request then finish(nil, "timeout") end
+        if pending == request then finish(nil, "timeout: " .. describe(request)) end
     end)
 end

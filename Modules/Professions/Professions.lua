@@ -35,7 +35,7 @@ local function hasRecipes(spellOffset)
     return C_TradeSkillUI.CanTradeSkillShowCraftingUI(info.spellID) and true or false
 end
 
--- { { name =, icon =, rank =, maxRank =, skillLine =, primary =, hasRecipes = }, ... }
+-- { { name =, icon =, rank =, maxRank =, skillLine =, primary =, hasRecipes =, slot = }, ... }
 function ns.Professions_List()
     local list = {}
     if not (GetProfessions and GetProfessionInfo) then return list end
@@ -48,6 +48,7 @@ function ns.Professions_List()
                 list[#list + 1] = {
                     name = name, icon = icon, rank = rank or 0, maxRank = maxRank or 0, skillLine = skillLine,
                     primary = not SECONDARY[skillLine], hasRecipes = hasRecipes(spellOffset),
+                    slot = spellOffset and spellOffset + 1, -- the profession's spell in the spell book (casting it opens the window)
                     order = #list + 1,
                 }
             end

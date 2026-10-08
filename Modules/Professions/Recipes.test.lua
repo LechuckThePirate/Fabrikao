@@ -335,8 +335,45 @@ describe("Recipes", function()
             ns.Recipes_Request(171, function(copy, reason) got, why = copy, reason end)
             for _, f in ipairs(timers) do f() end
             assert.is_nil(got)
-            assert.are.equal("timeout", why)
+            assert.matches("^timeout: tried open%+cast", why) -- no slot: OpenTradeSkill first, then the other way
             assert.are.equal(1, game.closed)
+        end)
+
+        it("opens a profession by casting its spell when it has the spell book slot", function()
+            local cast
+            _G.Enum.SpellBookSpellBank = { Player = 0 }
+            _G.C_SpellBook = { CastSpellBookItem = function(slot, bank)
+                cast = { slot, bank }
+                game.open, game.ready = 171, true
+            end }
+            local got
+            ns.Recipes_Request(171, function(copy) got = copy end, { slot = 21, name = "Alchemy" })
+            assert.are.same({ 21, 0 }, cast)
+            assert.are.same({}, game.opened) -- OpenTradeSkill wasn't needed
+            fire("TRADE_SKILL_SHOW")
+            assert.is_not_nil(got)
+            assert.are.equal(1, game.closed)
+        end)
+
+        it("tries the other way of opening it when the first gets no answer", function()
+            _G.Enum.SpellBookSpellBank = { Player = 0 }
+            _G.C_SpellBook = { CastSpellBookItem = function() end } -- does nothing
+            ns.Recipes_Request(171, function() end, { slot = 21 })
+            assert.are.same({}, game.opened)
+            timers[1]() -- the hidden-window timer
+            timers[2]() -- second try
+            assert.are.same({ 171 }, game.opened)
+        end)
+
+        it("recognizes the open profession by its name when the skill line numbers differ", function()
+            game.recipes = { [1] = recipe("Known", { learned = true, skillLine = 9999 }) }
+            _G.C_TradeSkillUI.GetBaseProfessionInfo = function() return { professionID = game.open or 0, professionName = game.open and "Alchemy" or "" } end
+            local got
+            ns.Recipes_Request(171, function(copy) got = copy end, { name = "Alchemy" })
+            game.open, game.ready = 4242, true -- the game's own number for it
+            fire("TRADE_SKILL_LIST_UPDATE")
+            assert.is_not_nil(got)
+            assert.are.equal(1, #got.known)
         end)
 
         it("reports when the game refuses to open it", function()
