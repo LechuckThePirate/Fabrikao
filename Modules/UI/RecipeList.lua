@@ -34,13 +34,15 @@ local function itemName(itemID)
     return L["item %d"]:format(itemID)
 end
 
-local function itemCount(itemID)
+-- how many of an item: the bags' (and with `alts`, everything the account has)
+local function itemCount(itemID, alts)
+    if ns.Inventory_Count then return ns.Inventory_Count(itemID, alts) end
     local count = C_Item and C_Item.GetItemCount or GetItemCount
     return count(itemID) or 0
 end
 
 -- "2x Peacebloom, 1x Silverleaf"; with `have`, each ingredient the bags cover is green and the others red
-local function componentsText(recipe, have)
+local function componentsText(recipe, have, alts)
     if not recipe.reagents or #recipe.reagents == 0 then return "-" end
     local parts = {}
     for _, reagent in ipairs(recipe.reagents) do
@@ -48,7 +50,7 @@ local function componentsText(recipe, have)
         local text = ("%dx %s"):format(reagent.quantity, itemName(itemID))
         if have then
             local owned = 0
-            for _, id in ipairs(reagent.items) do owned = owned + itemCount(id) end
+            for _, id in ipairs(reagent.items) do owned = owned + itemCount(id, alts) end
             text = ("%s%s|r"):format(owned >= reagent.quantity and "|cff40bf40" or "|cffff6060", text)
         end
         parts[#parts + 1] = text
@@ -99,7 +101,7 @@ local function showRecipeTooltip(row)
     if recipe.reagents and #recipe.reagents > 0 then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(L["Ingredients:"], 1, 0.82, 0)
-        GameTooltip:AddLine(componentsText(recipe, true), 1, 1, 1, true)
+        GameTooltip:AddLine(componentsText(recipe, true, data.alts), 1, 1, 1, true)
     end
     if data.cost or data.value then
         GameTooltip:AddLine(" ")
@@ -140,6 +142,10 @@ local function newComponent(row)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.itemID) else GameTooltip:SetText(itemName(self.itemID), 1, 1, 1) end
         GameTooltip:AddLine(L["Needs %d, you have %d"]:format(self.quantity, self.owned), 1, 1, 1)
+        -- who has it, when there are other characters to tell from
+        for _, entry in ipairs(ns.Inventory_Breakdown and ns.Inventory_Breakdown(self.itemID) or {}) do
+            GameTooltip:AddLine(ns.Inventory_Line(entry), 0.8, 0.8, 0.8)
+        end
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", GameTooltip_Hide)
@@ -279,7 +285,7 @@ end
 
 -- The components column of the table: an icon per ingredient (as many as fit, then "+n"); "-" without ingredients. On a
 -- recipe the character knows, an ingredient the bags don't cover is tinted red.
-local function showComponents(b, recipe, width)
+local function showComponents(b, recipe, width, alts)
     local reagents = recipe.reagents
     if not reagents or #reagents == 0 then
         b.comp:SetText("-")
@@ -299,7 +305,7 @@ local function showComponents(b, recipe, width)
         end
         local itemID = reagent.items[1]
         local owned = 0
-        for _, id in ipairs(reagent.items) do owned = owned + itemCount(id) end
+        for _, id in ipairs(reagent.items) do owned = owned + itemCount(id, alts) end
         icon.itemID, icon.quantity, icon.owned = itemID, reagent.quantity, owned
         icon:ClearAllPoints()
         icon:SetPoint("LEFT", b, "LEFT", c[1] + (i - 1) * (COMP_ICON + COMP_GAP), 0)
@@ -352,7 +358,7 @@ local function renderRow(b, data, width)
         if not recipe.learned and recipe.required then info = L["Skill %d"]:format(recipe.required) .. "  " .. info end
         b.info:SetText(info)
     elseif view == "table" then
-        showComponents(b, recipe, width)
+        showComponents(b, recipe, width, data.alts)
         b.cost:SetText(money(data.cost, data.incomplete))
         b.value:SetText(money(data.value))
         b.level:SetText(levelText(recipe, list.rank))
@@ -363,7 +369,7 @@ local function renderRow(b, data, width)
         parts[#parts + 1] = recipe.learned and L["Known"] or sourceText(recipe)
         b.line2:SetText(table.concat(parts, "   "))
         b.info:SetText(L["Cost %s   AH %s"]:format(money(data.cost, data.incomplete), money(data.value)))
-        b.line3:SetText(componentsText(recipe, recipe.learned))
+        b.line3:SetText(componentsText(recipe, recipe.learned, data.alts))
     end
 end
 

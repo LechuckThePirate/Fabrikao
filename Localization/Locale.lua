@@ -53,6 +53,19 @@ local es = {
     ["Sells for about: %s"] = "Se vende por unos: %s",
     ["Cost %s   AH %s"] = "Coste %s   SC %s",
 
+    -- items of the other characters (Embolsao)
+    ["%d in bags"] = "%d en las bolsas",
+    ["%d in bank"] = "%d en el banco",
+    ["Other characters"] = "Otros personajes",
+    ["Count the bags and banks of your other characters too (saved by Embolsao)."] =
+        "Cuenta también las bolsas y los bancos de tus otros personajes (guardados por Embolsao).",
+    ["+%d on other characters"] = "+%d en otros personajes",
+    ["Use the items of my other characters (needs Embolsao)"] = "Usar los objetos de mis otros personajes (necesita Embolsao)",
+    ["Other characters: not used."] = "Otros personajes: sin usar.",
+    ["Other characters: %d with items saved by Embolsao."] = "Otros personajes: %d con objetos guardados por Embolsao.",
+    ["Other characters: none (Embolsao saves them as each one logs out)."] =
+        "Otros personajes: ninguno (Embolsao los guarda cuando cada uno sale del juego).",
+
     -- preferences
     ["Preferences"] = "Preferencias",
     ["Fabrikao!! Preferences"] = "Preferencias de Fabrikao!!",

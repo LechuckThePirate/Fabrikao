@@ -3,7 +3,7 @@ local L = ns.L
 
 -- Preferences window (opened with the main window's gear). Basic settings, in ns.char: per character or shared by
 -- the account, depending on the first checkbox, as in the other addons.
-local WIDTH, HEIGHT = 360, 470
+local WIDTH, HEIGHT = 360, 520
 local LABEL_W = WIDTH - 48 - 16 -- a checkbox's text: from after the box (x = 48) to the window's right margin
 local prefs
 
@@ -156,23 +156,40 @@ local function create()
         function() return not ns.char.quiet end,
         function(value) ns.char.quiet = (not value) or nil end)
 
+    widgets[#widgets + 1] = makeCheck(prefs, -312, L["Use the items of my other characters (needs Embolsao)"],
+        function() return ns.char.useAlts ~= false end,
+        function(value)
+            ns.char.useAlts = value
+            if ns.UI_ApplySettings then ns.UI_ApplySettings() end
+        end)
+    prefs.altsCheck = widgets[#widgets]
+
     local prices = prefs:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    prices:SetPoint("TOPLEFT", 24, -320)
+    prices:SetPoint("TOPLEFT", 24, -348)
     prices:SetWidth(WIDTH - 48)
     prices:SetJustifyH("LEFT")
     prefs.prices = prices
 
-    makeButton(prefs, -358, L["Reset window position and size"], function() ns.UI_ResetWindow() end)
-    makeButton(prefs, -388, L["Reset filters"], function() ns.UI_ResetFilters() end)
-    makeButton(prefs, -418, L["Restore default preferences"], function()
+    makeButton(prefs, -402, L["Reset window position and size"], function() ns.UI_ResetWindow() end)
+    makeButton(prefs, -432, L["Reset filters"], function() ns.UI_ResetFilters() end)
+    makeButton(prefs, -462, L["Restore default preferences"], function()
         ns.ResetSettings()
         refreshAll()
     end)
 
     prefs:SetScript("OnShow", function()
         refreshAll()
-        prices:SetText(ns.Prices_HasAuctionData() and L["Prices: Auctionator found (auction prices are used)."]
-            or L["Prices: Auctionator not found (costs use what vendors pay, there is no auction value)."])
+        local characters = #ns.Inventory_Others()
+        local text = ns.Prices_HasAuctionData() and L["Prices: Auctionator found (auction prices are used)."]
+            or L["Prices: Auctionator not found (costs use what vendors pay, there is no auction value)."]
+        if ns.char.useAlts == false then
+            text = text .. " " .. L["Other characters: not used."]
+        elseif characters > 0 then
+            text = text .. " " .. L["Other characters: %d with items saved by Embolsao."]:format(characters)
+        else
+            text = text .. " " .. L["Other characters: none (Embolsao saves them as each one logs out)."]
+        end
+        prices:SetText(text)
     end)
     prefs:Hide() -- frames are born shown: hidden until the first Prefs_Toggle (which would close it otherwise)
 end

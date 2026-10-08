@@ -4,7 +4,7 @@ local L = ns.L
 -- The two rows of filters and sorting of the recipe pages (the profession's page and the search of every recipe): a row
 -- of checkboxes ("can make now", "hide grey") and a row of buttons that go to the next value on a click (source, color,
 -- skill, sort) plus "Clear". The page owns the filters table:
---   { canMake = bool, hideGrey = bool, difficulty = 0..3 or nil, skill = "learnable" | "higher" | nil,
+--   { canMake = bool, hideGrey = bool, alts = bool (count the other characters' items too), difficulty = 0..3 or nil, skill = "learnable" | "higher" | nil,
 --     sort = { key =, desc = } or nil, source = a source code or nil }
 -- and gets onChange() after every change.
 
@@ -38,7 +38,7 @@ end
 
 -- Nothing filtered, nothing sorted.
 function ns.FilterBar_Reset(filters)
-    filters.canMake, filters.hideGrey = false, false
+    filters.canMake, filters.hideGrey, filters.alts = false, false, false
     filters.difficulty, filters.skill, filters.sort, filters.source = nil, nil, nil, nil
 end
 
@@ -103,6 +103,20 @@ function ns.FilterBar_Create(parent, anchor, config)
     end)
     local width = bar.canMakeCheck.text and bar.canMakeCheck.text:GetStringWidth() or 90
     bar.hideGreyCheck:SetPoint("LEFT", bar.canMakeCheck, "RIGHT", width + 14, 0)
+    -- the items of the other characters count too (Embolsao's copies): only offered when there are any
+    bar.altsCheck = createCheck(checks, L["Other characters"], function(self)
+        filters.alts = self:GetChecked() and true or false
+        changed()
+    end)
+    width = bar.hideGreyCheck.text and bar.hideGreyCheck.text:GetStringWidth() or 90
+    bar.altsCheck:SetPoint("LEFT", bar.hideGreyCheck, "RIGHT", width + 14, 0)
+    bar.altsCheck:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Other characters"], 1, 1, 1)
+        GameTooltip:AddLine(L["Count the bags and banks of your other characters too (saved by Embolsao)."], 1, 0.82, 0, true)
+        GameTooltip:Show()
+    end)
+    bar.altsCheck:SetScript("OnLeave", GameTooltip_Hide)
 
     local buttons = CreateFrame("Frame", nil, parent)
     buttons:SetHeight(24)
@@ -149,6 +163,8 @@ function ns.FilterBar_Create(parent, anchor, config)
     function bar.Update()
         bar.canMakeCheck:SetChecked(filters.canMake)
         bar.hideGreyCheck:SetChecked(filters.hideGrey)
+        bar.altsCheck:SetChecked(filters.alts)
+        bar.altsCheck:SetShown(ns.Inventory_Available and ns.Inventory_Available() or false)
         bar.sourceButton:SetText(L["Source: %s"]:format(filters.source and ns.Recipes_SourceLabel(filters.source) or L["All"]))
         bar.colorButton:SetText(L["Color: %s"]:format(difficultyLabel(filters.difficulty)))
         bar.skillButton:SetText(L["Skill: %s"]:format(skillLabel(filters.skill)))

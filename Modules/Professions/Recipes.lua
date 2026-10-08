@@ -126,14 +126,17 @@ function ns.Recipes_Cached(skillLine)
     return cache[skillLine]
 end
 
--- How many times the character can craft the recipe with what is in the bags.
-function ns.Recipes_Craftable(recipe)
+-- How many times the character can craft the recipe with what is in the bags; with `alts`, with everything the account has
+-- (its own bank and the bags and banks of the other characters, from Embolsao's copies).
+function ns.Recipes_Craftable(recipe, alts)
     if not recipe.reagents or #recipe.reagents == 0 then return 0 end
     local count = C_Item and C_Item.GetItemCount or GetItemCount
     local most
     for _, reagent in ipairs(recipe.reagents) do
         local have = 0
-        for _, itemID in ipairs(reagent.items) do have = have + (count(itemID) or 0) end
+        for _, itemID in ipairs(reagent.items) do
+            have = have + (ns.Inventory_Count and ns.Inventory_Count(itemID, alts) or count(itemID) or 0)
+        end
         local times = math.floor(have / reagent.quantity)
         most = most and math.min(most, times) or times
     end
@@ -174,7 +177,7 @@ end
 -- opts: { text =, known = bool, unknown = bool,
 --   source = a source code (the recipes learned that way),
 --   difficulty = 0..3 (orange .. grey, for the character's skill),
---   canMake = only what the bags allow, hideGrey = hide what gives no skill points,
+--   canMake = only what the bags allow (with alts = true: what the whole account allows), hideGrey = hide what gives no skill points,
 --   skill = "learnable" (not known, skill enough to learn) or "higher" (not known, needs more skill),
 --   sort = { key = name | level | cost | value | craftable, desc = bool } (nil: the list's own order),
 --   collapsed = { known = bool, unknown = bool } (a group collapsed keeps its header, with the count, and no rows),
@@ -218,9 +221,9 @@ function ns.Recipes_Rows(copy, opts)
         local out = {}
         for _, recipe in ipairs(list) do
             if matches(recipe) then
-                local craftable = ns.Recipes_Craftable(recipe)
+                local craftable = ns.Recipes_Craftable(recipe, opts.alts)
                 if passes(recipe, craftable) then
-                    local row = { kind = "recipe", recipe = recipe, craftable = craftable }
+                    local row = { kind = "recipe", recipe = recipe, craftable = craftable, alts = opts.alts }
                     if ns.Prices_RecipeCost then
                         row.cost, row.incomplete = ns.Prices_RecipeCost(recipe)
                         row.value = ns.Prices_RecipeValue(recipe)

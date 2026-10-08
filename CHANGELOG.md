@@ -18,6 +18,9 @@
 - New: the search of every recipe has the same filters and sorting (source, color for your skill in each profession, learnable
   now / needs more skill, can make now, hide grey); with no text it lists everything that passes them. It knows which recipes you
   know and colors the others for your skill in their profession.
+- New: integration with Embolsao: with the "Other characters" checkbox (next to "Can make now") the counts of what you can make
+  include the bags and banks of your other characters, as Embolsao saved them; the ingredient icons' tooltips say who has each
+  item, and the details of the search show how many the others have. A preference turns it off.
 - New: three views of the recipe lists, chosen in the preferences or with the "View" button: list, table (icon, name, components,
   approximate cost, approximate auction value, level; click a title to sort) and detailed (big icon, three lines). In the table
   the components are the ingredients' icons with their count (red when you lack it on a recipe you know); hover one for the

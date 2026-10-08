@@ -92,8 +92,10 @@ function ns.SearchPage_DetailText(spellID)
             local itemID, needed = reagent[1], reagent[2]
             local have = itemCount(itemID)
             local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID)
+            local others = ns.Inventory_OthersTotal and ns.Inventory_OthersTotal(itemID) or 0
+            local extra = others > 0 and (", " .. L["+%d on other characters"]:format(others)) or ""
             lines[#lines + 1] = ("  %s%s x%d  (%s%s|r)"):format(icon and ("|T" .. icon .. ":14|t ") or "", itemName(itemID), needed,
-                have >= needed and "|cff40bf40" or "|cffff4040", L["you have %d"]:format(have))
+                have >= needed and "|cff40bf40" or "|cffff4040", L["you have %d"]:format(have) .. extra)
         end
     end
 
@@ -185,7 +187,7 @@ end
 
 local function saveFilters()
     ns.char.searchFilters = {
-        canMake = filters.canMake, hideGrey = filters.hideGrey,
+        canMake = filters.canMake, hideGrey = filters.hideGrey, alts = filters.alts,
         difficulty = filters.difficulty, skill = filters.skill, sort = filters.sort,
     }
 end
@@ -194,6 +196,7 @@ local function loadFilters()
     local saved = ns.char.searchFilters or {}
     filters.canMake = saved.canMake and true or false
     filters.hideGrey = saved.hideGrey and true or false
+    filters.alts = saved.alts and true or false
     filters.difficulty, filters.skill, filters.sort = saved.difficulty, saved.skill, saved.sort
     filters.source = nil
 end
@@ -232,6 +235,7 @@ local function refresh()
     local results = ns.Recipes_Rows({ all = objects }, {
         flat = true, source = filters.source, difficulty = filters.difficulty, canMake = filters.canMake,
         hideGrey = filters.hideGrey, skill = filters.skill, sort = filters.sort,
+        alts = filters.alts and ns.Inventory_Available and ns.Inventory_Available(),
     })
     local total = #results
     state.truncated = math.max(0, total - MAX_RESULTS)

@@ -129,7 +129,7 @@ end
 
 local function saveFilters()
     ns.char.filters = {
-        canMake = filters.canMake, hideGrey = filters.hideGrey,
+        canMake = filters.canMake, hideGrey = filters.hideGrey, alts = filters.alts,
         difficulty = filters.difficulty, skill = filters.skill, sort = filters.sort,
     }
 end
@@ -140,6 +140,7 @@ local function loadFilters()
     collapsed.known, collapsed.unknown = fold.known and true or false, fold.unknown and true or false
     filters.canMake = saved.canMake and true or false
     filters.hideGrey = saved.hideGrey and true or false
+    filters.alts = saved.alts and true or false
     filters.difficulty, filters.skill, filters.sort = saved.difficulty, saved.skill, saved.sort
     filters.source = nil -- depends on the profession: not kept
 end
@@ -164,7 +165,7 @@ local function refreshRecipes()
     local rows = ns.Recipes_Rows(state.copy, {
         text = page.search:GetText(), known = true, unknown = true, source = filters.source,
         difficulty = filters.difficulty, canMake = filters.canMake, hideGrey = filters.hideGrey, skill = filters.skill,
-        sort = filters.sort, collapsed = collapsed,
+        sort = filters.sort, collapsed = collapsed, alts = filters.alts and ns.Inventory_Available and ns.Inventory_Available(),
     })
     ns.RecipeList_Set(rows, viewName(), filters.sort, state.copy.rank)
     local shown = 0

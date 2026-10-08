@@ -8,10 +8,11 @@ local _, ns = ...
 ns.DEFAULTS = {
     view = "list", -- the recipe lists: "list", "table" or "detailed"
     scale = 1,     -- of the window
+    useAlts = true, -- count the items the other characters carry and keep in their banks (Embolsao's copies)
 }
 
 local SWITCHABLE = {
-    quiet = true, minimap = true, view = true, scale = true,
+    quiet = true, minimap = true, view = true, scale = true, useAlts = true,
 }
 
 local function deepCopy(value)
