@@ -58,9 +58,9 @@ describe("RecipeDB", function()
 
     describe("where it is learned", function()
         -- (the tests below change the vendors of an item of the shared data)
-        local vendors
-        before_each(function() vendors = DATA.items[901].v end)
-        after_each(function() DATA.items[901].v = vendors end)
+        local savedVendors
+        before_each(function() savedVendors = DATA.items[901].v end)
+        after_each(function() DATA.items[901].v = savedVendors end)
 
         it("lists the trainers of the character's side, with their zone and the cost", function()
             local lines = ns.RecipeDB_Where(ns.RecipeDB_Get(100))
