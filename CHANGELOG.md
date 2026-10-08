@@ -19,7 +19,9 @@
   now / needs more skill, can make now, hide grey); with no text it lists everything that passes them. It knows which recipes you
   know and colors the others for your skill in their profession.
 - New: three views of the recipe lists, chosen in the preferences or with the "View" button: list, table (icon, name, components,
-  approximate cost, approximate auction value, level; click a title to sort) and detailed (big icon, three lines).
+  approximate cost, approximate auction value, level; click a title to sort) and detailed (big icon, three lines). In the table
+  the components are the ingredients' icons with their count (red when you lack it on a recipe you know); hover one for the
+  item's tooltip.
 - New: preferences window (the gear next to the X): view, window scale, minimap button, chat messages, reset window position and
   size, reset filters, restore defaults. The window can be resized and remembers its size.
 - The recipe lists no longer need the game's profession window: they come from the data.

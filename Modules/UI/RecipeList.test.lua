@@ -56,10 +56,9 @@ describe("RecipeList", function()
     end)
 
     describe("the table view", function()
-        it("has a column for components, cost, auction value and level", function()
+        it("has a column for cost, auction value and level", function()
             ns.RecipeList_Set(rows(), "table", nil, 60)
             local row = rowsShown()[2]
-            assert.are.equal("2x Peacebloom, 1x item 11", row.comp._text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
             assert.matches("1|cffffd100g|r 20|cffc7c7cfs|r%+", row.cost._text) -- incomplete: a floor
             assert.matches("5|cffffd100g|r", row.value._text)
             assert.matches("55", row.level._text)
@@ -68,11 +67,50 @@ describe("RecipeList", function()
             assert.matches("|cffff4c4c250|r", other.level._text) -- skill 60 isn't enough for 250: red
         end)
 
-        it("colors the components of a known recipe by whether the bags have them", function()
+        it("shows the ingredients as icons with their count, the missing ones of a known recipe tinted red", function()
             ns.RecipeList_Set(rows(), "table", nil, 60)
-            local text = rowsShown()[2].comp._text
-            assert.matches("|cff40bf402x Peacebloom|r", text) -- has 5
-            assert.matches("|cffff60601x item 11|r", text) -- has none
+            local icons = rowsShown()[2].compIcons
+            assert.are.equal(10, icons[1].itemID)
+            assert.are.equal("2", icons[1].count._text)
+            assert.are.same({ 1, 1, 1 }, icons[1].texture._set.SetVertexColor) -- the bags have 5
+            assert.are.equal(11, icons[2].itemID)
+            assert.are.equal("", icons[2].count._text) -- one of them: no number
+            assert.are.same({ 1, 0.35, 0.35 }, icons[2].texture._set.SetVertexColor) -- the bags have none
+            assert.is_true(icons[1]:IsShown())
+            assert.is_false(rowsShown()[2].comp:IsShown())
+            -- a recipe the character doesn't know isn't tinted
+            local unknownIcon = rowsShown()[4].compIcons[1]
+            assert.are.same({ 1, 1, 1 }, unknownIcon.texture._set.SetVertexColor)
+        end)
+
+        it("an ingredient's icon shows the item's tooltip and how many are needed and owned", function()
+            ns.RecipeList_Set(rows(), "table", nil, 60)
+            local icon = rowsShown()[2].compIcons[1]
+            icon._scripts.OnEnter(icon)
+            assert.are.same({ 10 }, GameTooltip._set.SetItemByID)
+        end)
+
+        it("shows a dash for a recipe without known ingredients, and a +n when the icons don't fit", function()
+            local plain = { id = 3, name = "Plain", icon = 7, learned = false, reagents = {}, db = { s = 171, n = "Plain" } }
+            local many = { id = 4, name = "Many", icon = 7, learned = false, db = { s = 171, n = "Many" }, reagents = {} }
+            for i = 1, 14 do many.reagents[i] = { items = { 100 + i }, quantity = 1 } end
+            ns.RecipeList_Set({ { kind = "recipe", recipe = plain, craftable = 0 }, { kind = "recipe", recipe = many, craftable = 0 } }, "table", nil, 60)
+            local shown = rowsShown()
+            assert.are.equal("-", shown[1].comp._text)
+            assert.is_true(shown[1].comp:IsShown())
+            assert.matches("^%+%d+$", shown[2].compMore._text)
+            local visibleIcons = 0
+            for _, icon in ipairs(shown[2].compIcons) do if icon:IsShown() then visibleIcons = visibleIcons + 1 end end
+            assert.is_true(visibleIcons >= 1 and visibleIcons < 14)
+            assert.are.equal(14, visibleIcons + tonumber(shown[2].compMore._text:sub(2)))
+        end)
+
+        it("the other views show no ingredient icons", function()
+            ns.RecipeList_Set(rows(), "table", nil, 60)
+            ns.RecipeList_Set(rows(), "list", nil, 60)
+            assert.is_false(rowsShown()[2].compIcons[1]:IsShown())
+            ns.RecipeList_Set(rows(), "detailed", nil, 60)
+            assert.is_false(rowsShown()[2].compIcons[1]:IsShown())
         end)
 
         it("shows the column titles, which sort", function()

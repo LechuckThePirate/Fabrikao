@@ -3,7 +3,8 @@ local L = ns.L
 
 -- The scrolling list of recipes of a profession page, in the three views the player can choose in the preferences:
 --   list      one line per recipe (icon, name, skill and where it is learned)
---   table     columns: icon, name, components, approximate cost, approximate auction value, level; the headers sort
+--   table     columns: icon, name, components (the ingredients' icons, with their tooltips), approximate cost, approximate
+--             auction value, level; the headers sort
 --   detailed  a big icon and three lines of information per recipe
 -- ns.RecipeList_Create(parent) builds it; ns.RecipeList_Set(rows, view, sort) draws the rows of ns.Recipes_Rows.
 
@@ -17,6 +18,7 @@ local COLUMN_H = 22 -- the column titles of the table view
 local FIXED = { cost = 90, value = 90, level = 52 } -- widths of the numeric columns
 local GAP = 8
 local ICON_X = 6
+local COMP_ICON, COMP_GAP = 20, 3 -- the ingredient icons of the table's components column
 
 local list, rows, view, sort, onSort, onToggle
 local rowButtons = {}
@@ -126,8 +128,37 @@ end
 ---------------------------------------------------------------------------------------------------
 -- Rows
 ---------------------------------------------------------------------------------------------------
+-- One ingredient of a recipe as an icon with its count, with the item's tooltip on hover (and how many the bags have).
+local function newComponent(row)
+    local button = CreateFrame("Button", nil, row)
+    button:SetSize(COMP_ICON, COMP_ICON)
+    button.texture = button:CreateTexture(nil, "ARTWORK")
+    button.texture:SetAllPoints()
+    button.count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+    button.count:SetPoint("BOTTOMRIGHT", 1, 0)
+    button:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.itemID) else GameTooltip:SetText(itemName(self.itemID), 1, 1, 1) end
+        GameTooltip:AddLine(L["Needs %d, you have %d"]:format(self.quantity, self.owned), 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", GameTooltip_Hide)
+    button:SetScript("OnClick", function(self)
+        if IsModifiedClick and IsModifiedClick("CHATLINK") then
+            local info = C_Item and C_Item.GetItemInfo or GetItemInfo
+            local link = info and select(2, info(self.itemID))
+            if link then ChatEdit_InsertLink(link) end
+        else
+            local onClick = row:GetScript("OnClick")
+            if onClick then onClick(row) end
+        end
+    end)
+    return button
+end
+
 local function newRow()
     local b = CreateFrame("Button", nil, list.content)
+    b.compIcons = {}
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     b.text:SetJustifyH("LEFT")
@@ -193,6 +224,8 @@ end
 
 local function layoutRow(b, data, width)
     for _, key in ipairs({ "info", "comp", "cost", "value", "level", "line2", "line3" }) do b[key]:Hide() end
+    for _, icon in ipairs(b.compIcons) do icon:Hide() end
+    if b.compMore then b.compMore:Hide() end
     b.text:ClearAllPoints()
     b.text:SetWidth(0) -- the width is the anchors', except in the table
     b.icon:ClearAllPoints()
@@ -244,6 +277,52 @@ local function layoutRow(b, data, width)
     end
 end
 
+-- The components column of the table: an icon per ingredient (as many as fit, then "+n"); "-" without ingredients. On a
+-- recipe the character knows, an ingredient the bags don't cover is tinted red.
+local function showComponents(b, recipe, width)
+    local reagents = recipe.reagents
+    if not reagents or #reagents == 0 then
+        b.comp:SetText("-")
+        b.comp:Show()
+        return
+    end
+    b.comp:Hide()
+    local c = columnsFor(width).comp
+    local fit = math.max(1, math.floor((c[2] + COMP_GAP) / (COMP_ICON + COMP_GAP)))
+    local shown = #reagents <= fit and #reagents or fit - 1 -- the last slot is for the "+n"
+    for i = 1, shown do
+        local reagent = reagents[i]
+        local icon = b.compIcons[i]
+        if not icon then
+            icon = newComponent(b)
+            b.compIcons[i] = icon
+        end
+        local itemID = reagent.items[1]
+        local owned = 0
+        for _, id in ipairs(reagent.items) do owned = owned + itemCount(id) end
+        icon.itemID, icon.quantity, icon.owned = itemID, reagent.quantity, owned
+        icon:ClearAllPoints()
+        icon:SetPoint("LEFT", b, "LEFT", c[1] + (i - 1) * (COMP_ICON + COMP_GAP), 0)
+        icon.texture:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID) or 134400)
+        if recipe.learned and owned < reagent.quantity then
+            icon.texture:SetVertexColor(1, 0.35, 0.35)
+        else
+            icon.texture:SetVertexColor(1, 1, 1)
+        end
+        icon.count:SetText(reagent.quantity > 1 and tostring(reagent.quantity) or "")
+        icon:Show()
+    end
+    if shown < #reagents then
+        if not b.compMore then
+            b.compMore = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        end
+        b.compMore:ClearAllPoints()
+        b.compMore:SetPoint("LEFT", b, "LEFT", c[1] + shown * (COMP_ICON + COMP_GAP), 0)
+        b.compMore:SetText(("+%d"):format(#reagents - shown))
+        b.compMore:Show()
+    end
+end
+
 local function renderRow(b, data, width)
     b.data = data
     layoutRow(b, data, width)
@@ -273,7 +352,7 @@ local function renderRow(b, data, width)
         if not recipe.learned and recipe.required then info = L["Skill %d"]:format(recipe.required) .. "  " .. info end
         b.info:SetText(info)
     elseif view == "table" then
-        b.comp:SetText(componentsText(recipe, recipe.learned))
+        showComponents(b, recipe, width)
         b.cost:SetText(money(data.cost, data.incomplete))
         b.value:SetText(money(data.value))
         b.level:SetText(levelText(recipe, list.rank))

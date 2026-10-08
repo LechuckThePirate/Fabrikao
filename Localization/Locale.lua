@@ -49,6 +49,7 @@ local es = {
     ["Table"] = "Tabla",
     ["Detailed"] = "Detallada",
     ["Ingredients cost: %s"] = "Coste de los ingredientes: %s",
+    ["Needs %d, you have %d"] = "Hacen falta %d, tienes %d",
     ["Sells for about: %s"] = "Se vende por unos: %s",
     ["Cost %s   AH %s"] = "Coste %s   SC %s",
 
