@@ -28,7 +28,9 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   through Embolsao's public API (`EmbolsaoAPI`, since its branch `claude/public-api`: GetCharacters, GetOthersItemCount, GetItemHolders)
   when installed, else by reading its saved variable (`EmbolsaoDB.characterItems[key] = { name, class, time, bags = { [itemID] = n },
   bank = { [itemID] = n } }`), which older Embolsao versions need. Counts for "can make" go through `ns.Inventory_Count(itemID, alts)`;
-  the `useAlts` preference turns it all off
+  the `useAlts` preference turns it all off. **Embolsao (like Auctionator) is optional**: everything goes through this module, and without
+  it the counts are the character's own, the "Other characters" checkbox is hidden and the preferences say it isn't installed (tests
+  cover that path in `Alts.test.lua`); never reference `EmbolsaoAPI` / `EmbolsaoDB` anywhere else
 - `Modules/Data/Prices.lua` — approximate prices for the table view: auction prices from Auctionator's public API when it is installed,
   else what vendors pay; `Modules/UI/RecipeList.lua` — the three views of the recipe list (list, table with sortable columns, detailed
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search

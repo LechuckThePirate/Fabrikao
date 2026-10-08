@@ -25,6 +25,7 @@ local function makeCheck(parent, y, text, getValue, setValue)
     label:SetWordWrap(true)
     label:SetText(text)
     check:SetScript("OnClick", function(self) setValue(self:GetChecked() and true or false) end)
+    check.label = label
     function check.Refresh() check:SetChecked(getValue() and true or false) end
     return check
 end
@@ -163,6 +164,14 @@ local function create()
             if ns.UI_ApplySettings then ns.UI_ApplySettings() end
         end)
     prefs.altsCheck = widgets[#widgets]
+    -- without Embolsao there is nothing to use: greyed out
+    local refreshAlts = prefs.altsCheck.Refresh
+    function prefs.altsCheck.Refresh()
+        refreshAlts()
+        local installed = ns.Inventory_Installed()
+        prefs.altsCheck:SetEnabled(installed)
+        if installed then prefs.altsCheck.label:SetTextColor(1, 1, 1) else prefs.altsCheck.label:SetTextColor(0.5, 0.5, 0.5) end
+    end
 
     local prices = prefs:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     prices:SetPoint("TOPLEFT", 24, -348)
@@ -182,7 +191,9 @@ local function create()
         local characters = #ns.Inventory_Others()
         local text = ns.Prices_HasAuctionData() and L["Prices: Auctionator found (auction prices are used)."]
             or L["Prices: Auctionator not found (costs use what vendors pay, there is no auction value)."]
-        if ns.char.useAlts == false then
+        if not ns.Inventory_Installed() then
+            text = text .. " " .. L["Other characters: Embolsao is not installed (it saves what each character carries)."]
+        elseif ns.char.useAlts == false then
             text = text .. " " .. L["Other characters: not used."]
         elseif characters > 0 then
             text = text .. " " .. L["Other characters: %d with items saved by Embolsao."]:format(characters)

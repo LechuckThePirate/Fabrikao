@@ -119,6 +119,41 @@ describe("Other characters' items", function()
         assert.matches("you have 1, %+4 on other characters", body)
     end)
 
+    describe("without Embolsao installed", function()
+        before_each(function()
+            _G.EmbolsaoDB = nil
+            _G.EmbolsaoAPI = nil
+            ns.char.filters = { alts = true } -- left over from when it was
+        end)
+
+        it("the profession page works, with the character's own items only", function()
+            ns.char.view = "table"
+            openAlchemy()
+            assert.are.equal(2, #checks()) -- no "Other characters" checkbox
+            assert.are.equal(0, recipeRows()[1].data.craftable) -- one of the two it needs
+            local icon = recipeRows()[1].compIcons[1]
+            icon._scripts.OnEnter(icon)
+            assert.matches("Needs 2, you have 1", table.concat(tooltipLines, "\n"))
+        end)
+
+        it("the search and its detail work", function()
+            ns.UI_ShowSearch("elixir")
+            assert.are.equal(2, #ns.SearchPage_Results())
+            local _, body = ns.SearchPage_DetailText(1)
+            assert.matches("you have 1", body)
+            assert.is_nil(body:find("other characters", 1, true))
+        end)
+
+        it("the preferences say so, and the checkbox is greyed out", function()
+            ns.Prefs_Toggle()
+            local frame = _G.FabrikaoPreferencesFrame
+            frame._scripts.OnShow(frame)
+            assert.matches("Embolsao is not installed", frame.prices._text)
+            assert.is_false(frame.altsCheck._enabled)
+            assert.are.same({ 0.5, 0.5, 0.5 }, frame.altsCheck.label._set.SetTextColor)
+        end)
+    end)
+
     describe("the preference", function()
         it("turns all of it off", function()
             ns.char.useAlts = false
@@ -133,6 +168,7 @@ describe("Other characters' items", function()
             local frame = _G.FabrikaoPreferencesFrame
             frame._scripts.OnShow(frame)
             assert.matches("1 with items saved by Embolsao", frame.prices._text)
+            assert.is_true(frame.altsCheck._enabled ~= false)
             frame.altsCheck:SetChecked(false)
             click(frame.altsCheck)
             assert.is_false(ns.char.useAlts)

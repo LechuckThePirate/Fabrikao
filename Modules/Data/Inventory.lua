@@ -15,6 +15,12 @@ local function api()
     return nil
 end
 
+-- Is Embolsao there at all? Fabrikao works without it: this only decides what the preferences say.
+function ns.Inventory_Installed()
+    if api() or EmbolsaoDB ~= nil then return true end
+    return C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Embolsao") and true or false
+end
+
 local function enabled()
     return not (ns.char and ns.char.useAlts == false)
 end

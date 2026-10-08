@@ -62,6 +62,8 @@ local es = {
     ["+%d on other characters"] = "+%d en otros personajes",
     ["Use the items of my other characters (needs Embolsao)"] = "Usar los objetos de mis otros personajes (necesita Embolsao)",
     ["Other characters: not used."] = "Otros personajes: sin usar.",
+    ["Other characters: Embolsao is not installed (it saves what each character carries)."] =
+        "Otros personajes: Embolsao no está instalado (guarda lo que lleva cada personaje).",
     ["Other characters: %d with items saved by Embolsao."] = "Otros personajes: %d con objetos guardados por Embolsao.",
     ["Other characters: none (Embolsao saves them as each one logs out)."] =
         "Otros personajes: ninguno (Embolsao los guarda cuando cada uno sale del juego).",

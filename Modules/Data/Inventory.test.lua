@@ -49,6 +49,29 @@ describe("Inventory", function()
         assert.is_false(ns.Inventory_Available())
     end)
 
+    it("knows whether Embolsao is installed: its API, its saved variable or the loaded addon", function()
+        assert.is_true(ns.Inventory_Installed()) -- its saved variable is there
+        _G.EmbolsaoDB = nil
+        assert.is_false(ns.Inventory_Installed())
+        _G.C_AddOns = { IsAddOnLoaded = function(name) return name == "Embolsao" end }
+        assert.is_true(ns.Inventory_Installed())
+        _G.C_AddOns = nil
+        _G.EmbolsaoAPI = { version = 1, GetCharacters = function() return {} end, GetOthersItemCount = function() return 0, 0 end,
+            GetItemHolders = function() return {} end }
+        assert.is_true(ns.Inventory_Installed())
+    end)
+
+    it("without Embolsao everything is the character's own and nothing fails", function()
+        _G.EmbolsaoDB = nil
+        _G.EmbolsaoAPI = nil
+        assert.is_false(ns.Inventory_Available())
+        assert.are.same({}, ns.Inventory_Others())
+        assert.are.equal(5, ns.Inventory_Count(10))
+        assert.are.equal(5 + 2, ns.Inventory_Count(10, true)) -- the bank is the character's too
+        assert.are.equal(0, ns.Inventory_OthersTotal(10))
+        assert.is_nil(ns.Inventory_Breakdown(10))
+    end)
+
     it("counts only the character's bags by default", function()
         assert.are.equal(5, ns.Inventory_Count(10))
         assert.are.equal(0, ns.Inventory_Count(11))
