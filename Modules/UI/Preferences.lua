@@ -12,18 +12,24 @@ local VIEWS = {
     { key = "detailed", text = "Detailed (big icon, three lines)" },
 }
 
-local function makeCheck(parent, y, text, getValue, setValue)
-    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-    check:SetSize(24, 24)
-    check:SetPoint("TOPLEFT", 20, y)
+-- A checkbox with its text, or (radio = true) a radio button: one of a group, which stays on when clicked again.
+local function makeCheck(parent, y, text, getValue, setValue, radio)
+    local check = CreateFrame("CheckButton", nil, parent, radio and "UIRadioButtonTemplate" or "UICheckButtonTemplate")
+    if radio then
+        check:SetSize(16, 16)
+        check:SetPoint("TOPLEFT", 26, y - 4) -- (the row of a checkbox is 24 tall; the text starts where a checkbox's does)
+    else
+        check:SetSize(24, 24)
+        check:SetPoint("TOPLEFT", 20, y)
+    end
     local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    label:SetPoint("LEFT", check, "RIGHT", 4, 0)
+    label:SetPoint("LEFT", check, "RIGHT", radio and 6 or 4, 0)
     -- a long text (or a longer translation) wraps to a second line instead of running out of the window
     label:SetWidth(LABEL_W)
     label:SetJustifyH("LEFT")
     label:SetWordWrap(true)
     label:SetText(text)
-    check:SetScript("OnClick", function(self) setValue(self:GetChecked() and true or false) end)
+    check:SetScript("OnClick", function(self) setValue(radio or (self:GetChecked() and true or false)) end)
     check.label = label
     function check.Refresh() check:SetChecked(getValue() and true or false) end
     return check
@@ -122,7 +128,7 @@ local function create()
             refreshAll()
         end)
 
-    -- the view of the recipe lists: one checkbox per view, always exactly one on
+    -- the view of the recipe lists: one radio button per view, always exactly one on
     local heading = prefs:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     heading:SetPoint("TOPLEFT", 24, -84)
     heading:SetText(L["View of the recipes"])
@@ -134,7 +140,7 @@ local function create()
                 ns.char.view = view.key
                 if ns.UI_ApplySettings then ns.UI_ApplySettings() end
                 refreshAll()
-            end)
+            end, true)
         widgets[#widgets + 1] = check
         prefs.viewChecks[view.key] = check
     end

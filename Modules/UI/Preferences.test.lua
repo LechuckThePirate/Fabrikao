@@ -45,6 +45,17 @@ describe("Preferences", function()
             assert.is_true(_G.FabrikaoPreferencesFrame.viewChecks.table:GetChecked())
         end)
 
+        it("they are radio buttons, and the one chosen stays on when clicked again", function()
+            ns.Prefs_Toggle()
+            local checks = _G.FabrikaoPreferencesFrame.viewChecks
+            assert.are.equal("UIRadioButtonTemplate", checks.table._template)
+            assert.are.equal("UIRadioButtonTemplate", checks.detailed._template)
+            checks.table:SetChecked(false) -- (a click on a check button turns it off first)
+            click(checks.table)
+            assert.is_true(checks.table:GetChecked())
+            assert.are.equal("table", ns.char.view)
+        end)
+
         it("choosing one saves it and moves the check", function()
             ns.Prefs_Toggle()
             local checks = _G.FabrikaoPreferencesFrame.viewChecks
