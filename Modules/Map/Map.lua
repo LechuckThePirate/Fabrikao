@@ -1,4 +1,4 @@
-local _, ns = ...
+local ADDON, ns = ...
 
 -- Where things are, on the map: a spot is { map = the game's map id, x =, y = } (x and y in percent of the map, as the data has them).
 --   ns.Map_Show(spot)      opens the world map on the spot and marks it with a bouncing pin
@@ -25,15 +25,20 @@ local function ensurePin()
     pinHolder = CreateFrame("Frame", nil, parent)
     pinHolder:SetSize(1, 1)
     pinHolder:SetFrameStrata("DIALOG")
+    -- Completao's icon with a small arrow under it: the tip of the arrow is the spot
     local pin = CreateFrame("Frame", nil, pinHolder)
-    pin:SetSize(32, 32)
-    pin:SetPoint("BOTTOM", pinHolder, "CENTER", 0, 0) -- the point of the pin is on the spot
+    pin:SetSize(30, 46)
+    pin:SetPoint("BOTTOM", pinHolder, "CENTER", 0, 0)
+    local arrow = pin:CreateTexture(nil, "ARTWORK")
+    arrow:SetTexture("Interface\\AddOns\\" .. ADDON .. "\\Icons\\PinArrow.png")
+    arrow:SetSize(18, 18)
+    arrow:SetPoint("BOTTOM", pin, "BOTTOM", 0, 0)
     local icon = pin:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints()
-    local atlas = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo("Waypoint-MapPin-Tracked")
-    if atlas then icon:SetAtlas("Waypoint-MapPin-Tracked") else icon:SetTexture("Interface\\Minimap\\Tracking\\Target") end
+    icon:SetTexture("Interface\\AddOns\\" .. ADDON .. "\\Icons\\PinCompletao.png")
+    icon:SetSize(28, 28)
+    icon:SetPoint("BOTTOM", arrow, "TOP", 0, -3)
 
-    local hop = icon:CreateAnimationGroup()
+    local hop = pin:CreateAnimationGroup()
     hop:SetLooping("BOUNCE")
     local move = hop:CreateAnimation("Translation")
     move:SetOffset(0, 8)
