@@ -234,11 +234,11 @@ describe("Recipe detail", function()
             assert.are.equal(1453, opened) -- the vendor, or the trainer: both stand in map 1453 or 36
         end)
 
-        it("a recipe the character knows has no buttons", function()
+        it("a recipe the character knows has the buttons too", function()
             install()
             click(recipeRow("Elixir of Wisdom"))
-            assert.are.same({}, (buttons("TomTom")))
-            assert.are.same({}, (buttons("Map")))
+            assert.are.same({ 9, 10 }, (buttons("TomTom"))) -- its trainers
+            assert.are.same({ 9, 10 }, (buttons("Map")))
         end)
 
         -- the character stands in map 1453 at (50, 50); map 36 lies 5000 yards away: a world made of yards = map fraction * 1000
