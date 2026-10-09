@@ -312,16 +312,16 @@ function ns.RecipeDB_Where(recipe, full)
         if item.d then
             local drops, dropEntries = {}, {}
             -- (the tooltips keep the most likely drops first; the panel, with the room, puts the nearest first)
-            local ordered, distances = item.d, {}
-            if full then ordered, distances = nearestFirst(item.d) end
-            for _, npc in ipairs(ordered) do
+            local dropOrder, dropDistances = item.d, {}
+            if full then dropOrder, dropDistances = nearestFirst(item.d) end
+            for _, npc in ipairs(dropOrder) do
                 if #drops < maxDrops then
                     local text = named(npc, true)
                     if npc.lo then text = text .. (npc.hi and npc.hi ~= npc.lo and (" " .. L["level %d-%d"]:format(npc.lo, npc.hi))
                         or (" " .. L["level %d"]:format(npc.lo))) end
                     if npc.pm and npc.pm > 0 then text = text .. (" -- %.2f%%"):format(npc.pm / 100) end
                     drops[#drops + 1] = text
-                    dropEntries[#dropEntries + 1] = { text = text, id = npc.id, name = npc.n, distance = distances[npc] }
+                    dropEntries[#dropEntries + 1] = { text = text, id = npc.id, name = npc.n, distance = dropDistances[npc] }
                 end
             end
             local text = table.concat(drops, "; ")

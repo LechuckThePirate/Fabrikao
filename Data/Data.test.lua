@@ -70,15 +70,15 @@ describe("Recipe data", function()
         for _, trainers in pairs(db.trainers) do
             for _, trainer in ipairs(trainers) do listed[trainer.id] = true end
         end
-        local count = 0
+        local located = 0
         for id, spot in pairs(db.npcs) do
-            count = count + 1
+            located = located + 1
             assert.is_true(listed[id] == true, "npc " .. id .. " is not in the data")
             assert.is_truthy(type(spot[1]) == "number" and spot[1] > 0, "map of npc " .. id)
             assert.is_truthy(type(spot[2]) == "number" and spot[2] >= 0 and spot[2] <= 100, "x of npc " .. id)
             assert.is_truthy(type(spot[3]) == "number" and spot[3] >= 0 and spot[3] <= 100, "y of npc " .. id)
         end
-        assert.is_true(count > 400)
+        assert.is_true(located > 400)
     end)
 
     it("vendors, drops and quests are named", function()
