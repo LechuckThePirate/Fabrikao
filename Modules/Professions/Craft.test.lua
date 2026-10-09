@@ -1,7 +1,7 @@
 dofile("setupTests.lua")
 
 describe("Craft", function()
-    local ns, calls, queued, opened, openSkill
+    local ns, queued, opened, openSkill
 
     local function fire(event, ...)
         local frame = WowMock.Find(function(f) return f._events and f._events[event] and f._scripts.OnEvent end)
@@ -10,21 +10,20 @@ describe("Craft", function()
 
     local function lastLine() return WowMock.printed[#WowMock.printed] end
 
-    local function run(queue) -- the timers that were set, in order, until none is left
-        while #queue > 0 do table.remove(queue, 1)() end
+    local function run() -- the timers that were set, in order, until none is left
+        while #queued > 0 do table.remove(queued, 1)() end
     end
 
     before_each(function()
         WowMock.Reset()
-        calls, queued, opened, openSkill = {}, {}, 0, nil
+        queued, opened = {}, nil
         _G.C_Timer = { After = function(_, f) queued[#queued + 1] = f end, NewTicker = function() return { Cancel = function() end } end }
         openSkill = 171 -- the profession the game's window is open on (nil: none)
         _G.C_TradeSkillUI = {
             IsTradeSkillReady = function() return openSkill ~= nil end,
             GetBaseProfessionInfo = function() return openSkill and { professionID = openSkill } or nil end,
-            CraftRecipe = function(id, count) calls[#calls + 1] = { id = id, count = count } end,
         }
-        _G.OpenProfessionUIToSkillLine = nil
+        _G.OpenProfessionUIToSkillLine = function(skillLine) opened = skillLine end
         _G.C_Map = { GetAreaInfo = function() return nil end }
         ns = LoadAddon()
         ns.RECIPE_DATA = { recipes = {}, items = {}, trainers = {} }
@@ -35,138 +34,85 @@ describe("Craft", function()
         _G.OpenProfessionUIToSkillLine = nil
     end)
 
-    describe("with the profession open", function()
-        it("asks the game to craft the recipe, as many times as asked", function()
-            assert.is_true(ns.Craft_Make(2152, 3, 171))
-            assert.are.same({ { id = 2152, count = 3 } }, calls)
-        end)
-
-        it("keeps the amount between 1 and 999, and a whole number", function()
-            ns.Craft_Make(1, 0, 171)
-            ns.Craft_Make(1, 5000, 171)
-            ns.Craft_Make(1, 2.7, 171)
-            ns.Craft_Make(1, nil, 171)
-            assert.are.same({ 1, 999, 2, 1 }, { calls[1].count, calls[2].count, calls[3].count, calls[4].count })
-        end)
-
-        it("says in the chat what the call did", function()
-            ns.Craft_Make(2152, 1, 171)
-            assert.matches("recipe 2152 x1: profession window open, call accepted", lastLine())
-        end)
-
-        it("says when the call failed, and returns false", function()
-            _G.C_TradeSkillUI.CraftRecipe = function() error("no profession open") end
-            assert.is_false(ns.Craft_Make(2152, 1, 171))
-            assert.matches("call failed: .*no profession open", lastLine())
-        end)
-
-        it("says whether the cast started", function()
-            ns.Craft_Make(2152, 1, 171)
+    describe("with the profession's window open", function()
+        it("does not open anything, and says nothing when the cast starts", function()
+            local printed = #WowMock.printed
+            ns.Craft_Clicked(2152, 171)
             fire("UNIT_SPELLCAST_START", "player", "guid", 2152)
-            run(queued)
-            assert.matches("the cast started", lastLine())
+            run()
+            assert.is_nil(opened)
+            assert.are.equal(printed, #WowMock.printed)
         end)
 
-        it("says that it did not, with the errors the game gave", function()
-            ns.Craft_Make(2152, 1, 171)
+        it("says when the cast did not start", function()
+            ns.Craft_Clicked(2152, 171)
+            run()
+            assert.matches("The game did not start crafting%.", lastLine())
+        end)
+
+        it("and why, with the errors the game gave", function()
+            ns.Craft_Clicked(2152, 171)
             fire("UI_ERROR_MESSAGE", 50, "You need to be at a forge")
-            run(queued)
-            assert.matches("the cast did not start: You need to be at a forge", lastLine())
+            run()
+            assert.matches("did not start crafting: You need to be at a forge", lastLine())
         end)
 
         it("ignores other units' casts", function()
-            ns.Craft_Make(2152, 1, 171)
+            ns.Craft_Clicked(2152, 171)
             fire("UNIT_SPELLCAST_START", "target", "guid", 99)
-            run(queued)
-            assert.matches("did not start %(no error given%)", lastLine())
+            run()
+            assert.matches("did not start crafting", lastLine())
+        end)
+
+        it("a later recipe is not told off for an earlier one", function()
+            ns.Craft_Clicked(2152, 171)
+            ns.Craft_Clicked(2153, 171)
+            fire("UNIT_SPELLCAST_START", "player", "guid", 2153)
+            local printed = #WowMock.printed
+            run()
+            assert.are.equal(printed, #WowMock.printed)
         end)
     end)
 
-    describe("with the profession not open", function()
-        it("opens the game's profession window the way the game does, then crafts when it is ready", function()
+    describe("with the window closed", function()
+        it("opens the game's profession window on the profession, and says to click again", function()
             openSkill = nil
-            _G.OpenProfessionUIToSkillLine = function(skillLine) opened = skillLine end
-            ns.Craft_Make(2152, 2, 171)
+            ns.Craft_Clicked(2152, 171)
             assert.are.equal(171, opened)
-            assert.are.same({}, calls) -- not yet: it is loading
-            table.remove(queued, 1)() -- a wait goes by, still not ready
-            assert.are.same({}, calls)
-            openSkill = 171
-            run(queued)
-            assert.are.same({ { id = 2152, count = 2 } }, calls)
-            assert.matches("the cast did not start", lastLine()) -- (nothing cast in the test)
+            assert.matches("is opening: click Craft again", lastLine())
+        end)
+
+        it("opens it when another profession's window is the one open", function()
+            openSkill = 164
+            ns.Craft_Clicked(2152, 171)
+            assert.are.equal(171, opened)
+        end)
+
+        it("opens it while the game is still switching its data", function()
+            _G.C_TradeSkillUI.IsDataSourceChanging = function() return true end
+            ns.Craft_Clicked(2152, 171)
+            assert.are.equal(171, opened)
+        end)
+
+        it("opens it when the game does not know the recipe yet", function()
+            _G.C_TradeSkillUI.GetRecipeInfo = function() return nil end
+            ns.Craft_Clicked(2152, 171)
+            assert.are.equal(171, opened)
         end)
 
         it("falls back to opening the trade skill when the game's helper is missing", function()
             openSkill = nil
-            _G.C_TradeSkillUI.OpenTradeSkill = function(skillLine) opened = skillLine; openSkill = skillLine end
-            ns.Craft_Make(2152, 1, 171)
-            run(queued)
+            _G.OpenProfessionUIToSkillLine = nil
+            _G.C_TradeSkillUI.OpenTradeSkill = function(skillLine) opened = skillLine end
+            ns.Craft_Clicked(2152, 171)
             assert.are.equal(171, opened)
-            assert.are.equal(1, #calls)
         end)
 
-        it("does not craft, and says so, when the profession never gets ready", function()
+        it("says so when there is no way to open it", function()
             openSkill = nil
-            _G.OpenProfessionUIToSkillLine = function() end
-            ns.Craft_Make(2152, 1, 171)
-            run(queued)
-            assert.are.same({}, calls)
-            assert.matches("did not get ready in time", lastLine())
+            _G.OpenProfessionUIToSkillLine = nil
+            ns.Craft_Clicked(2152, 171)
+            assert.matches("Open the profession window to craft", lastLine())
         end)
-
-        it("opens it again when another profession's window is the one open", function()
-            openSkill = 164
-            _G.OpenProfessionUIToSkillLine = function(skillLine) opened = skillLine; openSkill = skillLine end
-            ns.Craft_Make(2152, 1, 171)
-            run(queued)
-            assert.are.equal(171, opened)
-            assert.are.equal(1, #calls)
-        end)
-    end)
-
-    describe("the data of the profession", function()
-        it("is waited for while the game is still switching it", function()
-            local changing = true
-            _G.C_TradeSkillUI.IsDataSourceChanging = function() return changing end
-            ns.Craft_Make(2152, 1, 171)
-            assert.are.same({}, calls)
-            table.remove(queued, 1)()
-            assert.are.same({}, calls) -- still changing
-            changing = false
-            run(queued)
-            assert.are.same({ { id = 2152, count = 1 } }, calls)
-        end)
-
-        it("is waited for until the game knows the recipe", function()
-            local known = false
-            _G.C_TradeSkillUI.GetRecipeInfo = function() return known and { learned = true, craftable = true, numAvailable = 4 } or nil end
-            ns.Craft_Make(2152, 1, 171)
-            assert.are.same({}, calls)
-            known = true
-            run(queued)
-            assert.are.equal(1, #calls)
-        end)
-
-        it("the report says what the game thinks of the recipe", function()
-            _G.C_TradeSkillUI.GetRecipeInfo = function() return { learned = true, craftable = false, numAvailable = 0 } end
-            ns.Craft_Make(2152, 1, 171)
-            assert.matches("the game says learned=true craftable=false available=0", WowMock.printed[#WowMock.printed - 0] or "")
-        end)
-    end)
-
-    it("says which action the game blocked", function()
-        _G.C_TradeSkillUI.CraftRecipe = function()
-            fire("ADDON_ACTION_BLOCKED", "Fabrikao", "CraftRecipe()")
-        end
-        ns.Craft_Make(2152, 1, 171)
-        run(queued)
-        assert.matches("the game blocked CraftRecipe%(%) called by Fabrikao", lastLine())
-    end)
-
-    it("without the craft API it says so", function()
-        _G.C_TradeSkillUI = nil
-        assert.is_false(ns.Craft_Make(2152, 1, 171))
-        assert.matches("can't craft from here", lastLine())
     end)
 end)

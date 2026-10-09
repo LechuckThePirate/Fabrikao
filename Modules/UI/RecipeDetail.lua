@@ -6,7 +6,7 @@ local L = ns.L
 -- recipe of the lists opens it; ns.RecipeDetail_Show(recipe, opts) fills it, with `recipe` as the lists see it (ns.Recipes_FromData...)
 -- and opts = { parent = the window to dock to, alts = count the other characters too, rank = the character's skill in the
 -- profession (when the recipe has none of its own), onClose = function() }.
--- A recipe the character knows has buttons to craft it (Modules/Professions/Craft.lua).
+-- A recipe the character knows has a button to craft it, once per click (Modules/Professions/Craft.lua).
 -- The trainers and vendors of a recipe the character doesn't know have a button that shows them on the map and, with TomTom
 -- installed, another that sets a waypoint (Modules/Map/Map.lua).
 
@@ -350,23 +350,20 @@ local function npcRow(y, npc, withWaypoint)
     return y + height + 6
 end
 
--- The craft buttons: only for a recipe the character knows; "all" is what the bags allow.
+-- The craft button: only for a recipe the character knows. It is a secure button that casts the recipe's spell (the game only lets its
+-- own secure code cast spells), so its attributes can only change out of combat.
 local function updateCraftBar()
     if not (panel and current) then return end
     local recipe = current.recipe
     local known = recipe.learned and true or false
     panel.craftBar:SetShown(known)
     if not known then return end
-    -- the secure button casts the recipe's spell (only changeable out of combat: the game locks a secure button's attributes then)
     if not (InCombatLockdown and InCombatLockdown()) then
-        panel.castOnce:SetAttribute("type", "spell")
-        panel.castOnce:SetAttribute("spell", recipe.id)
+        panel.castButton:SetAttribute("type", "spell")
+        panel.castButton:SetAttribute("spell", recipe.id)
     end
     local craftable = ns.Recipes_Craftable and ns.Recipes_Craftable(recipe, false) or 0
-    panel.craftAll:SetText(L["Craft all (%d)"]:format(craftable))
-    panel.craftAll:SetEnabled(craftable > 0)
-    panel.craftOne:SetEnabled(craftable > 0)
-    panel.craftAll.count = craftable
+    panel.craftInfo:SetText(L["%d possible with your bags"]:format(craftable))
 end
 
 local function render()
@@ -487,49 +484,46 @@ local function create(parent)
     panel.child:SetSize(TEXT_W, 1)
     panel.scroll:SetScrollChild(panel.child)
 
-    -- crafting: an amount, "Craft" and "Craft all" (what the bags allow)
+    -- crafting: a secure button that casts the recipe's spell, and how many the bags allow
     panel.craftBar = CreateFrame("Frame", nil, panel)
     panel.craftBar:SetPoint("BOTTOMLEFT", MARGIN, MARGIN - 2)
     panel.craftBar:SetPoint("BOTTOMRIGHT", -MARGIN, MARGIN - 2)
     panel.craftBar:SetHeight(28)
-    local amountLabel = panel.craftBar:CreateFontString(nil, "OVERLAY", FONT_LABEL)
-    amountLabel:SetPoint("LEFT", 0, 0)
-    amountLabel:SetText(L["Amount:"])
-    panel.amount = CreateFrame("EditBox", nil, panel.craftBar, "InputBoxTemplate")
-    panel.amount:SetSize(46, 22)
-    panel.amount:SetPoint("LEFT", amountLabel, "RIGHT", 10, 0)
-    panel.amount:SetAutoFocus(false)
-    panel.amount:SetNumeric(true)
-    panel.amount:SetMaxLetters(3)
-    panel.amount:SetText("1")
-    panel.amount:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    panel.amount:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    panel.craftOne = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
-    panel.craftOne:SetSize(70, 24)
-    panel.craftOne:SetPoint("LEFT", panel.amount, "RIGHT", 12, 0)
-    panel.craftOne:SetText(L["Craft"])
-    panel.craftOne:SetScript("OnClick", function()
+    local okSecure, castButton = pcall(CreateFrame, "Button", nil, panel.craftBar, "SecureActionButtonTemplate,UIPanelButtonTemplate")
+    panel.castButton = okSecure and castButton or CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
+    panel.castButton:SetSize(150, 26)
+    panel.castButton:SetText(L["Craft"])
+    panel.castButton:RegisterForClicks("AnyUp", "AnyDown")
+    -- (the game refuses to anchor a protected frame to some frames: to its parent first; if that is refused too, it hangs from the
+    -- screen and follows the bar, out of combat)
+    if not pcall(panel.castButton.SetPoint, panel.castButton, "LEFT", panel.craftBar, "LEFT", 0, 0) then
+        if not pcall(panel.castButton.SetPoint, panel.castButton, "LEFT", 0, 0) then
+            panel.castButton:SetParent(UIParent)
+            local lastX, lastY, shown
+            panel.craftBar:SetScript("OnUpdate", function(bar)
+                if InCombatLockdown and InCombatLockdown() then return end
+                local visible = bar:IsVisible()
+                local scale = bar:GetEffectiveScale() / UIParent:GetEffectiveScale()
+                local x, y = (bar:GetLeft() or 0) * scale, (bar:GetBottom() or 0) * scale
+                if x ~= lastX or y ~= lastY then
+                    lastX, lastY = x, y
+                    panel.castButton:ClearAllPoints()
+                    panel.castButton:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y + 1)
+                end
+                panel.castButton:SetScale(scale)
+                if visible ~= shown then
+                    shown = visible
+                    panel.castButton:SetShown(visible)
+                end
+            end)
+        end
+    end
+    panel.castButton:HookScript("OnClick", function()
         local recipe = current and current.recipe
-        if recipe then ns.Craft_Make(recipe.id, tonumber(panel.amount:GetText()) or 1, recipe.db and recipe.db.s) end
+        if recipe then ns.Craft_Clicked(recipe.id, recipe.db and recipe.db.s) end
     end)
-    panel.craftAll = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
-    panel.craftAll:SetSize(130, 24)
-    panel.craftAll:SetPoint("LEFT", panel.craftOne, "RIGHT", 6, 0)
-    panel.craftAll:SetScript("OnClick", function(self)
-        local recipe = current and current.recipe
-        if recipe and (self.count or 0) > 0 then ns.Craft_Make(recipe.id, self.count, recipe.db and recipe.db.s) end
-    end)
-    -- a secure button: the game only lets its own (secure) code cast spells, and a recipe is a spell in the spell book
-    local okSecure, castOnce = pcall(CreateFrame, "Button", nil, panel.craftBar, "SecureActionButtonTemplate,UIPanelButtonTemplate")
-    panel.castOnce = okSecure and castOnce or CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
-    panel.castOnce:SetSize(100, 24)
-    panel.castOnce:SetPoint("LEFT", panel.craftAll, "RIGHT", 6, 0)
-    panel.castOnce:SetText(L["Cast once"])
-    panel.castOnce:RegisterForClicks("AnyUp", "AnyDown")
-    panel.castOnce:HookScript("OnClick", function()
-        local recipe = current and current.recipe
-        if recipe then ns.Craft_Watch(recipe.id) end
-    end)
+    panel.craftInfo = panel.craftBar:CreateFontString(nil, "OVERLAY", FONT_SMALL)
+    panel.craftInfo:SetPoint("LEFT", panel.craftBar, "LEFT", 162, 0)
     panel.craftBar:Hide()
 
     -- the bags changed (a craft used the ingredients up): the counts follow

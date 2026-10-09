@@ -290,67 +290,66 @@ describe("Recipe detail", function()
     end)
 
     describe("crafting", function()
-        local crafted
+        local openedSkill
 
         before_each(function()
-            crafted = {}
+            openedSkill = nil
+            _G.C_Item.GetItemCount = function(id) return ({ [10] = 5, [11] = 3 })[id] or 0 end -- enough for 2
             -- the Alchemy window is open and ready
             _G.C_TradeSkillUI = {
-                CraftRecipe = function(id, count) crafted[#crafted + 1] = { id = id, count = count } end,
                 IsTradeSkillReady = function() return true end,
                 GetBaseProfessionInfo = function() return { professionID = 171 } end,
             }
-            _G.C_Item.GetItemCount = function(id) return ({ [10] = 5, [11] = 3 })[id] or 0 end -- enough for 2
+            _G.OpenProfessionUIToSkillLine = function(skillLine) openedSkill = skillLine end
         end)
 
-        it("a recipe the character knows has the buttons, and one it doesn't has not", function()
+        after_each(function() _G.OpenProfessionUIToSkillLine = nil end)
+
+        it("a recipe the character knows has the button, and one it doesn't has not", function()
             click(recipeRow("Elixir of Wisdom"))
             assert.is_true(panel().craftBar:IsShown())
             click(recipeRow("Flask of the Titans"))
             assert.is_false(panel().craftBar:IsShown())
         end)
 
-        it("Craft all makes what the bags allow", function()
+        it("the button is a secure one that casts the recipe's spell", function()
             click(recipeRow("Elixir of Wisdom"))
-            assert.are.equal("Craft all (2)", panel().craftAll._text)
-            click(panel().craftAll)
-            assert.are.same({ { id = 1, count = 2 } }, crafted)
+            assert.are.equal("SecureActionButtonTemplate,UIPanelButtonTemplate", panel().castButton._template)
+            assert.are.same({ "spell", 1 }, panel().castButton._set.SetAttribute)
         end)
 
-        it("Craft makes the amount typed", function()
+        it("is anchored to its parent bar: the game refuses to anchor a protected frame to other widgets", function()
             click(recipeRow("Elixir of Wisdom"))
-            panel().amount:SetText("2")
-            click(panel().craftOne)
-            assert.are.same({ { id = 1, count = 2 } }, crafted)
+            local point = panel().castButton._points[1]
+            assert.are.equal("LEFT", point[1])
+            assert.are.equal(panel().craftBar, point[2])
         end)
 
-        it("the buttons are off when the bags allow nothing", function()
-            _G.C_Item.GetItemCount = function() return 0 end
+        it("says how many the bags allow", function()
             click(recipeRow("Elixir of Wisdom"))
-            assert.are.equal("Craft all (0)", panel().craftAll._text)
-            assert.is_false(panel().craftAll:IsEnabled())
-            assert.is_false(panel().craftOne:IsEnabled())
+            assert.are.equal("2 possible with your bags", panel().craftInfo._text)
         end)
 
-        it("the secure button is set to cast the recipe's spell", function()
-            click(recipeRow("Elixir of Wisdom"))
-            assert.are.equal("SecureActionButtonTemplate,UIPanelButtonTemplate", panel().castOnce._template)
-            assert.are.same({ "spell", 1 }, panel().castOnce._set.SetAttribute)
-        end)
-
-        it("a click on it says in the chat that the cast was tried", function()
-            click(recipeRow("Elixir of Wisdom"))
-            panel().castOnce:Click()
-            assert.matches("casting recipe 1 with the secure spell button", WowMock.printed[#WowMock.printed - 1] or WowMock.printed[#WowMock.printed])
-        end)
-
-        it("the counts follow the bags", function()
+        it("the count follows the bags", function()
             click(recipeRow("Elixir of Wisdom"))
             _G.C_Item.GetItemCount = function(id) return ({ [10] = 20, [11] = 20 })[id] or 0 end
             for _, f in ipairs(WowMock.FindAll(function(f) return f._events and f._events.BAG_UPDATE_DELAYED and f._scripts.OnEvent end)) do
                 f._scripts.OnEvent(f, "BAG_UPDATE_DELAYED")
             end
-            assert.are.equal("Craft all (10)", panel().craftAll._text)
+            assert.are.equal("10 possible with your bags", panel().craftInfo._text)
+        end)
+
+        it("a click with the profession's window open opens nothing", function()
+            click(recipeRow("Elixir of Wisdom"))
+            panel().castButton:Click()
+            assert.is_nil(openedSkill)
+        end)
+
+        it("a click with the window closed opens the game's profession window on the recipe's profession", function()
+            _G.C_TradeSkillUI.IsTradeSkillReady = function() return false end
+            click(recipeRow("Elixir of Wisdom"))
+            panel().castButton:Click()
+            assert.are.equal(171, openedSkill)
         end)
     end)
 
