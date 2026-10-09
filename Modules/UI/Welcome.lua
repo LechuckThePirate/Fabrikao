@@ -21,10 +21,9 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
-    "- New: a Craft button in a recipe's panel opens the game's profession window on that recipe, ready to craft there.",
-    "- New: the Map and TomTom buttons of trainers, vendors and creatures are also in the recipes you know.",
-    "- New: this window, with links to the other addons of the same author.",
-    "- Data: fresh recipe data (training costs and where some recipes are learned).",
+    "- New: the search of every recipe lists its results like a profession's page (table or detailed, same filters), and a click opens the recipe's panel.",
+    "- New: a small public API, FabrikaoAPI, used by Embolsao!! for the \"Recipes\" entry of its item menu.",
+    "- Fix: the Craft button is off when your bags hold nothing to craft the recipe with.",
 }, "\n")
 
 local welcomeFrame
