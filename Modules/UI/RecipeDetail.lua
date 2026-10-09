@@ -6,7 +6,7 @@ local L = ns.L
 -- recipe of the lists opens it; ns.RecipeDetail_Show(recipe, opts) fills it, with `recipe` as the lists see it (ns.Recipes_FromData...)
 -- and opts = { parent = the window to dock to, alts = count the other characters too, rank = the character's skill in the
 -- profession (when the recipe has none of its own), onClose = function() }.
--- A recipe the character knows has a button to craft it, once per click (Modules/Professions/Craft.lua).
+-- A recipe the character knows has a "Craft" button that opens the game's profession window on it (Modules/Professions/Craft.lua).
 -- The trainers and vendors of a recipe the character doesn't know have a button that shows them on the map and, with TomTom
 -- installed, another that sets a waypoint (Modules/Map/Map.lua).
 
@@ -350,18 +350,13 @@ local function npcRow(y, npc, withWaypoint)
     return y + height + 6
 end
 
--- The craft button: only for a recipe the character knows. It is a secure button that casts the recipe's spell (the game only lets its
--- own secure code cast spells), so its attributes can only change out of combat.
+-- The craft button: only for a recipe the character knows, with how many the bags allow.
 local function updateCraftBar()
     if not (panel and current) then return end
     local recipe = current.recipe
     local known = recipe.learned and true or false
     panel.craftBar:SetShown(known)
     if not known then return end
-    if not (InCombatLockdown and InCombatLockdown()) then
-        panel.castButton:SetAttribute("type", "spell")
-        panel.castButton:SetAttribute("spell", recipe.id)
-    end
     local craftable = ns.Recipes_Craftable and ns.Recipes_Craftable(recipe, false) or 0
     panel.craftInfo:SetText(L["%d possible with your bags"]:format(craftable))
 end
@@ -484,44 +479,26 @@ local function create(parent)
     panel.child:SetSize(TEXT_W, 1)
     panel.scroll:SetScrollChild(panel.child)
 
-    -- crafting: a secure button that casts the recipe's spell, and how many the bags allow
+    -- crafting: a button that opens the game's profession window on the recipe, and how many the bags allow
     panel.craftBar = CreateFrame("Frame", nil, panel)
     panel.craftBar:SetPoint("BOTTOMLEFT", MARGIN, MARGIN - 2)
     panel.craftBar:SetPoint("BOTTOMRIGHT", -MARGIN, MARGIN - 2)
     panel.craftBar:SetHeight(28)
-    local okSecure, castButton = pcall(CreateFrame, "Button", nil, panel.craftBar, "SecureActionButtonTemplate,UIPanelButtonTemplate")
-    panel.castButton = okSecure and castButton or CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
-    panel.castButton:SetSize(150, 26)
-    panel.castButton:SetText(L["Craft"])
-    panel.castButton:RegisterForClicks("AnyUp", "AnyDown")
-    -- (the game refuses to anchor a protected frame to some frames: to its parent first; if that is refused too, it hangs from the
-    -- screen and follows the bar, out of combat)
-    if not pcall(panel.castButton.SetPoint, panel.castButton, "LEFT", panel.craftBar, "LEFT", 0, 0) then
-        if not pcall(panel.castButton.SetPoint, panel.castButton, "LEFT", 0, 0) then
-            panel.castButton:SetParent(UIParent)
-            local lastX, lastY, shown
-            panel.craftBar:SetScript("OnUpdate", function(bar)
-                if InCombatLockdown and InCombatLockdown() then return end
-                local visible = bar:IsVisible()
-                local scale = bar:GetEffectiveScale() / UIParent:GetEffectiveScale()
-                local x, y = (bar:GetLeft() or 0) * scale, (bar:GetBottom() or 0) * scale
-                if x ~= lastX or y ~= lastY then
-                    lastX, lastY = x, y
-                    panel.castButton:ClearAllPoints()
-                    panel.castButton:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y + 1)
-                end
-                panel.castButton:SetScale(scale)
-                if visible ~= shown then
-                    shown = visible
-                    panel.castButton:SetShown(visible)
-                end
-            end)
-        end
-    end
-    panel.castButton:HookScript("OnClick", function()
+    panel.craftButton = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
+    panel.craftButton:SetSize(150, 26)
+    panel.craftButton:SetPoint("LEFT", 0, 0)
+    panel.craftButton:SetText(L["Craft"])
+    panel.craftButton:SetScript("OnClick", function()
         local recipe = current and current.recipe
-        if recipe then ns.Craft_Clicked(recipe.id, recipe.db and recipe.db.s) end
+        if recipe then ns.Craft_Open(recipe.id, recipe.db and recipe.db.s) end
     end)
+    panel.craftButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L["Craft"], 1, 1, 1)
+        GameTooltip:AddLine(L["Opens the game's profession window on this recipe."], 1, 0.82, 0, true)
+        GameTooltip:Show()
+    end)
+    panel.craftButton:SetScript("OnLeave", GameTooltip_Hide)
     panel.craftInfo = panel.craftBar:CreateFontString(nil, "OVERLAY", FONT_SMALL)
     panel.craftInfo:SetPoint("LEFT", panel.craftBar, "LEFT", 162, 0)
     panel.craftBar:Hide()

@@ -2,9 +2,8 @@
 
 ## Unreleased
 
-- New: the panel of a recipe you know has a "Craft" button, with how many your bags allow: it crafts one per click (the game does not let
-  addons craft several at once). The game only crafts while its own profession window is open on that profession: if it is closed, the
-  first click opens it and the next one crafts.
+- New: the panel of a recipe you know has a "Craft" button, with how many your bags allow, that opens the game's profession window on that
+  recipe, ready to craft there (the game does not let addons craft).
 
 ## 0.1.1
 

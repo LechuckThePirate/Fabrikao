@@ -290,39 +290,21 @@ describe("Recipe detail", function()
     end)
 
     describe("crafting", function()
-        local openedSkill
+        local toRecipe
 
         before_each(function()
-            openedSkill = nil
+            toRecipe = nil
             _G.C_Item.GetItemCount = function(id) return ({ [10] = 5, [11] = 3 })[id] or 0 end -- enough for 2
-            -- the Alchemy window is open and ready
-            _G.C_TradeSkillUI = {
-                IsTradeSkillReady = function() return true end,
-                GetBaseProfessionInfo = function() return { professionID = 171 } end,
-            }
-            _G.OpenProfessionUIToSkillLine = function(skillLine) openedSkill = skillLine end
+            _G.ProfessionsUtil = { OpenProfessionFrameToRecipe = function(recipeID) toRecipe = recipeID; return true end }
         end)
 
-        after_each(function() _G.OpenProfessionUIToSkillLine = nil end)
+        after_each(function() _G.ProfessionsUtil = nil end)
 
         it("a recipe the character knows has the button, and one it doesn't has not", function()
             click(recipeRow("Elixir of Wisdom"))
             assert.is_true(panel().craftBar:IsShown())
             click(recipeRow("Flask of the Titans"))
             assert.is_false(panel().craftBar:IsShown())
-        end)
-
-        it("the button is a secure one that casts the recipe's spell", function()
-            click(recipeRow("Elixir of Wisdom"))
-            assert.are.equal("SecureActionButtonTemplate,UIPanelButtonTemplate", panel().castButton._template)
-            assert.are.same({ "spell", 1 }, panel().castButton._set.SetAttribute)
-        end)
-
-        it("is anchored to its parent bar: the game refuses to anchor a protected frame to other widgets", function()
-            click(recipeRow("Elixir of Wisdom"))
-            local point = panel().castButton._points[1]
-            assert.are.equal("LEFT", point[1])
-            assert.are.equal(panel().craftBar, point[2])
         end)
 
         it("says how many the bags allow", function()
@@ -339,17 +321,10 @@ describe("Recipe detail", function()
             assert.are.equal("10 possible with your bags", panel().craftInfo._text)
         end)
 
-        it("a click with the profession's window open opens nothing", function()
+        it("the button opens the game's profession window on the recipe", function()
             click(recipeRow("Elixir of Wisdom"))
-            panel().castButton:Click()
-            assert.is_nil(openedSkill)
-        end)
-
-        it("a click with the window closed opens the game's profession window on the recipe's profession", function()
-            _G.C_TradeSkillUI.IsTradeSkillReady = function() return false end
-            click(recipeRow("Elixir of Wisdom"))
-            panel().castButton:Click()
-            assert.are.equal(171, openedSkill)
+            click(panel().craftButton)
+            assert.are.equal(1, toRecipe)
         end)
     end)
 
