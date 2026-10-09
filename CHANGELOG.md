@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Data: fresh recipe data (training costs and where some recipes are learned, as the public databases have them now).
+
 ## 0.1.0
 
 First version, only for WoW Forever.
