@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
 - New: window (`/fab`, the minimap button or a key binding) that lists the character's professions with the game's icons:
   the primary ones first, then First Aid, Cooking and Fishing, each with its skill bar.
