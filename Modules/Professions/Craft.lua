@@ -21,6 +21,23 @@ local function isOpen(skillLine)
     return ns.Recipes_IsReady and ns.Recipes_IsReady(skillLine, skillLine and ns.RecipeDB_SkillName(skillLine)) or false
 end
 
+-- ... and has it finished loading: the game isn't switching its data and knows the recipe.
+local function isLoaded(skillLine, recipeID)
+    if not isOpen(skillLine) then return false end
+    local T = C_TradeSkillUI
+    if T.IsDataSourceChanging and T.IsDataSourceChanging() then return false end
+    if T.GetRecipeInfo and not T.GetRecipeInfo(recipeID) then return false end
+    return true
+end
+
+-- What the game says about the recipe, for the chat report.
+local function describe(recipeID)
+    local T = C_TradeSkillUI
+    local ok, info = pcall(T.GetRecipeInfo or function() end, recipeID)
+    if not (ok and type(info) == "table") then return "the game knows nothing of the recipe" end
+    return ("the game says learned=%s craftable=%s available=%s"):format(tostring(info.learned), tostring(info.craftable), tostring(info.numAvailable))
+end
+
 -- Opens the game's profession window on the profession, the way the game does it. False when there is no way.
 local function open(skillLine)
     if _G.OpenProfessionUIToSkillLine then
@@ -32,16 +49,17 @@ local function open(skillLine)
     return false
 end
 
-local function whenReady(skillLine, tries, callback)
-    if isOpen(skillLine) then return callback(true) end
+local function whenReady(skillLine, recipeID, tries, callback)
+    if isLoaded(skillLine, recipeID) then return callback(true) end
     if tries <= 0 then return callback(false) end
-    C_Timer.After(READY_STEP, function() whenReady(skillLine, tries - 1, callback) end)
+    C_Timer.After(READY_STEP, function() whenReady(skillLine, recipeID, tries - 1, callback) end)
 end
 
 local function cast(recipeID, count, note)
     local ok, err = pcall(C_TradeSkillUI.CraftRecipe, recipeID, count)
     pending = { id = recipeID, started = false, errors = {} }
-    say(("recipe %d x%d: %s, call %s%s"):format(recipeID, count, note, ok and "accepted" or "failed", ok and "" or (": " .. tostring(err))))
+    say(("recipe %d x%d: %s, call %s%s; %s"):format(recipeID, count, note, ok and "accepted" or "failed", ok and "" or (": " .. tostring(err)),
+        describe(recipeID)))
     C_Timer.After(WAIT, function()
         local result = pending
         if not result or result.id ~= recipeID then return end
@@ -62,12 +80,12 @@ function ns.Craft_Make(recipeID, count, skillLine)
         ns.Print(L["This client can't craft from here."])
         return false
     end
-    if isOpen(skillLine) or not skillLine then
-        return cast(recipeID, count, isOpen(skillLine) and "profession window open" or "profession unknown")
+    if not skillLine or isLoaded(skillLine, recipeID) then
+        return cast(recipeID, count, skillLine and "profession window open" or "profession unknown")
     end
     local opened = open(skillLine)
     say(("opening the profession window (skill line %d): %s"):format(skillLine, opened and "asked" or "NOT possible"))
-    whenReady(skillLine, READY_TRIES, function(ready)
+    whenReady(skillLine, recipeID, READY_TRIES, function(ready)
         if ready then
             cast(recipeID, count, "profession window opened")
         else

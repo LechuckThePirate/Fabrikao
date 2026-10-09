@@ -125,6 +125,36 @@ describe("Craft", function()
         end)
     end)
 
+    describe("the data of the profession", function()
+        it("is waited for while the game is still switching it", function()
+            local changing = true
+            _G.C_TradeSkillUI.IsDataSourceChanging = function() return changing end
+            ns.Craft_Make(2152, 1, 171)
+            assert.are.same({}, calls)
+            table.remove(queued, 1)()
+            assert.are.same({}, calls) -- still changing
+            changing = false
+            run(queued)
+            assert.are.same({ { id = 2152, count = 1 } }, calls)
+        end)
+
+        it("is waited for until the game knows the recipe", function()
+            local known = false
+            _G.C_TradeSkillUI.GetRecipeInfo = function() return known and { learned = true, craftable = true, numAvailable = 4 } or nil end
+            ns.Craft_Make(2152, 1, 171)
+            assert.are.same({}, calls)
+            known = true
+            run(queued)
+            assert.are.equal(1, #calls)
+        end)
+
+        it("the report says what the game thinks of the recipe", function()
+            _G.C_TradeSkillUI.GetRecipeInfo = function() return { learned = true, craftable = false, numAvailable = 0 } end
+            ns.Craft_Make(2152, 1, 171)
+            assert.matches("the game says learned=true craftable=false available=0", WowMock.printed[#WowMock.printed - 0] or "")
+        end)
+    end)
+
     it("without the craft API it says so", function()
         _G.C_TradeSkillUI = nil
         assert.is_false(ns.Craft_Make(2152, 1, 171))
