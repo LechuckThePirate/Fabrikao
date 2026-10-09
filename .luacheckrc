@@ -13,7 +13,7 @@ exclude_files = {
 
 -- what the addon defines as globals
 globals = {
-    "FabrikaoDB", "FabrikaoCharDB",
+    "FabrikaoDB", "FabrikaoCharDB", "FabrikaoAPI",
     "SlashCmdList", "SLASH_FABRIKAO1", "SLASH_FABRIKAO2",
     "BINDING_NAME_FABRIKAO_TOGGLE", "Fabrikao_Toggle",
 }

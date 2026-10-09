@@ -374,21 +374,30 @@ function ns.RecipeDB_SearchText(spellID)
     return recipe and haystackOf(recipe) or ""
 end
 
+local function usesItem(recipe, itemID)
+    for _, reagent in ipairs(recipe.m or {}) do
+        if reagent[1] == itemID then return true end
+    end
+    return false
+end
+
 -- Recipes matching a search: every word of `text` has to be in the name, an ingredient, an NPC, a quest or a
--- zone. opts: { skill = skill line to look in (nil: all) }. Returns { { id = spellID, recipe = record }, ... } by name.
+-- zone. opts: { skill = skill line to look in (nil: all), ingredient = item id every match has to use (works with no
+-- text too) }. Returns { { id = spellID, recipe = record }, ... } by name.
 function ns.RecipeDB_Search(text, opts)
     local results = {}
     local db = data()
     if not db then return results end
     text = strtrim((text or ""):lower())
     local skill = opts and opts.skill
+    local ingredient = opts and opts.ingredient
     -- no text: nothing, unless asked for everything (of a profession, or of all of them) to browse it
-    if text == "" and not (opts and opts.all) then return results end
+    if text == "" and not (opts and (opts.all or ingredient)) then return results end
     local words = {}
     for word in text:gmatch("%S+") do words[#words + 1] = word end
 
     for id, recipe in pairs(db.recipes) do
-        if not skill or recipe.s == skill then
+        if (not skill or recipe.s == skill) and (not ingredient or usesItem(recipe, ingredient)) then
             local haystack = text ~= "" and haystackOf(recipe) or ""
             local all = true
             for _, word in ipairs(words) do

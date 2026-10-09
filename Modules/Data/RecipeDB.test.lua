@@ -188,6 +188,13 @@ describe("RecipeDB", function()
             assert.are.same({ "Elixir of Wisdom", "Mighty Flask" }, names(ns.RecipeDB_Search("i", { skill = 171 })))
         end)
 
+        it("can be limited to the recipes that use an item, even with no text", function()
+            assert.are.same({ "Elixir of Wisdom" }, names(ns.RecipeDB_Search("", { ingredient = 10 })))
+            assert.are.same({ "Mighty Flask" }, names(ns.RecipeDB_Search("", { ingredient = 12 })))
+            assert.are.same({}, names(ns.RecipeDB_Search("", { ingredient = 999 })))
+            assert.are.same({}, names(ns.RecipeDB_Search("flask", { ingredient = 10 })))
+        end)
+
         it("an empty search finds nothing", function()
             assert.are.same({}, ns.RecipeDB_Search(""))
             assert.are.same({}, ns.RecipeDB_Search("   "))

@@ -208,6 +208,17 @@ local function selectRecipe(data)
     ns.RecipeList_Select(data.recipe.id)
 end
 
+-- The list of recipes is shared with the search page: this page takes it back (at creation, and whenever it shows).
+function ns.MainWindow_TakeList()
+    local list = ns.RecipeList_Attach(page, sortBy, toggleGroup, selectRecipe)
+    list.header:ClearAllPoints()
+    list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
+    list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
+    list.scroll:ClearAllPoints()
+    list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
+    list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
+end
+
 local function createPage(parent, top)
     loadFilters()
     page = CreateFrame("Frame", nil, parent)
@@ -266,11 +277,8 @@ local function createPage(parent, top)
     page.count:SetPoint("BOTTOMLEFT", 4, 0)
 
     local list = ns.RecipeList_Create(page, sortBy, toggleGroup, selectRecipe)
-    list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
-    list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
-    list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
-    list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
     page.scroll, page.content = list.scroll, list.content
+    ns.MainWindow_TakeList()
 
     page.status = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     page.status:SetPoint("CENTER", list.scroll, "CENTER", 0, 20)
@@ -295,6 +303,7 @@ function ns.UI_ShowRecipes(profession)
     state.copy = ns.Recipes_Cached(skillLine)
     overview:Hide()
     ns.SearchPage_Hide()
+    ns.MainWindow_TakeList()
     page:Show()
     page.icon:SetTexture(profession.icon)
     page.title:SetText(profession.name)
@@ -323,7 +332,6 @@ end
 
 local function relayout()
     ns.RecipeList_Relayout()
-    ns.SearchPage_Relayout()
 end
 
 local function createFrame()
@@ -469,14 +477,14 @@ local function createFrame()
     end)
 end
 
--- the search page of every recipe in the data, optionally starting with a text
-function ns.UI_ShowSearch(text)
+-- the search page of every recipe in the data, optionally starting with a text, or with the recipes that use an item
+function ns.UI_ShowSearch(text, ingredient)
     ns.UI_Show()
     ns.RecipeDetail_Hide()
     state.skillLine, state.copy = nil, nil
     overview:Hide()
     page:Hide()
-    ns.SearchPage_Show(text)
+    ns.SearchPage_Show(text, ingredient)
 end
 
 function ns.UI_Toggle()

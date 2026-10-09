@@ -29,6 +29,14 @@ describe("SearchPage", function()
         return boxes[#boxes]
     end
 
+    local function recipeRows()
+        local out = {}
+        for _, row in ipairs(framesWith("data")) do
+            if row.data.kind == "recipe" then out[#out + 1] = row end
+        end
+        return out
+    end
+
     local function typeInto(box, text)
         box:SetText(text)
         box._scripts.OnTextChanged(box, true)
@@ -53,46 +61,6 @@ describe("SearchPage", function()
         StartAddon(ns)
     end)
 
-    describe("the detail of a recipe", function()
-        it("says if the character knows it, the skill it needs, its colors, the product and the ingredients with how many are in the bags", function()
-            local name, body = ns.SearchPage_DetailText(100)
-            assert.are.equal("Elixir of Wisdom", name)
-            assert.matches("Alchemy", body)
-            assert.matches("You know this recipe", body)
-            assert.matches("Skill needed:|r 1  %(|cff40bf40you have 80", body)
-            assert.matches("For your skill:|r |cff3fbf3fgreen|r", body)
-            assert.matches("Wisdom Elixir x1", body)
-            assert.matches("Peacebloom x2  %(|cff40bf40you have 5", body)
-            assert.matches("Silverleaf x1  %(|cffff4040you have 0", body)
-            assert.matches("Alchemist Anna %(Stormwind City%)", body)
-        end)
-
-        it("for a recipe of a profession the character doesn't have", function()
-            local _, body = ns.SearchPage_DetailText(102)
-            assert.matches("You don't have this profession", body)
-            assert.matches("x1%-2", body)
-            assert.matches("Smith Sam %(Stormwind City%)", body)
-            assert.is_nil(body:find("you have 80", 1, true)) -- no skill of its own to compare
-        end)
-
-        it("for a recipe the character could learn but doesn't know, and one it can't yet", function()
-            local _, body = ns.SearchPage_DetailText(101)
-            assert.matches("You don't know this recipe yet", body)
-            assert.matches("|cffff4040you have 80", body) -- needs 250
-            assert.matches("Black Drake %(Burning Steppes%) level 55%-57", body)
-            assert.is_nil(body:find("For your skill:", 1, true))
-        end)
-
-        it("asks the client for item names it doesn't have yet", function()
-            local requested = {}
-            _G.C_Item.GetItemNameByID = function() return nil end
-            _G.C_Item.RequestLoadItemDataByID = function(id) requested[#requested + 1] = id end
-            local _, body = ns.SearchPage_DetailText(100)
-            assert.matches("item 10 x2", body)
-            assert.is_true(#requested >= 2)
-        end)
-    end)
-
     describe("the page", function()
         it("opens with /fab find and lists what matches", function()
             SlashCmdList.FABRIKAO("find sword")
@@ -102,33 +70,47 @@ describe("SearchPage", function()
             assert.are.equal("Iron Sword", results[1].recipe.name)
         end)
 
-        it("lists a recipe the character can use in its difficulty color, and marks the ones it knows", function()
+        it("lists the matches like a profession's page does, in the table and in the detailed view", function()
             ns.UI_ShowSearch("elixir")
-            local rows = framesWith("recipe")
+            local rows = recipeRows()
             assert.are.equal(1, #rows)
-            assert.are.same({ 0.25, 0.75, 0.25 }, rows[1].text._set.SetTextColor)
-            assert.matches("ReadyCheck", rows[1].info._text)
+            assert.are.equal("Elixir of Wisdom", rows[1].data.recipe.name)
+            assert.is_true(rows[1].data.recipe.learned)
+            local view = WowMock.FindButton("View: Table")
+            view._scripts.OnClick(view)
+            assert.are.equal("detailed", ns.char.view)
+            assert.are.equal(1, #recipeRows())
         end)
 
-        it("over the icon of a result, the tooltip of what it makes", function()
-            ns.UI_ShowSearch("elixir")
-            local row = framesWith("recipe")[1]
-            row.iconButton._scripts.OnEnter(row.iconButton)
-            assert.are.same({ 200 }, GameTooltip._set.SetItemByID)
-        end)
-
-        it("selecting a result shows its detail", function()
+        it("a click on a result opens its panel next to the window, and the panel follows what is listed", function()
             ns.UI_ShowSearch("i")
-            local rows = framesWith("recipe")
-            assert.are.equal(3, #rows)
             local flask
-            for _, row in ipairs(rows) do if row.spellID == 101 then flask = row end end
-            flask._scripts.OnClick(flask)
-            local detail = WowMock.Find(function(f) return type(f._text) == "string" and f._text:find("Black Drake", 1, true) end)
-            assert.is_not_nil(detail)
+            for _, row in ipairs(recipeRows()) do if row.data.recipe.id == 101 then flask = row end end
+            flask._scripts.OnClick(flask, "LeftButton")
+            assert.are.equal(101, ns.RecipeDetail_Current().id)
+            -- narrowing the search to something else closes it
+            local box = searchBox()
+            typeInto(box, "sword")
+            assert.is_nil(ns.RecipeDetail_Current())
+        end)
+
+        it("the panel of a recipe the character knows has the Craft button", function()
+            ns.UI_ShowSearch("elixir")
+            local row = recipeRows()[1]
+            row._scripts.OnClick(row, "LeftButton")
+            local craft = WowMock.FindButton("Craft")
+            assert.is_true(craft:IsVisible())
+        end)
+
+        it("the profession's page takes the list back", function()
+            ns.UI_ShowSearch("elixir")
+            ns.UI_ShowOverview()
+            ns.UI_ShowRecipes(ns.Professions_List()[1])
+            assert.is_true(#recipeRows() > 0)
         end)
 
         it("typing in the box over the professions goes to the search", function()
+
             ns.UI_Toggle()
             local box = searchBox()
             typeInto(box, "flask")

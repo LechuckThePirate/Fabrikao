@@ -83,6 +83,7 @@ function frameMethods:IsVisible()
     return true
 end
 function frameMethods:GetParent() return self._parent end
+function frameMethods:SetParent(parent) self._parent = parent end
 function frameMethods:SetText(s)
     self._text = s
     if issecretvalue and issecretvalue(s) then self._shownSecret = true end -- (the game: its measures become hidden)
