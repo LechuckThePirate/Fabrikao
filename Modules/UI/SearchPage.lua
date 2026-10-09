@@ -218,8 +218,8 @@ local function refresh()
     if not page then return end
     local text = page.search:GetText()
     -- with filters on and no text, everything that passes them is listed
-    local browse = state.skill ~= nil or ns.FilterBar_Active(filters)
-    local found = ns.RecipeDB_Search(text, { skill = state.skill, all = browse })
+    local browse = state.skill ~= nil or state.ingredient ~= nil or ns.FilterBar_Active(filters)
+    local found = ns.RecipeDB_Search(text, { skill = state.skill, all = browse, ingredient = state.ingredient })
 
     -- the recipes as the lists see them (known or not, colored for the character's skill in each profession), so the
     -- filters of the profession's page work here too
@@ -272,6 +272,8 @@ local function refresh()
         count = (text == "" and not browse) and L["Type to search every recipe."] or L["No recipes found"]
     elseif state.truncated > 0 then
         count = L["%d recipes (showing the first %d)"]:format(total, MAX_RESULTS)
+    elseif state.ingredient then
+        count = L["%d recipes using %s"]:format(total, itemName(state.ingredient))
     else
         count = L["%d recipes"]:format(total)
     end
@@ -322,7 +324,11 @@ function ns.SearchPage_Create(parent, top)
     page.search = search
     local function updateHint() hint:SetShown(search:GetText() == "" and not search:HasFocus()) end
     page.updateHint = updateHint
-    search:SetScript("OnTextChanged", function() updateHint(); refresh() end)
+    search:SetScript("OnTextChanged", function(_, userInput)
+        if userInput then state.ingredient = nil end -- typing starts an ordinary search
+        updateHint()
+        refresh()
+    end)
     search:SetScript("OnEditFocusGained", updateHint)
     search:SetScript("OnEditFocusLost", updateHint)
     search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
@@ -418,8 +424,14 @@ function ns.SearchPage_Relayout()
     page.detailChild:SetHeight(math.max(1, page.detailText:GetStringHeight() + 8))
 end
 
-function ns.SearchPage_Show(text)
+-- text: what to put in the box (nil: leave it); ingredient: an item id, to list only the recipes that use it
+function ns.SearchPage_Show(text, ingredient)
     if not page then return end
+    state.ingredient = ingredient
+    if ingredient and state.skill then -- a profession picked before would hide recipes of the others
+        state.skill = nil
+        page.skillButton:SetText(L["Profession: %s"]:format(L["All"]))
+    end
     page:Show()
     if text ~= nil then page.search:SetText(text) end
     page.updateHint()

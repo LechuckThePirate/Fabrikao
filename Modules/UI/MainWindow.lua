@@ -469,14 +469,14 @@ local function createFrame()
     end)
 end
 
--- the search page of every recipe in the data, optionally starting with a text
-function ns.UI_ShowSearch(text)
+-- the search page of every recipe in the data, optionally starting with a text, or with the recipes that use an item
+function ns.UI_ShowSearch(text, ingredient)
     ns.UI_Show()
     ns.RecipeDetail_Hide()
     state.skillLine, state.copy = nil, nil
     overview:Hide()
     page:Hide()
-    ns.SearchPage_Show(text)
+    ns.SearchPage_Show(text, ingredient)
 end
 
 function ns.UI_Toggle()

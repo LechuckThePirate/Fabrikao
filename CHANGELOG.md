@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- New: a small public API for other addons, `FabrikaoAPI` (`ShowRecipesUsing(itemID)` opens the search page with the recipes that use that item). Embolsao!! uses it
+  for the "Recipes" entry of its item menu.
+
 ## 0.1.2
 
 - New: a welcome window, once per version (and with `/fab changelog` or the preferences' "What's new" button): what's new, where to report bugs, and

@@ -34,4 +34,5 @@ Modules\UI\Preferences.lua
 Modules\UI\MainWindow.lua
 Modules\UI\MinimapButton.lua
 Modules\Debug\Probe.lua
+Modules\API\API.lua
 Fabrikao.lua

@@ -136,6 +136,7 @@ local es = {
     ["Type to search every recipe."] = "Escribe para buscar entre todas las recetas.",
     ["No recipes found"] = "No se encontraron recetas",
     ["%d recipes"] = "%d recetas",
+    ["%d recipes using %s"] = "%d recetas que usan %s",
     ["%d recipes (showing the first %d)"] = "%d recetas (se muestran las %d primeras)",
     ["Profession: %s"] = "Profesión: %s",
     ["Profession:"] = "Profesión:",
