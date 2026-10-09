@@ -110,7 +110,20 @@ end
 ---------------------------------------------------------------------------------------------------
 -- Page
 ---------------------------------------------------------------------------------------------------
+-- The craft button: only for a recipe the character knows, with how many the bags allow (as in the recipe panel).
+local function updateCraftBar(id)
+    local known = id ~= nil and knows(id)
+    page.craftBar:SetShown(known and true or false)
+    if not known then return end
+    local craftable = 0
+    for _, row in ipairs(state.results) do
+        if row.recipe.id == id then craftable = ns.Recipes_Craftable(row.recipe, false) break end
+    end
+    page.craftInfo:SetText(L["%d possible with your bags"]:format(craftable))
+end
+
 local function renderDetail()
+    updateCraftBar(page and state.selected)
     if not (page and state.selected) then
         page.detailTitle:SetText("")
         page.detailText:SetText(state.truncated >= 0 and #state.results == 0 and L["Search by recipe, ingredient, NPC or zone."] or "")
@@ -365,8 +378,34 @@ function ns.SearchPage_Create(parent, top)
     -- the selected recipe, on the right
     local detail = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
     detail:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 30, -48)
-    detail:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
+    detail:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 52) -- room for the craft button below
     page.detailScroll = detail
+
+    -- crafting: a button that opens the game's profession window on the recipe, and how many the bags allow
+    local craftBar = CreateFrame("Frame", nil, page)
+    craftBar:SetPoint("TOPLEFT", detail, "BOTTOMLEFT", 0, -6)
+    craftBar:SetPoint("RIGHT", detail, "RIGHT", 0, 0)
+    craftBar:SetHeight(28)
+    local craftButton = CreateFrame("Button", nil, craftBar, "UIPanelButtonTemplate")
+    craftButton:SetSize(150, 26)
+    craftButton:SetPoint("LEFT", 0, 0)
+    craftButton:SetText(L["Craft"])
+    craftButton:SetScript("OnClick", function()
+        local recipe = ns.RecipeDB_Get(state.selected)
+        if recipe then ns.Craft_Open(state.selected, recipe.s) end
+    end)
+    craftButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L["Craft"], 1, 1, 1)
+        GameTooltip:AddLine(L["Opens the game's profession window on this recipe."], 1, 0.82, 0, true)
+        GameTooltip:Show()
+    end)
+    craftButton:SetScript("OnLeave", GameTooltip_Hide)
+    page.craftInfo = craftBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    page.craftInfo:SetPoint("LEFT", craftButton, "RIGHT", 12, 0)
+    craftBar:Hide()
+    page.craftBar = craftBar
+    page.craftButton = craftButton
     page.detailChild = CreateFrame("Frame", nil, detail)
     page.detailChild:SetSize(300, 1)
     detail:SetScrollChild(page.detailChild)

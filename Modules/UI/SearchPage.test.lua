@@ -128,6 +128,20 @@ describe("SearchPage", function()
             assert.is_not_nil(detail)
         end)
 
+        it("a recipe the character knows has a Craft button, with how many the bags allow; one it doesn't know has none", function()
+            local opened
+            ns.Craft_Open = function(id, skillLine) opened = { id, skillLine } end
+            ns.UI_ShowSearch("elixir") -- known; 5 Peacebloom for 2 each, no Silverleaf
+            local button = WowMock.FindButton("Craft")
+            assert.is_true(button:IsVisible())
+            assert.matches("0 possible with your bags", WowMock.Find(function(f) return f._text and f._text:find("possible with your bags", 1, true) end)._text)
+            button._scripts.OnClick(button)
+            assert.are.same({ 100, 171 }, opened)
+
+            ns.UI_ShowSearch("flask") -- not known
+            assert.is_false(button:IsVisible())
+        end)
+
         it("typing in the box over the professions goes to the search", function()
             ns.UI_Toggle()
             local box = searchBox()
