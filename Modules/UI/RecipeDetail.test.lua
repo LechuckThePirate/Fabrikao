@@ -294,7 +294,12 @@ describe("Recipe detail", function()
 
         before_each(function()
             crafted = {}
-            _G.C_TradeSkillUI = { CraftRecipe = function(id, count) crafted[#crafted + 1] = { id = id, count = count } end }
+            -- the Alchemy window is open and ready
+            _G.C_TradeSkillUI = {
+                CraftRecipe = function(id, count) crafted[#crafted + 1] = { id = id, count = count } end,
+                IsTradeSkillReady = function() return true end,
+                GetBaseProfessionInfo = function() return { professionID = 171 } end,
+            }
             _G.C_Item.GetItemCount = function(id) return ({ [10] = 5, [11] = 3 })[id] or 0 end -- enough for 2
         end)
 

@@ -505,14 +505,14 @@ local function create(parent)
     panel.craftOne:SetText(L["Craft"])
     panel.craftOne:SetScript("OnClick", function()
         local recipe = current and current.recipe
-        if recipe then ns.Craft_Make(recipe.id, tonumber(panel.amount:GetText()) or 1) end
+        if recipe then ns.Craft_Make(recipe.id, tonumber(panel.amount:GetText()) or 1, recipe.db and recipe.db.s) end
     end)
     panel.craftAll = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
     panel.craftAll:SetSize(140, 24)
     panel.craftAll:SetPoint("LEFT", panel.craftOne, "RIGHT", 6, 0)
     panel.craftAll:SetScript("OnClick", function(self)
         local recipe = current and current.recipe
-        if recipe and (self.count or 0) > 0 then ns.Craft_Make(recipe.id, self.count) end
+        if recipe and (self.count or 0) > 0 then ns.Craft_Make(recipe.id, self.count, recipe.db and recipe.db.s) end
     end)
     panel.craftBar:Hide()
 

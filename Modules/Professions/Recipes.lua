@@ -26,6 +26,11 @@ local function isReady(skillLine, name)
     return name ~= nil and info ~= nil and (info.professionName == name or info.parentProfessionName == name)
 end
 
+-- Is that profession open and ready in the game's profession window? (for crafting, Craft.lua)
+function ns.Recipes_IsReady(skillLine, name)
+    return isReady(skillLine, name)
+end
+
 -- What a recipe needs of each basic ingredient: { { items = { itemID, ... }, quantity = n }, ... }. Several
 -- items in one slot are alternatives (the same ingredient in other qualities).
 local function readReagents(recipeID)
