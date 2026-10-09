@@ -4,11 +4,6 @@
 colored by difficulty with how many you can make, and the ones you don't, with the skill they need and exactly where to
 learn them: which trainer, which vendor, which creature drops them, with the distance and a button to show it on the map.
 
-> **Enjoying Fabrikao!!?** The same author makes more addons for WoW Forever, take a look:
-> - [**Embolsao!!**](https://www.curseforge.com/wow/addons/embolsao) -- one bag to rule them all: your bags and your bank in a single, clean window.
-> - [**Completao!!**](https://www.curseforge.com/wow/addons/completao-forever) -- every quest, in order: quest chain trees with map markers and TomTom waypoints.
-> - [**Aggreao!!**](https://www.curseforge.com/wow/addons/aggreao) -- know who has the aggro before the mob does.
-
 ![Your professions, with their skill bars](https://media.joanvilarino.online/fabrikao/images/screencaps/main_window.png)
 
 ---
@@ -97,6 +92,11 @@ None of them is needed; everything else works without them.
 The gear opens the preferences: the **view** of the recipe lists, the window **scale**, the minimap button, the chat
 messages at startup, using the items of your other characters, and buttons to reset the window's place and size, the
 filters or all the preferences. Settings can be saved per character or shared by your whole account.
+
+> **Enjoying Fabrikao!!?** The same author makes more addons for WoW Forever, take a look:
+> - [**Embolsao!!**](https://www.curseforge.com/wow/addons/embolsao) -- one bag to rule them all: your bags and your bank in a single, clean window.
+> - [**Completao!!**](https://www.curseforge.com/wow/addons/completao-forever) -- every quest, in order: quest chain trees with map markers and TomTom waypoints.
+> - [**Aggreao!!**](https://www.curseforge.com/wow/addons/aggreao) -- know who has the aggro before the mob does.
 
 ---
 
