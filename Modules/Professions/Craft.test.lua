@@ -79,7 +79,7 @@ describe("Craft", function()
             openSkill = nil
             ns.Craft_Clicked(2152, 171)
             assert.are.equal(171, opened)
-            assert.matches("is opening: click Craft again", lastLine())
+            assert.matches("Opening the profession window: click Craft again", lastLine())
         end)
 
         it("opens it when another profession's window is the one open", function()

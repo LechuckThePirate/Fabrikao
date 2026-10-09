@@ -34,7 +34,7 @@ end
 -- the window opens and the player is told to click again. With it open, a moment later, say why if the cast did not start.
 function ns.Craft_Clicked(recipeID, skillLine)
     if skillLine and not isLoaded(skillLine, recipeID) then
-        ns.Print(open(skillLine) and L["The profession window is opening: click Craft again when it is open."]
+        ns.Print(open(skillLine) and L["Opening the profession window: click Craft again."]
             or L["Open the profession window to craft."])
         return
     end
