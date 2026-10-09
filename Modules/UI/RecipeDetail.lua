@@ -357,6 +357,11 @@ local function updateCraftBar()
     local known = recipe.learned and true or false
     panel.craftBar:SetShown(known)
     if not known then return end
+    -- the secure button casts the recipe's spell (only changeable out of combat: the game locks a secure button's attributes then)
+    if not (InCombatLockdown and InCombatLockdown()) then
+        panel.castOnce:SetAttribute("type", "spell")
+        panel.castOnce:SetAttribute("spell", recipe.id)
+    end
     local craftable = ns.Recipes_Craftable and ns.Recipes_Craftable(recipe, false) or 0
     panel.craftAll:SetText(L["Craft all (%d)"]:format(craftable))
     panel.craftAll:SetEnabled(craftable > 0)
@@ -500,7 +505,7 @@ local function create(parent)
     panel.amount:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     panel.amount:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     panel.craftOne = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
-    panel.craftOne:SetSize(90, 24)
+    panel.craftOne:SetSize(70, 24)
     panel.craftOne:SetPoint("LEFT", panel.amount, "RIGHT", 12, 0)
     panel.craftOne:SetText(L["Craft"])
     panel.craftOne:SetScript("OnClick", function()
@@ -508,11 +513,22 @@ local function create(parent)
         if recipe then ns.Craft_Make(recipe.id, tonumber(panel.amount:GetText()) or 1, recipe.db and recipe.db.s) end
     end)
     panel.craftAll = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
-    panel.craftAll:SetSize(140, 24)
+    panel.craftAll:SetSize(130, 24)
     panel.craftAll:SetPoint("LEFT", panel.craftOne, "RIGHT", 6, 0)
     panel.craftAll:SetScript("OnClick", function(self)
         local recipe = current and current.recipe
         if recipe and (self.count or 0) > 0 then ns.Craft_Make(recipe.id, self.count, recipe.db and recipe.db.s) end
+    end)
+    -- a secure button: the game only lets its own (secure) code cast spells, and a recipe is a spell in the spell book
+    local okSecure, castOnce = pcall(CreateFrame, "Button", nil, panel.craftBar, "SecureActionButtonTemplate,UIPanelButtonTemplate")
+    panel.castOnce = okSecure and castOnce or CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
+    panel.castOnce:SetSize(100, 24)
+    panel.castOnce:SetPoint("LEFT", panel.craftAll, "RIGHT", 6, 0)
+    panel.castOnce:SetText(L["Cast once"])
+    panel.castOnce:RegisterForClicks("AnyUp", "AnyDown")
+    panel.castOnce:HookScript("OnClick", function()
+        local recipe = current and current.recipe
+        if recipe then ns.Craft_Watch(recipe.id) end
     end)
     panel.craftBar:Hide()
 

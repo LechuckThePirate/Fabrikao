@@ -155,6 +155,15 @@ describe("Craft", function()
         end)
     end)
 
+    it("says which action the game blocked", function()
+        _G.C_TradeSkillUI.CraftRecipe = function()
+            fire("ADDON_ACTION_BLOCKED", "Fabrikao", "CraftRecipe()")
+        end
+        ns.Craft_Make(2152, 1, 171)
+        run(queued)
+        assert.matches("the game blocked CraftRecipe%(%) called by Fabrikao", lastLine())
+    end)
+
     it("without the craft API it says so", function()
         _G.C_TradeSkillUI = nil
         assert.is_false(ns.Craft_Make(2152, 1, 171))

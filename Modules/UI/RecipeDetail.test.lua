@@ -332,6 +332,18 @@ describe("Recipe detail", function()
             assert.is_false(panel().craftOne:IsEnabled())
         end)
 
+        it("the secure button is set to cast the recipe's spell", function()
+            click(recipeRow("Elixir of Wisdom"))
+            assert.are.equal("SecureActionButtonTemplate,UIPanelButtonTemplate", panel().castOnce._template)
+            assert.are.same({ "spell", 1 }, panel().castOnce._set.SetAttribute)
+        end)
+
+        it("a click on it says in the chat that the cast was tried", function()
+            click(recipeRow("Elixir of Wisdom"))
+            panel().castOnce:Click()
+            assert.matches("casting recipe 1 with the secure spell button", WowMock.printed[#WowMock.printed - 1] or WowMock.printed[#WowMock.printed])
+        end)
+
         it("the counts follow the bags", function()
             click(recipeRow("Elixir of Wisdom"))
             _G.C_Item.GetItemCount = function(id) return ({ [10] = 20, [11] = 20 })[id] or 0 end

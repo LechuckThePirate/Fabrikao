@@ -91,6 +91,7 @@ local es = {
     ["Descending"] = "Descendente",
     ["Yes"] = "Sí",
     ["Craft"] = "Fabricar",
+    ["Cast once"] = "Lanzar una vez",
     ["Craft all (%d)"] = "Fabricar todo (%d)",
     ["Amount:"] = "Cantidad:",
     ["This client can't craft from here."] = "Este cliente no permite fabricar desde aquí.",

@@ -55,11 +55,10 @@ local function whenReady(skillLine, recipeID, tries, callback)
     C_Timer.After(READY_STEP, function() whenReady(skillLine, recipeID, tries - 1, callback) end)
 end
 
-local function cast(recipeID, count, note)
-    local ok, err = pcall(C_TradeSkillUI.CraftRecipe, recipeID, count)
+-- Starts watching for the cast of a recipe (after the call, or the click on the secure button): a moment later it says whether the
+-- cast started, with the errors and the blocked actions the game reported meanwhile.
+local function watch(recipeID)
     pending = { id = recipeID, started = false, errors = {} }
-    say(("recipe %d x%d: %s, call %s%s; %s"):format(recipeID, count, note, ok and "accepted" or "failed", ok and "" or (": " .. tostring(err)),
-        describe(recipeID)))
     C_Timer.After(WAIT, function()
         local result = pending
         if not result or result.id ~= recipeID then return end
@@ -69,6 +68,19 @@ local function cast(recipeID, count, note)
             say("the cast did not start" .. (#result.errors > 0 and (": " .. table.concat(result.errors, "; ")) or " (no error given)"))
         end
     end)
+end
+
+-- For the secure "cast" button: the click has just cast (or not) the recipe's spell.
+function ns.Craft_Watch(recipeID)
+    say(("casting recipe %d with the secure spell button"):format(recipeID))
+    watch(recipeID)
+end
+
+local function cast(recipeID, count, note)
+    watch(recipeID) -- (before the call: the game's answers come while it runs)
+    local ok, err = pcall(C_TradeSkillUI.CraftRecipe, recipeID, count)
+    say(("recipe %d x%d: %s, call %s%s; %s"):format(recipeID, count, note, ok and "accepted" or "failed", ok and "" or (": " .. tostring(err)),
+        describe(recipeID)))
     return ok
 end
 
@@ -99,9 +111,15 @@ local events = CreateFrame("Frame")
 events:RegisterEvent("UNIT_SPELLCAST_START")
 events:RegisterEvent("UNIT_SPELLCAST_SENT")
 events:RegisterEvent("UI_ERROR_MESSAGE")
+events:RegisterEvent("ADDON_ACTION_BLOCKED")
+events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 events:SetScript("OnEvent", function(_, event, ...)
     if not pending then return end
-    if event == "UI_ERROR_MESSAGE" then
+    if event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
+        -- (addon name, function name): the game refused a protected function
+        local addon, func = ...
+        pending.errors[#pending.errors + 1] = ("the game blocked %s called by %s"):format(tostring(func), tostring(addon))
+    elseif event == "UI_ERROR_MESSAGE" then
         local _, message = ...
         if message then pending.errors[#pending.errors + 1] = tostring(message) end
     else
