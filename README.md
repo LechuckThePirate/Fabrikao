@@ -2,14 +2,10 @@
 
 World of Warcraft professions addon. Your professions companion: browse recipes, plan what to craft, and find out where to get every recipe and ingredient.
 
-**Work in progress**: for now this is the skeleton (TOC, `/fabrikao` and `/fab`, saved variables per
-character or shared, Spanish/English locale, tests, CI and release); the features come next:
-
-- Information about professions and recipes.
-- Help with crafting.
-- Where to find recipes and ingredients.
-
-Only for WoW Forever (`Fabrikao.toc`: interface 16001).
+Only for WoW Forever (`Fabrikao.toc`: interface 16001). What it does is in `CURSEFORGE_DESCRIPTION.md` and `CHANGELOG.md`: the
+character's professions, every recipe of the game (known or not) with filters, a table and a detailed view, a panel with everything
+known about a recipe, a search of every recipe, trainers, vendors and creatures on the map (and TomTom waypoints), and optional
+integrations with Embolsao (items of the other characters) and Auctionator (prices).
 
 ## Install (development)
 
@@ -23,16 +19,21 @@ World of Warcraft/_classic_beta_/Interface/AddOns/Fabrikao/
 
 Layout, like [Completao!!](../Completao) and [Aggreao!!](../Aggreao): `Fabrikao.lua` (entry point),
 `Localization/`, `Modules/`, a `*.test.lua` next to every module, `test/` (game API
-mock and a local test runner) and `setupTests.lua`.
+mock and a local test runner) and `setupTests.lua`. `AGENTS.md` has the details (layout, the Forever API notes, the data).
 
 ```
 lua test/busted.lua                 # tests, no busted install needed (Lua 5.1+)
 busted -p ".test.lua" .             # tests with busted (what CI runs, Lua 5.1)
-luacheck Fabrikao.lua Localization Modules test setupTests.lua
+luacheck Fabrikao.lua Localization Modules Data test setupTests.lua
 ```
 
 CI (`.github/workflows/ci.yml`) runs luacheck and busted on every push and pull
 request.
+
+## Data
+
+`Data/Generated/Recipes.lua` is generated, not edited: a daily job refreshes it and
+`.github/workflows/update-recipe-data.yml` opens a pull request with the result (see `AGENTS.md`).
 
 ## Release
 

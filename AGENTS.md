@@ -1,8 +1,7 @@
 # Fabrikao!! — agent guide
 
 World of Warcraft professions addon (name: "Fabrikao" ~ Spanish "fabricar", to craft). CurseForge summary: "Your professions companion: browse recipes, plan what to craft, and find out where to get every recipe and ingredient."
-Features: information about professions and recipes (built: professions window, known and unknown recipes, search), help with
-crafting and locating recipes and ingredients (planned; the maintainer adds ideas as they come). **Only for WoW Forever** (`## Interface: 16001`): no compatibility with other clients is needed, so code against Forever's API only.
+Features (built, see CHANGELOG.md): professions window, every recipe known or not with filters, table and detailed views, recipe panel, global search, trainers/vendors/creatures on the map, optional Embolsao, Auctionator and TomTom integrations (the maintainer adds ideas as they come). **Only for WoW Forever** (`## Interface: 16001`): no compatibility with other clients is needed, so code against Forever's API only.
 Public repo `LechuckThePirate/Fabrikao` (branch `master`), GPLv3, CurseForge project id 1733457. Siblings with the
 same conventions: `Completao` (the original template), `Embolsao` and `Aggreao`, under `D:\Source\WowAddons\`.
 
