@@ -2,23 +2,15 @@ local _, ns = ...
 local L = ns.L
 
 -- Page of the main window that searches every recipe in the game's data (also the ones of professions the
--- character doesn't have): the matches on the left, the selected one on the right with its skill levels, what
--- it makes, its ingredients (and how many the character has) and where to learn it.
+-- character doesn't have). The matches are listed like those of a profession's page (the same list, in the table or
+-- detailed view, with the same filters and sorting) and a click on one opens its panel next to the window.
 
-local ROW_H = 24
 local MAX_RESULTS = 300
-local LIST_W = 330
-local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t"
-local GOLD = "|cffffd100"
+local VIEW_NAMES = { "table", "detailed" }
 
-local page
-local rowButtons = {}
-local state = { skill = nil, results = {}, selected = nil, truncated = 0, sources = {}, categories = {} }
+local page, window
+local state = { skill = nil, results = {}, truncated = 0, total = 0, sources = {}, categories = {} }
 local filters = {} -- the filters of the page (FilterBar.lua), kept for the next time in ns.char.searchFilters
-
-local function colorCode(color)
-    return ("|cff%02x%02x%02x"):format(math.floor(color[1] * 255), math.floor(color[2] * 255), math.floor(color[3] * 255))
-end
 
 local knows = ns.RecipeDB_Known
 
@@ -29,8 +21,6 @@ local function myProfessions()
     return mine
 end
 
-local iconOf = ns.RecipeDB_Icon
-
 -- an item's name, or a placeholder while the client loads it (GET_ITEM_INFO_RECEIVED redraws)
 local function itemName(itemID)
     local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID)
@@ -39,165 +29,34 @@ local function itemName(itemID)
     return L["item %d"]:format(itemID)
 end
 
-local function itemCount(itemID)
-    local count = C_Item and C_Item.GetItemCount or GetItemCount
-    return count(itemID, true) or 0
+local function viewName()
+    local view = ns.char.view
+    for _, name in ipairs(VIEW_NAMES) do if name == view then return view end end
+    return "table"
 end
 
--- The detail of a recipe as text: returns its name and the body.
-function ns.SearchPage_DetailText(spellID)
-    local recipe = ns.RecipeDB_Get(spellID)
-    if not recipe then return "", "" end
-    local mine = myProfessions()[recipe.s]
-    local lines = {}
+local function viewLabel(view)
+    return ({ table = L["Table"], detailed = L["Detailed"] })[view]
+end
 
-    local status
-    if knows(spellID) then
-        status = CHECK .. " " .. L["You know this recipe"]
-    elseif mine then
-        status = L["You don't know this recipe yet"]
+local function updateCount()
+    local count
+    if state.total == 0 then
+        local browse = state.skill ~= nil or state.ingredient ~= nil or ns.FilterBar_Active(filters)
+        count = (page.search:GetText() == "" and not browse) and L["Type to search every recipe."] or L["No recipes found"]
+    elseif state.truncated > 0 then
+        count = L["%d recipes (showing the first %d)"]:format(state.total, MAX_RESULTS)
+    elseif state.ingredient then
+        count = L["%d recipes using %s"]:format(state.total, itemName(state.ingredient))
     else
-        status = L["You don't have this profession"]
+        count = L["%d recipes"]:format(state.total)
     end
-    lines[#lines + 1] = ("%s%s|r %s  --  %s"):format(GOLD, L["Profession:"], ns.RecipeDB_SkillName(recipe.s), status)
-
-    local required = ns.RecipeDB_Required(recipe)
-    local skillLine = ("%s%s|r %d"):format(GOLD, L["Skill needed:"], required)
-    if mine then
-        local ok = mine.rank >= required
-        skillLine = skillLine .. ("  (%s)"):format((ok and "|cff40bf40" or "|cffff4040") .. L["you have %d"]:format(mine.rank) .. "|r")
-    end
-    lines[#lines + 1] = skillLine
-
-    local colors = ns.RecipeDB_Colors(recipe)
-    if colors then
-        lines[#lines + 1] = ("%s%s|r %s"):format(GOLD, L["Difficulty:"], ns.DifficultyColorsText(colors))
-        if mine and mine.rank >= required then
-            local d = ns.RecipeDB_Difficulty(recipe, mine.rank)
-            local names = { [0] = L["orange"], L["yellow"], L["green"], L["grey"] }
-            lines[#lines + 1] = ("%s%s|r %s%s|r"):format(GOLD, L["For your skill:"], colorCode(ns.DIFFICULTY_COLORS[d]), names[d])
-        end
-    end
-
-    if recipe.p then
-        local qty = recipe.p[2] == recipe.p[3] and tostring(recipe.p[2]) or ("%d-%d"):format(recipe.p[2], recipe.p[3])
-        local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(recipe.p[1])
-        lines[#lines + 1] = ("%s%s|r %s%s x%s"):format(GOLD, L["Makes:"], icon and ("|T" .. icon .. ":14|t ") or "", itemName(recipe.p[1]), qty)
-    end
-
-    if recipe.m and #recipe.m > 0 then
-        lines[#lines + 1] = ""
-        lines[#lines + 1] = GOLD .. L["Ingredients:"] .. "|r"
-        for _, reagent in ipairs(recipe.m) do
-            local itemID, needed = reagent[1], reagent[2]
-            local have = itemCount(itemID)
-            local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID)
-            local others = ns.Inventory_OthersTotal and ns.Inventory_OthersTotal(itemID) or 0
-            local extra = others > 0 and (", " .. L["+%d on other characters"]:format(others)) or ""
-            lines[#lines + 1] = ("  %s%s x%d  (%s%s|r)"):format(icon and ("|T" .. icon .. ":14|t ") or "", itemName(itemID), needed,
-                have >= needed and "|cff40bf40" or "|cffff4040", L["you have %d"]:format(have) .. extra)
-        end
-    end
-
-    lines[#lines + 1] = ""
-    lines[#lines + 1] = GOLD .. L["Where to learn it"] .. "|r"
-    for _, line in ipairs(ns.RecipeDB_Where(recipe)) do
-        lines[#lines + 1] = ("  |cffffffff%s:|r %s"):format(line.title, line.text)
-    end
-    return recipe.n, table.concat(lines, "\n")
+    page.count:SetText(count)
 end
 
 ---------------------------------------------------------------------------------------------------
 -- Page
 ---------------------------------------------------------------------------------------------------
--- The craft button: only for a recipe the character knows, with how many the bags allow (as in the recipe panel).
-local function updateCraftBar(id)
-    local known = id ~= nil and knows(id)
-    page.craftBar:SetShown(known and true or false)
-    if not known then return end
-    local craftable = 0
-    for _, row in ipairs(state.results) do
-        if row.recipe.id == id then craftable = ns.Recipes_Craftable(row.recipe, false) break end
-    end
-    page.craftInfo:SetText(L["%d possible with your bags"]:format(craftable))
-end
-
-local function renderDetail()
-    updateCraftBar(page and state.selected)
-    if not (page and state.selected) then
-        page.detailTitle:SetText("")
-        page.detailText:SetText(state.truncated >= 0 and #state.results == 0 and L["Search by recipe, ingredient, NPC or zone."] or "")
-        page.detailIcon:Hide()
-        return
-    end
-    local id = state.selected
-    local name, body = ns.SearchPage_DetailText(id)
-    page.detailTitle:SetText(name)
-    page.detailText:SetText(body)
-    page.detailIcon.texture:SetTexture(iconOf(id, ns.RecipeDB_Get(id)))
-    page.detailIcon.spellID = id
-    page.detailIcon:Show()
-    page.detailChild:SetHeight(math.max(1, page.detailText:GetStringHeight() + 8))
-end
-
-local function showRowTooltip(row)
-    local recipe = row.recipe
-    if not recipe then return end
-    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-    GameTooltip:SetText(recipe.n, 1, 1, 1)
-    GameTooltip:AddLine(ns.RecipeDB_SkillName(recipe.s), 1, 0.82, 0)
-    local short = ns.RecipeDB_ShortSource(recipe)
-    if short then GameTooltip:AddLine(short, 0.8, 0.8, 0.8) end
-    GameTooltip:Show()
-end
-
-local function selectRecipe(id)
-    state.selected = id
-    for _, b in ipairs(rowButtons) do b.selectedTexture:SetShown(b.spellID == id and b:IsShown()) end
-    renderDetail()
-end
-
-local function newRow()
-    local b = CreateFrame("Button", nil, page.content)
-    b:SetHeight(ROW_H)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(20, 20)
-    b.icon:SetPoint("LEFT", 4, 0)
-    b.info = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    b.info:SetPoint("RIGHT", -6, 0)
-    b.info:SetJustifyH("RIGHT")
-    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
-    b.text:SetPoint("RIGHT", b.info, "LEFT", -6, 0)
-    b.text:SetJustifyH("LEFT")
-    b.text:SetWordWrap(false)
-    b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    b.selectedTexture = b:CreateTexture(nil, "BACKGROUND")
-    b.selectedTexture:SetAllPoints()
-    b.selectedTexture:SetColorTexture(1, 0.82, 0, 0.18)
-    b.selectedTexture:Hide()
-    b:SetScript("OnEnter", showRowTooltip)
-    b:SetScript("OnLeave", GameTooltip_Hide)
-    local function onClick(self)
-        selectRecipe(self.spellID)
-        if IsModifiedClick and IsModifiedClick("CHATLINK") then
-            local product = self.recipe.p and self.recipe.p[1]
-            local link = product and select(2, GetItemInfo(product)) or ("|cff71d5ff|Hspell:%d|h[%s]|h|r"):format(self.spellID, self.recipe.n)
-            ChatEdit_InsertLink(link)
-        end
-    end
-    b:SetScript("OnClick", onClick)
-    -- over the icon: the tooltip of what the recipe makes
-    b.iconButton = CreateFrame("Button", nil, b)
-    b.iconButton:SetAllPoints(b.icon)
-    b.iconButton:SetScript("OnEnter", function(self)
-        if not ns.RecipeDB_ShowProductTooltip(self, b.spellID, b.recipe) then showRowTooltip(b) end
-    end)
-    b.iconButton:SetScript("OnLeave", GameTooltip_Hide)
-    b.iconButton:SetScript("OnClick", function() onClick(b) end)
-    return b
-end
-
 local function saveFilters()
     ns.char.searchFilters = {
         canMake = filters.canMake, hideGrey = filters.hideGrey, alts = filters.alts,
@@ -252,51 +111,49 @@ local function refresh()
         hideGrey = filters.hideGrey, skill = filters.skill, sort = filters.sort,
         alts = filters.alts and ns.Inventory_Available and ns.Inventory_Available(),
     })
-    local total = #results
-    state.truncated = math.max(0, total - MAX_RESULTS)
-    for i = total, MAX_RESULTS + 1, -1 do results[i] = nil end
+    state.total = #results
+    state.truncated = math.max(0, state.total - MAX_RESULTS)
+    for i = state.total, MAX_RESULTS + 1, -1 do results[i] = nil end
     state.results = results
 
-    for i, row in ipairs(results) do
-        local b = rowButtons[i] or newRow()
-        rowButtons[i] = b
-        local object = row.recipe
-        b.spellID, b.recipe = object.id, object.db
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", page.content, "TOPLEFT", 0, -(i - 1) * ROW_H)
-        b:SetPoint("RIGHT", page.content, "RIGHT", 0, 0)
-        b.icon:SetTexture(object.icon)
-        b.text:SetText(object.name)
-        local color = { 0.9, 0.9, 0.9 }
-        if object.learned then
-            color = ns.DIFFICULTY_COLORS[object.difficulty or ns.DIFFICULTY_LAST]
-        elseif object.rank and object.rank >= object.required then
-            color = ns.DIFFICULTY_COLORS[ns.RecipeDB_Difficulty(object.db, object.rank)]
-        end
-        b.text:SetTextColor(color[1], color[2], color[3])
-        b.info:SetText((object.learned and (CHECK .. " ") or "") .. ("%s %d"):format(ns.RecipeDB_SkillName(object.db.s), object.required))
-        b:Show()
-    end
-    for i = #results + 1, #rowButtons do rowButtons[i]:Hide() end
-    page.content:SetHeight(math.max(1, #results * ROW_H))
-
-    local count
-    if total == 0 then
-        count = (text == "" and not browse) and L["Type to search every recipe."] or L["No recipes found"]
-    elseif state.truncated > 0 then
-        count = L["%d recipes (showing the first %d)"]:format(total, MAX_RESULTS)
-    elseif state.ingredient then
-        count = L["%d recipes using %s"]:format(total, itemName(state.ingredient))
-    else
-        count = L["%d recipes"]:format(total)
-    end
-    page.count:SetText(count)
+    ns.RecipeList_Set(results, viewName(), filters.sort)
+    updateCount()
+    page.viewButton:SetText(L["View: %s"]:format(viewLabel(viewName())))
     page.filterBar.Update()
 
-    -- keep the selection if it is still in the list, else the first result
-    local keep
-    for _, row in ipairs(results) do if row.recipe.id == state.selected then keep = row.recipe.id end end
-    selectRecipe(keep or (results[1] and results[1].recipe.id))
+    -- the panel of a recipe that is no longer in the list closes
+    local open = ns.RecipeDetail_Current()
+    if open then
+        local present = false
+        for _, row in ipairs(results) do
+            if row.recipe.id == open.id then present = true break end
+        end
+        if not present then
+            ns.RecipeDetail_Hide()
+            ns.RecipeList_Select(nil)
+        end
+    end
+end
+
+-- a click on a recipe: its panel opens next to the window
+local function selectRecipe(data)
+    ns.RecipeDetail_Show(data.recipe, {
+        parent = window, alts = data.alts, rank = data.recipe.rank,
+        onClose = function() ns.RecipeList_Select(nil) end,
+    })
+    ns.RecipeList_Select(data.recipe.id)
+end
+
+-- a click on a column title of the table
+local function sortBy(key)
+    ns.FilterBar_SortBy(filters, key)
+    saveFilters()
+    refresh()
+end
+
+local function cycleView()
+    ns.char.view = ns.FilterBar_NextValue(VIEW_NAMES, 2, viewName())
+    refresh()
 end
 
 local function cycleSkill()
@@ -314,7 +171,19 @@ local function cycleSkill()
     refresh()
 end
 
+-- The list of recipes is shared with the profession's pages: this page takes it whenever it shows.
+local function takeList()
+    local list = ns.RecipeList_Attach(page, sortBy, nil, selectRecipe)
+    list.header:ClearAllPoints()
+    list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
+    list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
+    list.scroll:ClearAllPoints()
+    list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
+    list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
+end
+
 function ns.SearchPage_Create(parent, top)
+    window = parent
     page = CreateFrame("Frame", nil, parent)
     page:SetPoint("TOPLEFT", 12, -top)
     page:SetPoint("BOTTOMRIGHT", -12, 12)
@@ -325,10 +194,17 @@ function ns.SearchPage_Create(parent, top)
     back:SetText(L["< Professions"])
     back:SetScript("OnClick", function() ns.UI_ShowOverview() end)
 
+    -- the view (as in a profession's page), on the right of the first row
+    local viewButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    viewButton:SetSize(130, 22)
+    viewButton:SetPoint("TOPRIGHT", 0, 0)
+    viewButton:SetScript("OnClick", cycleView)
+    page.viewButton = viewButton
+
     local search = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
     search:SetHeight(20)
     search:SetPoint("LEFT", back, "RIGHT", 14, 0)
-    search:SetPoint("RIGHT", page, "RIGHT", -6, 0)
+    search:SetPoint("RIGHT", viewButton, "LEFT", -10, 0)
     search:SetAutoFocus(false)
     search:SetMaxLetters(60)
     local hint = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -365,102 +241,15 @@ function ns.SearchPage_Create(parent, top)
     page.count = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     page.count:SetPoint("BOTTOMLEFT", 4, 0)
 
-    -- results, on the left
-    local scroll = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -8)
-    scroll:SetPoint("BOTTOM", page, "BOTTOM", 0, 18)
-    scroll:SetWidth(LIST_W)
-    page.content = CreateFrame("Frame", nil, scroll)
-    page.content:SetSize(LIST_W - 4, 1)
-    scroll:SetScrollChild(page.content)
-    page.scroll = scroll
-
-    -- the selected recipe, on the right
-    local detail = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
-    detail:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 30, -48)
-    detail:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 52) -- room for the craft button below
-    page.detailScroll = detail
-
-    -- crafting: a button that opens the game's profession window on the recipe, and how many the bags allow
-    local craftBar = CreateFrame("Frame", nil, page)
-    craftBar:SetPoint("TOPLEFT", detail, "BOTTOMLEFT", 0, -6)
-    craftBar:SetPoint("RIGHT", detail, "RIGHT", 0, 0)
-    craftBar:SetHeight(28)
-    local craftButton = CreateFrame("Button", nil, craftBar, "UIPanelButtonTemplate")
-    craftButton:SetSize(150, 26)
-    craftButton:SetPoint("LEFT", 0, 0)
-    craftButton:SetText(L["Craft"])
-    craftButton:SetScript("OnClick", function()
-        local recipe = ns.RecipeDB_Get(state.selected)
-        if recipe then ns.Craft_Open(state.selected, recipe.s) end
-    end)
-    craftButton:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(L["Craft"], 1, 1, 1)
-        GameTooltip:AddLine(L["Opens the game's profession window on this recipe."], 1, 0.82, 0, true)
-        GameTooltip:Show()
-    end)
-    craftButton:SetScript("OnLeave", GameTooltip_Hide)
-    page.craftInfo = craftBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    page.craftInfo:SetPoint("LEFT", craftButton, "RIGHT", 12, 0)
-    craftBar:Hide()
-    page.craftBar = craftBar
-    page.craftButton = craftButton
-    page.detailChild = CreateFrame("Frame", nil, detail)
-    page.detailChild:SetSize(300, 1)
-    detail:SetScrollChild(page.detailChild)
-    page.detailText = page.detailChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    page.detailText:SetPoint("TOPLEFT", 0, 0)
-    page.detailText:SetWidth(300)
-    page.detailText:SetJustifyH("LEFT")
-    page.detailText:SetJustifyV("TOP")
-
-    local iconButton = CreateFrame("Button", nil, page)
-    iconButton:SetSize(40, 40)
-    iconButton:SetPoint("BOTTOMLEFT", detail, "TOPLEFT", 0, 6)
-    iconButton.texture = iconButton:CreateTexture(nil, "ARTWORK")
-    iconButton.texture:SetAllPoints()
-    iconButton:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        local recipe = ns.RecipeDB_Get(self.spellID)
-        local product = recipe and recipe.p and recipe.p[1]
-        if product and GameTooltip.SetItemByID then
-            GameTooltip:SetItemByID(product)
-        elseif recipe then
-            GameTooltip:SetText(recipe.n, 1, 1, 1)
-        end
-        GameTooltip:Show()
-    end)
-    iconButton:SetScript("OnLeave", GameTooltip_Hide)
-    iconButton:Hide()
-    page.detailIcon = iconButton
-    page.detailTitle = page:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    page.detailTitle:SetPoint("LEFT", iconButton, "RIGHT", 8, 0)
-    page.detailTitle:SetPoint("RIGHT", page, "RIGHT", -8, 0)
-    page.detailTitle:SetJustifyH("LEFT")
-    page.detailTitle:SetWordWrap(false)
-
+    -- the name of the item in "N recipes using X" can arrive late
     local events = CreateFrame("Frame")
     events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
-    events:RegisterEvent("BAG_UPDATE_DELAYED")
     events:SetScript("OnEvent", function()
-        if page:IsVisible() and state.selected then
-            renderDetail()
-        end
+        if page:IsVisible() and state.ingredient then updateCount() end
     end)
 
     page:Hide()
     return page
-end
-
--- The detail text takes the width the window gives it.
-function ns.SearchPage_Relayout()
-    if not page then return end
-    local width = math.max(120, page.detailScroll:GetWidth() - 8)
-    page.detailText:SetWidth(width)
-    page.detailChild:SetWidth(width)
-    -- the text wraps by itself; only the height it needs (cheap: no need to build the text again at every step of a resize)
-    page.detailChild:SetHeight(math.max(1, page.detailText:GetStringHeight() + 8))
 end
 
 -- text: what to put in the box (nil: leave it); ingredient: an item id, to list only the recipes that use it
@@ -471,6 +260,7 @@ function ns.SearchPage_Show(text, ingredient)
         state.skill = nil
         page.skillButton:SetText(L["Profession: %s"]:format(L["All"]))
     end
+    takeList()
     page:Show()
     if text ~= nil then page.search:SetText(text) end
     page.updateHint()

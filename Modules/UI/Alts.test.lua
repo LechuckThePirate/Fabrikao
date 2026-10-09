@@ -114,9 +114,15 @@ describe("Other characters' items", function()
         assert.are.same({ 1, 1, 1 }, recipeRows()[1].compIcons[1].texture._set.SetVertexColor) -- five
     end)
 
-    it("the recipe's detail in the search says how many the other characters have", function()
-        local _, body = ns.SearchPage_DetailText(1)
-        assert.matches("you have 1, %+4 on other characters", body)
+    -- the panel of the first result of the search, as data
+    local function searchPanel()
+        ns.UI_ShowSearch("elixir")
+        click(recipeRows()[1])
+        return ns.RecipeDetail_Build(ns.RecipeDetail_Current(), {})
+    end
+
+    it("the panel of a recipe of the search says how many the other characters have", function()
+        assert.matches("%+4 on other characters", searchPanel().reagents[1].status)
     end)
 
     describe("without Embolsao installed", function()
@@ -136,12 +142,12 @@ describe("Other characters' items", function()
             assert.matches("Needs 2, you have 1", table.concat(tooltipLines, "\n"))
         end)
 
-        it("the search and its detail work", function()
+        it("the search and its panel work", function()
             ns.UI_ShowSearch("elixir")
             assert.are.equal(2, #ns.SearchPage_Results())
-            local _, body = ns.SearchPage_DetailText(1)
-            assert.matches("you have 1", body)
-            assert.is_nil(body:find("other characters", 1, true))
+            local status = searchPanel().reagents[1].status
+            assert.matches("you have 1", status)
+            assert.is_nil(status:find("other characters", 1, true))
         end)
 
         it("the preferences say so, and the checkbox is greyed out", function()
@@ -159,8 +165,7 @@ describe("Other characters' items", function()
             ns.char.useAlts = false
             openAlchemy()
             assert.are.equal(2, #checks())
-            local _, body = ns.SearchPage_DetailText(1)
-            assert.is_nil(body:find("other characters", 1, true))
+            assert.is_nil(searchPanel().reagents[1].status:find("other characters", 1, true))
         end)
 
         it("is a checkbox, with a line saying how many characters Embolsao saved", function()

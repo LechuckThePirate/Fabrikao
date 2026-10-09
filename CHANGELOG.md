@@ -4,7 +4,8 @@
 
 - New: a small public API for other addons, `FabrikaoAPI` (`ShowRecipesUsing(itemID)` opens the search page with the recipes that use that item). Embolsao!! uses it
   for the "Recipes" entry of its item menu.
-- New: the detail of a recipe in the search of every recipe has the "Craft" button too, for the recipes you know.
+- New: the search of every recipe lists its results like a profession's page (table or detailed view, with the same filters and sorting) and a click
+  on one opens its panel next to the window, with the Craft button for the recipes you know.
 
 ## 0.1.2
 

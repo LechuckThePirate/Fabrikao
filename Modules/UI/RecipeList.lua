@@ -366,7 +366,7 @@ local function renderRow(b, data, width)
         showComponents(b, recipe, data.alts, c[1], c[2], COMP_ICON, nil, b.comp)
         b.cost:SetText(money(data.cost, data.incomplete))
         b.value:SetText(money(data.value))
-        b.level:SetText(levelText(recipe, list.rank))
+        b.level:SetText(levelText(recipe, list.rank or recipe.rank))
     else
         local parts = {}
         if recipe.required then parts[#parts + 1] = L["Skill %d"]:format(recipe.required) end
@@ -529,6 +529,17 @@ function ns.RecipeList_Create(parent, onSortCallback, onToggleCallback, onSelect
     end)
 
     view, rows = "table", {}
+    return list
+end
+
+-- The list is one for the whole window: the page that shows (a profession's, the search) takes it with its own callbacks, and
+-- places it. Returns the list ({ header =, scroll =, content = }).
+function ns.RecipeList_Attach(parent, onSortCallback, onToggleCallback, onSelectCallback)
+    if not list then return end
+    onSort, onToggle, onSelect = onSortCallback, onToggleCallback, onSelectCallback
+    selectedID = nil
+    list.header:SetParent(parent)
+    list.scroll:SetParent(parent)
     return list
 end
 
