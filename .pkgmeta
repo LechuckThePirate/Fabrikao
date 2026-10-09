@@ -6,6 +6,8 @@ ignore:
   - images
   - tools
   - CURSEFORGE_DESCRIPTION.md
+  - AGENTS.md
+  - CLAUDE.md
   - test
   - setupTests.lua
   - "*.test.lua"
