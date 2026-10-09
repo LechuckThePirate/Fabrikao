@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New: a welcome window, once per version (and with `/fab changelog` or the preferences' "What's new" button): what's new, where to report bugs, and
+  links to the other addons of the same author (Embolsao!!, Completao!!, Aggreao!!), to copy and paste in a browser.
 - New: the "Map" and "TomTom" buttons of the trainers, vendors and creatures are in the panel of the recipes you know too, not only of the ones you don't.
 - New: the panel of a recipe you know has a "Craft" button, with how many your bags allow, that opens the game's profession window on that
   recipe, ready to craft there (the game does not let addons craft).

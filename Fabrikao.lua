@@ -18,7 +18,7 @@ local function announce(text)
     print(("|cff33ff99Fabrikao!!|r v%s -- %s"):format(ns.Version(), text))
 end
 
-local announcedReady = false
+local announcedReady, shownWelcome = false, false
 local function announceReady()
     if announcedReady then return end
     announcedReady = true
@@ -37,6 +37,10 @@ events:SetScript("OnEvent", function(_, event, arg1)
     elseif event == "PLAYER_ENTERING_WORLD" then
         -- also fires after /reload; announced once per UI load
         C_Timer.After(1, announceReady)
+        if not shownWelcome then
+            shownWelcome = true
+            ns.Welcome_ShowIfNew() -- once per version, unless dismissed
+        end
     end
 end)
 
@@ -56,9 +60,11 @@ SlashCmdList.FABRIKAO = function(msg)
         ns.Minimap_Toggle()
     elseif msg:match("^find") or msg:match("^search") then
         ns.UI_ShowSearch(strtrim(msg:gsub("^%a+", "", 1)))
+    elseif msg == "changelog" then
+        ns.Welcome_Show()
     elseif msg == "probe" then
         ns.Probe()
     else
-        ns.Print(ns.L["Usage: /fabrikao | find <recipe> | minimap | version"])
+        ns.Print(ns.L["Usage: /fabrikao | find <recipe> | minimap | changelog | version"])
     end
 end

@@ -4,7 +4,7 @@ local _, ns = ...
 local es = {
     ["initializing..."] = "inicializando...",
     ["initialization complete"] = "inicialización completa",
-    ["Usage: /fabrikao | find <recipe> | minimap | version"] = "Uso: /fabrikao | find <receta> | minimap | version",
+    ["Usage: /fabrikao | find <recipe> | minimap | changelog | version"] = "Uso: /fabrikao | find <receta> | minimap | changelog | version",
     ["Open / close the window"] = "Abrir / cerrar la ventana",
 
     -- minimap button
@@ -90,6 +90,12 @@ local es = {
     ["Category: %s"] = "Categoría: %s",
     ["Descending"] = "Descendente",
     ["Yes"] = "Sí",
+    ["Welcome to Fabrikao!!"] = "Bienvenido a Fabrikao!!",
+    ["Found a bug or have an idea? Report it on GitHub (click, then Ctrl+C):"] = "¿Un fallo o una idea? Cuéntalo en GitHub (clic y Ctrl+C):",
+    ["Don't show this message again"] = "No volver a mostrar este mensaje",
+    ["What's new in v%s:"] = "Novedades de la v%s:",
+    ["More addons by the same author (click a link, then Ctrl+C):"] = "Más addons del mismo autor (clic en un enlace y Ctrl+C):",
+    ["What's new"] = "Novedades",
     ["Craft"] = "Fabricar",
     ["Could not open the profession window."] = "No se ha podido abrir la ventana de la profesión.",
     ["Opens the game's profession window on this recipe."] = "Abre la ventana de profesiones del juego en esta receta.",

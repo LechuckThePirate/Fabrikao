@@ -41,10 +41,12 @@ function FireEvent(event, ...)
     end
 end
 
--- ADDON_LOADED + PLAYER_ENTERING_WORLD, with fresh saved variables (or the ones passed in).
-function StartAddon(ns, db, charDB)
+-- ADDON_LOADED + PLAYER_ENTERING_WORLD, with fresh saved variables (or the ones passed in). The welcome window is dismissed
+-- for this version unless opts.welcome: it would be one more window among the ones the tests look at.
+function StartAddon(ns, db, charDB, opts)
     FabrikaoDB, FabrikaoCharDB = db, charDB
     FireEvent("ADDON_LOADED", "Fabrikao")
+    if not (opts and opts.welcome) then FabrikaoDB.welcomeDismissedVersion = ns.Version() end
     FireEvent("PLAYER_ENTERING_WORLD")
     return ns
 end

@@ -1,0 +1,174 @@
+local ADDON, ns = ...
+local L = ns.L
+
+-- Welcome / "what's new" window, as in Embolsao, Completao and Aggreao: shown once per version (PLAYER_ENTERING_WORLD, see
+-- Fabrikao.lua), with the addon's icon, a note pointing at the GitHub issue tracker, the latest changelog entry and links
+-- to the other addons of the same author. Reopens from the preferences or `/fab changelog`.
+local WIDTH, HEIGHT = 440, 560
+
+local ICON = "Interface\\AddOns\\" .. ADDON .. "\\Icons\\Fabrikao.png"
+local ISSUES_URL = "https://github.com/LechuckThePirate/Fabrikao/issues"
+
+-- The other addons of the same author, shown with their links.
+local SIBLINGS = {
+    { name = "Embolsao!!", url = "https://www.curseforge.com/wow/addons/embolsao" },
+    { name = "Completao!!", url = "https://www.curseforge.com/wow/addons/completao-forever" },
+    { name = "Aggreao!!", url = "https://www.curseforge.com/wow/addons/aggreao" },
+}
+local SIBLINGS_HEIGHT = 22 * #SIBLINGS + 22 -- the label and a row per addon, above the checkbox and the Close button
+local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
+
+-- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
+-- scrollable, in the window below.
+local LATEST_CHANGELOG_TEXT = table.concat({
+    "- Your professions and every recipe of the game, known or not, with filters, a table and a detailed view.",
+    "- A panel for each recipe: ingredients with how many you have, cost and profit, and where to learn it (trainers,",
+    "  vendors, creatures), nearest first, with Map and TomTom buttons.",
+    "- A Craft button that opens the game's profession window on the recipe.",
+    "- Search any recipe in the game with /fab find <text>.",
+    "- Optional: Embolsao!! (items of your other characters), Auctionator (prices) and TomTom (waypoints).",
+}, "\n")
+
+local welcomeFrame
+
+-- Read-only (the text is selected on click so the player can Ctrl+C it -- WoW addons have no API to write to the system
+-- clipboard, nor to open a web page), styled to read as a plain link: blue, no border or box.
+local function linkBox(parent, url, width)
+    local box = CreateFrame("EditBox", nil, parent)
+    box:SetSize(width, 20)
+    box:SetAutoFocus(false)
+    box:SetFontObject(GameFontHighlightSmall)
+    box:SetTextColor(0.4, 0.7, 1, 1)
+    box:SetText(url)
+    box:SetCursorPosition(0)
+    box:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnMouseUp", function(self) self:HighlightText() end)
+    box:SetScript("OnEnter", function(self) self:SetTextColor(0.6, 0.85, 1, 1) end)
+    box:SetScript("OnLeave", function(self) self:SetTextColor(0.4, 0.7, 1, 1) end)
+    return box
+end
+
+local function create()
+    welcomeFrame = CreateFrame("Frame", "FabrikaoWelcomeFrame", UIParent, "BackdropTemplate")
+    welcomeFrame:SetSize(WIDTH, HEIGHT)
+    welcomeFrame:SetPoint("CENTER")
+    welcomeFrame:SetFrameStrata("DIALOG")
+    welcomeFrame:SetClampedToScreen(true)
+    welcomeFrame:SetBackdrop({
+        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+    welcomeFrame:SetBackdropColor(0, 0, 0, 0.9)
+    welcomeFrame:SetMovable(true)
+    welcomeFrame:EnableMouse(true)
+    welcomeFrame:RegisterForDrag("LeftButton")
+    welcomeFrame:SetScript("OnDragStart", welcomeFrame.StartMoving)
+    welcomeFrame:SetScript("OnDragStop", welcomeFrame.StopMovingOrSizing)
+    tinsert(UISpecialFrames, "FabrikaoWelcomeFrame")
+
+    local okClose, close = pcall(CreateFrame, "Button", nil, welcomeFrame, "UIPanelCloseButtonDefaultAnchors")
+    if not okClose or not close then
+        close = CreateFrame("Button", nil, welcomeFrame, "UIPanelCloseButton")
+    end
+    close:SetPoint("TOPRIGHT", -2, -2)
+
+    welcomeFrame.icon = welcomeFrame:CreateTexture(nil, "ARTWORK")
+    welcomeFrame.icon:SetSize(48, 48)
+    welcomeFrame.icon:SetPoint("TOP", 0, -16)
+    welcomeFrame.icon:SetTexture(ICON)
+
+    welcomeFrame.title = welcomeFrame:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    welcomeFrame.title:SetPoint("TOP", 0, -70)
+    welcomeFrame.title:SetText(L["Welcome to Fabrikao!!"])
+
+    -- Where to report bugs and ideas: always shown, with the GitHub issue tracker just below it.
+    welcomeFrame.body = welcomeFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    welcomeFrame.body:SetPoint("TOP", 0, -96)
+    welcomeFrame.body:SetWidth(340)
+    welcomeFrame.body:SetJustifyH("CENTER")
+    welcomeFrame.body:SetText(L["Found a bug or have an idea? Report it on GitHub (click, then Ctrl+C):"])
+
+    welcomeFrame.urlBox = linkBox(welcomeFrame, ISSUES_URL, 340)
+    welcomeFrame.urlBox:SetPoint("TOP", welcomeFrame.body, "BOTTOM", 0, -10)
+    welcomeFrame.urlBox:SetJustifyH("CENTER")
+
+    welcomeFrame.changelogLabel = welcomeFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    welcomeFrame.changelogLabel:SetPoint("TOPLEFT", welcomeFrame.urlBox, "BOTTOMLEFT", -6, -18)
+
+    welcomeFrame.changelogScroll = CreateFrame("ScrollFrame", nil, welcomeFrame, "UIPanelScrollFrameTemplate")
+    welcomeFrame.changelogScroll:SetPoint("TOPLEFT", welcomeFrame.changelogLabel, "BOTTOMLEFT", 0, -8)
+    welcomeFrame.changelogScroll:SetPoint("BOTTOMRIGHT", -48, CHANGELOG_BOTTOM)
+
+    welcomeFrame.changelogContent = CreateFrame("Frame", nil, welcomeFrame.changelogScroll)
+    welcomeFrame.changelogContent:SetPoint("TOPLEFT")
+    welcomeFrame.changelogContent:SetSize(1, 1)
+    welcomeFrame.changelogScroll:SetScrollChild(welcomeFrame.changelogContent)
+
+    welcomeFrame.changelogText = welcomeFrame.changelogContent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    welcomeFrame.changelogText:SetPoint("TOPLEFT")
+    welcomeFrame.changelogText:SetJustifyH("LEFT")
+    welcomeFrame.changelogText:SetText(LATEST_CHANGELOG_TEXT)
+
+    -- The sibling addons advertise each other: a link per addon, to select and Ctrl+C like the issue tracker's.
+    welcomeFrame.siblingsLabel = welcomeFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    welcomeFrame.siblingsLabel:SetPoint("BOTTOMLEFT", 16, 46 + 22 * #SIBLINGS + 4)
+    welcomeFrame.siblingsLabel:SetText(L["More addons by the same author (click a link, then Ctrl+C):"])
+    welcomeFrame.siblingBoxes = {}
+    for i, sibling in ipairs(SIBLINGS) do
+        local y = 46 + 22 * (#SIBLINGS - i)
+        local name = welcomeFrame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        name:SetPoint("BOTTOMLEFT", 22, y + 4)
+        name:SetWidth(78)
+        name:SetJustifyH("LEFT")
+        name:SetText(sibling.name)
+        local box = linkBox(welcomeFrame, sibling.url, WIDTH - 104 - 16)
+        box:SetPoint("BOTTOMLEFT", 104, y)
+        welcomeFrame.siblingBoxes[i] = box
+    end
+
+    welcomeFrame.dontShowAgainCheck = CreateFrame("CheckButton", nil, welcomeFrame, "UICheckButtonTemplate")
+    welcomeFrame.dontShowAgainCheck:SetSize(22, 22)
+    welcomeFrame.dontShowAgainCheck:SetPoint("BOTTOMLEFT", 16, 16)
+    -- Stores the version it was dismissed FOR, not just a bare true/false -- ticking it only silences the window until the next
+    -- release, so whatever's new (and whoever's still hitting bugs) gets seen again. Account-wide (FabrikaoDB directly, not
+    -- ns.char): dismissing it on one character dismisses it for all.
+    welcomeFrame.dontShowAgainCheck:SetScript("OnClick", function(self)
+        FabrikaoDB.welcomeDismissedVersion = self:GetChecked() and ns.Version() or ""
+    end)
+
+    welcomeFrame.dontShowAgainLabel = welcomeFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    welcomeFrame.dontShowAgainLabel:SetPoint("LEFT", welcomeFrame.dontShowAgainCheck, "RIGHT", 2, 0)
+    welcomeFrame.dontShowAgainLabel:SetText(L["Don't show this message again"])
+
+    local closeButton = CreateFrame("Button", nil, welcomeFrame, "UIPanelButtonTemplate")
+    closeButton:SetSize(90, 22)
+    closeButton:SetPoint("BOTTOMRIGHT", -16, 14)
+    closeButton:SetText(CLOSE)
+    closeButton:SetScript("OnClick", function() welcomeFrame:Hide() end)
+
+    welcomeFrame:SetScript("OnShow", function()
+        local version = ns.Version()
+        welcomeFrame.changelogLabel:SetText(L["What's new in v%s:"]:format(version))
+        local width = welcomeFrame.changelogScroll:GetWidth()
+        welcomeFrame.changelogText:SetWidth(width)
+        welcomeFrame.changelogContent:SetSize(width, welcomeFrame.changelogText:GetStringHeight())
+        welcomeFrame.dontShowAgainCheck:SetChecked(FabrikaoDB.welcomeDismissedVersion == version)
+    end)
+    welcomeFrame:Hide() -- frames are born shown: hidden until the first show (which would close it otherwise)
+end
+
+-- Always shows the window, dismissed or not (the preferences' "What's new" button, /fab changelog).
+function ns.Welcome_Show()
+    if not welcomeFrame then create() end
+    welcomeFrame:Show()
+end
+
+-- Shown once per login/reload (Fabrikao.lua's PLAYER_ENTERING_WORLD), unless already dismissed for this exact version.
+function ns.Welcome_ShowIfNew()
+    if FabrikaoDB.welcomeDismissedVersion == ns.Version() then return end
+    ns.Welcome_Show()
+end

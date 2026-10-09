@@ -3,7 +3,7 @@ local L = ns.L
 
 -- Preferences window (opened with the main window's gear). Basic settings, in ns.char: per character or shared by
 -- the account, depending on the first checkbox, as in the other addons.
-local WIDTH, HEIGHT = 360, 520
+local WIDTH, HEIGHT = 360, 556
 local LABEL_W = WIDTH - 48 - 16 -- a checkbox's text: from after the box (x = 48) to the window's right margin
 local prefs
 
@@ -190,6 +190,7 @@ local function create()
         ns.ResetSettings()
         refreshAll()
     end)
+    makeButton(prefs, -492, L["What's new"], function() ns.Welcome_Show() end)
 
     prefs:SetScript("OnShow", function()
         refreshAll()

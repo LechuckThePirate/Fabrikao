@@ -105,7 +105,7 @@ No deploy script: copy or symlink the repo root as `Fabrikao` into
   The server holds no credentials for this repo. Needs the repo setting "Allow GitHub Actions to create and approve pull requests".
   When the generator's output changes shape, update the scripts on the VPS with `deploy.ps1`. Log: `/var/log/fabrikao-data.log`.
 - **Release** (only when asked): one commit `release: X.Y.Z -- short summary` that bumps `## Version` in `Fabrikao.toc` and adds the
-  section to `CHANGELOG.md` (once a welcome/changelog window exists, as in Aggreao, also its `LATEST_CHANGELOG_TEXT`); then
+  section to `CHANGELOG.md` (and `LATEST_CHANGELOG_TEXT` in `Modules/UI/Welcome.lua`); then
   `git tag vX.Y.Z`, push `master` and the tag, and
   `gh workflow run release.yml --repo LechuckThePirate/Fabrikao --ref vX.Y.Z` (workflow_dispatch only; BigWigsMods/packager uploads to
   CurseForge with repo secret `CF_API_KEY` and creates the GitHub release). Watch with `gh run watch`.
