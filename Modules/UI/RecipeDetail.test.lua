@@ -241,6 +241,47 @@ describe("Recipe detail", function()
             assert.are.same({}, (buttons("Map")))
         end)
 
+        -- the character stands in map 1453 at (50, 50); map 36 lies 5000 yards away: a world made of yards = map fraction * 1000
+        local function standAt1453()
+            _G.CreateVector2D = function(x, y) return { x = x, y = y } end
+            _G.C_Map.GetBestMapForUnit = function() return 1453 end
+            _G.C_Map.GetPlayerMapPosition = function() return { GetXY = function() return 0.5, 0.5 end } end
+            _G.C_Map.GetWorldPosFromMapPos = function(map, vector)
+                return 1, { x = vector.x * 1000 + (map == 36 and 5000 or 0), y = vector.y * 1000 }
+            end
+        end
+
+        it("the trainers, vendors and creatures come nearest first, with how far they are", function()
+            standAt1453()
+            local detail = ns.RecipeDetail_Build(ns.Recipes_FromRecord(2, DATA.recipes[2], false, 100))
+            local function ids(title)
+                local list = {}
+                for _, e in ipairs(source(detail, title).entries) do list[#list + 1] = e.id end
+                return list
+            end
+            assert.are.same({ 9, 10 }, ids("Trainer")) -- Anna is next door, Ben is far
+            assert.are.same({ 1, 3, 4, 5, 6, 7 }, ids("Vendor")) -- the one with a position first, the rest as they came
+            assert.are.same({ 20, 21 }, ids("Drop"))
+            local trainers = source(detail, "Trainer").entries
+            assert.is_true(math.abs(trainers[1].distance - 141.4) < 0.5)
+            assert.is_true(trainers[2].distance > 4000)
+            assert.is_nil(source(detail, "Vendor").entries[2].distance) -- no position known
+        end)
+
+        it("the one that is farther comes later even when it was first", function()
+            standAt1453()
+            DATA.trainers[171] = { { id = 10, n = "Alchemist Ben", z = { 46 } }, { id = 9, n = "Alchemist Anna", z = { 1519 }, f = "A" } }
+            local lines = ns.RecipeDB_Where(DATA.recipes[1], true)
+            DATA.trainers[171] = { { id = 9, n = "Alchemist Anna", z = { 1519 }, f = "A" }, { id = 10, n = "Alchemist Ben", z = { 46 } } }
+            assert.are.equal(9, lines[1].entries[1].id)
+        end)
+
+        it("without the character's position, the ones on its map come first", function()
+            _G.C_Map.GetBestMapForUnit = function() return 36 end
+            local lines = ns.RecipeDB_Where(DATA.recipes[1], true)
+            assert.are.equal(10, lines[1].entries[1].id) -- Alchemist Ben stands in map 36
+        end)
+
         it("the trainers and vendors of the zone the character is in come first", function()
             _G.C_Map.GetBestMapForUnit = function() return 36 end
             local lines = ns.RecipeDB_Where(DATA.recipes[1], true)

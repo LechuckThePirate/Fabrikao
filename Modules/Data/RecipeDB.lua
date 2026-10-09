@@ -220,17 +220,30 @@ local function asEntries(texts)
     return entries
 end
 
--- The NPCs standing in the zone the character is in first (a trainer next door beats one in another continent).
+-- The NPCs by how far they are from the character (a trainer next door beats one in another continent): by distance when the game
+-- tells it, then the ones on the character's map, then the ones elsewhere, then the ones whose position isn't known. The order they
+-- came in is kept among equals. Returns a new list, and a table of the distances there are, by NPC.
 local function nearestFirst(list)
     local here = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
-    if not here then return list end
-    local near, far = {}, {}
-    for _, npc in ipairs(list) do
-        local spot = ns.RecipeDB_NpcLocation(npc.id)
-        if spot and spot.map == here then near[#near + 1] = npc else far[#far + 1] = npc end
+    local keyed, distances = {}, {}
+    for index, npc in ipairs(list) do
+        local spot = npc.id and ns.RecipeDB_NpcLocation(npc.id)
+        local distance = spot and ns.Map_Distance and ns.Map_Distance(spot)
+        local key
+        if distance then key = distance
+        elseif spot and here and spot.map == here then key = 1e7
+        elseif spot then key = 2e7
+        else key = 3e7 end
+        distances[npc] = distance
+        keyed[index] = { npc = npc, key = key, index = index }
     end
-    for _, npc in ipairs(far) do near[#near + 1] = npc end
-    return near
+    table.sort(keyed, function(a, b)
+        if a.key ~= b.key then return a.key < b.key end
+        return a.index < b.index
+    end)
+    local sorted = {}
+    for i, item in ipairs(keyed) do sorted[i] = item.npc end
+    return sorted, distances
 end
 
 -- where the recipe is learned, as lines { title =, text =, entries = { { text =, id =, name = }... }, more = how many are left out }
@@ -251,11 +264,12 @@ function ns.RecipeDB_Where(recipe, full)
         for _, trainer in ipairs(db and db.trainers[recipe.s] or {}) do
             if forMySide(trainer) then mine[#mine + 1] = trainer end
         end
-        for _, trainer in ipairs(nearestFirst(mine)) do
+        local ordered, distances = nearestFirst(mine)
+        for _, trainer in ipairs(ordered) do
             count = count + 1
             if count <= maxTrainers then
                 names[#names + 1] = named(trainer, true)
-                npcs[#npcs + 1] = { id = trainer.id, name = trainer.n, text = named(trainer, true) }
+                npcs[#npcs + 1] = { id = trainer.id, name = trainer.n, text = named(trainer, true), distance = distances[trainer] }
             end
         end
         local text = table.concat(names, "; ")
@@ -271,13 +285,14 @@ function ns.RecipeDB_Where(recipe, full)
         for _, vendor in ipairs(item.v or {}) do
             if forMySide(vendor) then mine[#mine + 1] = vendor end
         end
-        for _, vendor in ipairs(nearestFirst(mine)) do
+        local ordered, distances = nearestFirst(mine)
+        for _, vendor in ipairs(ordered) do
             vendorCount = vendorCount + 1
             if #vendors < maxVendors then
                 local price = money(vendor.g)
                 local text = named(vendor, true) .. (price and (" -- " .. price) or "")
                 vendors[#vendors + 1] = text
-                npcs[#npcs + 1] = { id = vendor.id, name = vendor.n, text = text }
+                npcs[#npcs + 1] = { id = vendor.id, name = vendor.n, text = text, distance = distances[vendor] }
             end
         end
         if #vendors > 0 then
@@ -296,14 +311,17 @@ function ns.RecipeDB_Where(recipe, full)
 
         if item.d then
             local drops, dropEntries = {}, {}
-            for _, npc in ipairs(item.d) do
+            -- (the tooltips keep the most likely drops first; the panel, with the room, puts the nearest first)
+            local ordered, distances = item.d, {}
+            if full then ordered, distances = nearestFirst(item.d) end
+            for _, npc in ipairs(ordered) do
                 if #drops < maxDrops then
                     local text = named(npc, true)
                     if npc.lo then text = text .. (npc.hi and npc.hi ~= npc.lo and (" " .. L["level %d-%d"]:format(npc.lo, npc.hi))
                         or (" " .. L["level %d"]:format(npc.lo))) end
                     if npc.pm and npc.pm > 0 then text = text .. (" -- %.2f%%"):format(npc.pm / 100) end
                     drops[#drops + 1] = text
-                    dropEntries[#dropEntries + 1] = { text = text, id = npc.id, name = npc.n }
+                    dropEntries[#dropEntries + 1] = { text = text, id = npc.id, name = npc.n, distance = distances[npc] }
                 end
             end
             local text = table.concat(drops, "; ")

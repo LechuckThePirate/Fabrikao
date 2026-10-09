@@ -29,6 +29,8 @@
   with how many you have (bags, bank and other characters) and their prices, what the ingredients cost, what it sells for and
   the profit, the training cost, the item that teaches it and the full list of where it is learned (trainers, vendors, quests, drops).
   Shift-click still puts the recipe's link in the chat.
+- New: in the recipe's panel the trainers, vendors and creatures that drop it are listed nearest first, with how far they are, when the
+  game tells where you are (the ones on your map next, then the ones elsewhere).
 - New: the trainers, vendors and creatures that drop the recipe you don't know have a "Map" button in the recipe's panel that opens the world map on them
   with a pin, and, with TomTom installed, a "TomTom" button that sets a waypoint (the ones in the zone you are in are listed first).
 - New: the filters are dropdowns like the ones of the game's options, and there is a new one by category: the slot of armor (hands,

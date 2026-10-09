@@ -4,6 +4,8 @@ local _, ns = ...
 --   ns.Map_Show(spot)      opens the world map on the spot and marks it with a bouncing pin
 --   ns.Map_HasTomTom()     is TomTom installed?
 --   ns.Map_TomTom(spot, title)  sets a TomTom waypoint (with its arrow) at the spot
+--   ns.Map_Distance(spot)  yards from the character to the spot, nil when that can't be told (another continent, no position)
+--   ns.Map_FormatDistance(yards)  "350 yd" or "350 m" (meters except in the English locales)
 
 local pinState, pinHolder
 
@@ -76,6 +78,43 @@ function ns.Map_Show(spot)
     end
     ensurePin()
     return opened
+end
+
+local function worldPos(map, x, y)
+    if not (C_Map and C_Map.GetWorldPosFromMapPos and CreateVector2D) then return nil end
+    local continent, pos = C_Map.GetWorldPosFromMapPos(map, CreateVector2D(x, y))
+    if continent and pos then return continent, pos.x, pos.y end
+end
+
+-- The map the character is on and where, 0-1 on it; nil when the game doesn't say (some cities, instances).
+local function playerPosition()
+    local map = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    local position = map and C_Map.GetPlayerMapPosition and C_Map.GetPlayerMapPosition(map, "player")
+    if not position then return nil end
+    local x, y = position:GetXY()
+    return map, x, y
+end
+
+function ns.Map_Distance(spot)
+    if not (spot and spot.map) then return nil end
+    local map, px, py = playerPosition()
+    if not map then return nil end
+    local c1, x1, y1 = worldPos(map, px, py)
+    local c2, x2, y2 = worldPos(spot.map, spot.x / 100, spot.y / 100)
+    if not (c1 and c2 and c1 == c2) then return nil end
+    local d = math.sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2)
+    if d ~= d or d == math.huge then return nil end -- the client gave no real position (e.g. a city map)
+    return d
+end
+
+local YARD = 0.9144
+function ns.Map_FormatDistance(yards)
+    if not yards then return "" end
+    local locale = GetLocale and GetLocale() or "enUS"
+    local metric = locale ~= "enUS" and locale ~= "enGB"
+    local d = metric and yards * YARD or yards
+    local small, big = metric and "%d m" or "%d yd", metric and "%.1f km" or "%.1fk yd"
+    return d < 1000 and small:format(math.floor(d)) or big:format(d / 1000)
 end
 
 function ns.Map_HasTomTom()

@@ -60,6 +60,37 @@ describe("Map", function()
         assert.is_true(added.options.crazy)
     end)
 
+    describe("distance", function()
+        before_each(function()
+            _G.CreateVector2D = function(x, y) return { x = x, y = y } end
+            _G.C_Map = {
+                GetBestMapForUnit = function() return 1453 end,
+                GetPlayerMapPosition = function() return { GetXY = function() return 0.5, 0.5 end } end,
+                GetWorldPosFromMapPos = function(map, v) return map == 99 and 2 or 1, { x = v.x * 1000, y = v.y * 1000 } end,
+            }
+        end)
+
+        it("is the yards from the character to a spot on the same continent", function()
+            assert.is_true(math.abs(ns.Map_Distance({ map = 1453, x = 80, y = 90 }) - 500) < 0.001) -- 300 and 400 away
+        end)
+
+        it("is unknown for another continent, a missing spot or an unknown position", function()
+            assert.is_nil(ns.Map_Distance({ map = 99, x = 10, y = 10 }))
+            assert.is_nil(ns.Map_Distance(nil))
+            _G.C_Map.GetPlayerMapPosition = function() return nil end
+            assert.is_nil(ns.Map_Distance({ map = 1453, x = 80, y = 90 }))
+        end)
+
+        it("reads in yards in the English locales and in meters elsewhere", function()
+            _G.GetLocale = function() return "enUS" end
+            assert.are.equal("350 yd", ns.Map_FormatDistance(350))
+            assert.are.equal("1.5k yd", ns.Map_FormatDistance(1500))
+            _G.GetLocale = function() return "esES" end
+            assert.are.equal("320 m", ns.Map_FormatDistance(350))
+            assert.are.equal("", ns.Map_FormatDistance(nil))
+        end)
+    end)
+
     it("does nothing for TomTom when it is not installed", function()
         assert.is_false(ns.Map_HasTomTom())
         assert.is_false(ns.Map_TomTom(spot, "Kendor"))
