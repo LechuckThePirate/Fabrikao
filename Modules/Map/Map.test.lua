@@ -91,6 +91,19 @@ describe("Map", function()
         end)
     end)
 
+    it("a new waypoint replaces the one set before, so they don't pile up", function()
+        local removed, n = {}, 0
+        _G.TomTom = {
+            AddWaypoint = function() n = n + 1; return "uid" .. n end,
+            RemoveWaypoint = function(_, uid) removed[#removed + 1] = uid end,
+        }
+        ns.Map_TomTom(spot, "A")
+        assert.are.same({}, removed)
+        ns.Map_TomTom(spot, "B")
+        ns.Map_TomTom(spot, "C")
+        assert.are.same({ "uid1", "uid2" }, removed)
+    end)
+
     it("does nothing for TomTom when it is not installed", function()
         assert.is_false(ns.Map_HasTomTom())
         assert.is_false(ns.Map_TomTom(spot, "Kendor"))

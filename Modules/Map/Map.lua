@@ -121,10 +121,14 @@ function ns.Map_HasTomTom()
     return _G.TomTom ~= nil and _G.TomTom.AddWaypoint ~= nil
 end
 
--- A TomTom waypoint at the spot, with its arrow; false without TomTom.
+-- A TomTom waypoint at the spot, with its arrow; false without TomTom. TomTom keeps every waypoint it is given: the one set before
+-- goes away, so they don't pile up on the map.
+local lastWaypoint
 function ns.Map_TomTom(spot, title)
     if not (spot and ns.Map_HasTomTom()) then return false end
-    _G.TomTom:AddWaypoint(spot.map, spot.x / 100, spot.y / 100, {
+    local tomtom = _G.TomTom
+    if lastWaypoint and tomtom.RemoveWaypoint then pcall(tomtom.RemoveWaypoint, tomtom, lastWaypoint) end
+    lastWaypoint = tomtom:AddWaypoint(spot.map, spot.x / 100, spot.y / 100, {
         title = title, from = "Fabrikao", persistent = false, minimap = true, world = true, crazy = true,
     })
     return true
