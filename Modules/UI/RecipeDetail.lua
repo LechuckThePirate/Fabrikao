@@ -70,12 +70,12 @@ end
 -- The panel's content as data:
 -- { name =, color =, icon =, subtitle =, status = text, facts = { { label =, value = }... }, reagents = { { itemID =, items =, needed =,
 --   have =, bank =, others =, unit =, total =, status = text }... }, economy = { { label =, value = }... }, note = text or nil,
---   sources = the lines of ns.RecipeDB_Where, waypoints = bool (a recipe not known yet), ids = text }.
+--   sources = the lines of ns.RecipeDB_Where, ids = text }.
 function ns.RecipeDetail_Build(recipe, opts)
     opts = opts or {}
     local db = recipe.db
     local rank = recipe.rank or opts.rank
-    local out = { name = recipe.name, icon = recipe.icon, waypoints = not recipe.learned }
+    local out = { name = recipe.name, icon = recipe.icon }
     out.color = recipe.learned and ns.DIFFICULTY_COLORS[recipe.difficulty or ns.DIFFICULTY_LAST] or { 0.85, 0.85, 0.85 }
 
     local subtitle = {}
@@ -329,9 +329,9 @@ end
 
 -- An entry of a source (a trainer, a vendor, a creature that drops it, a quest...) on its own line, with the map and waypoint buttons
 -- when it is an NPC with a known location.
-local function npcRow(y, npc, withWaypoint)
+local function npcRow(y, npc)
     local row = acquire("npc", newNpc)
-    local spot = withWaypoint and npc.id and ns.RecipeDB_NpcLocation(npc.id)
+    local spot = npc.id and ns.RecipeDB_NpcLocation(npc.id)
     local withTomTom = spot and ns.Map_HasTomTom()
     row:ClearAllPoints()
     row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 14, -y)
@@ -392,7 +392,7 @@ local function render()
         for _, line in ipairs(data.sources) do
             if line.entries and #line.entries > 0 then
                 y = y + put(FONT_LABEL, 0, y, TEXT_W, line.title, nil, { 1, 0.82, 0 }) + 6
-                for _, entry in ipairs(line.entries) do y = npcRow(y, entry, data.waypoints) end
+                for _, entry in ipairs(line.entries) do y = npcRow(y, entry) end
                 if line.more and line.more > 0 then
                     y = y + put(FONT_SMALL, 14, y, TEXT_W - 14, L["and %d more"]:format(line.more), nil, { 0.6, 0.6, 0.6 }) + 6
                 end

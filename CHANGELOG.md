@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- New: the "Map" and "TomTom" buttons of the trainers, vendors and creatures are in the panel of the recipes you know too, not only of the ones you don't.
 - New: the panel of a recipe you know has a "Craft" button, with how many your bags allow, that opens the game's profession window on that
   recipe, ready to craft there (the game does not let addons craft).
 
