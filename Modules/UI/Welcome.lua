@@ -21,12 +21,10 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
-    "- Your professions and every recipe of the game, known or not, with filters, a table and a detailed view.",
-    "- A panel for each recipe: ingredients with how many you have, cost and profit, and where to learn it (trainers,",
-    "  vendors, creatures), nearest first, with Map and TomTom buttons.",
-    "- A Craft button that opens the game's profession window on the recipe.",
-    "- Search any recipe in the game with /fab find <text>.",
-    "- Optional: Embolsao!! (items of your other characters), Auctionator (prices) and TomTom (waypoints).",
+    "- New: a Craft button in a recipe's panel opens the game's profession window on that recipe, ready to craft there.",
+    "- New: the Map and TomTom buttons of trainers, vendors and creatures are also in the recipes you know.",
+    "- New: this window, with links to the other addons of the same author.",
+    "- Data: fresh recipe data (training costs and where some recipes are learned).",
 }, "\n")
 
 local welcomeFrame

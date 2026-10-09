@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.2
 
 - New: a welcome window, once per version (and with `/fab changelog` or the preferences' "What's new" button): what's new, where to report bugs, and
   links to the other addons of the same author (Embolsao!!, Completao!!, Aggreao!!), to copy and paste in a browser.

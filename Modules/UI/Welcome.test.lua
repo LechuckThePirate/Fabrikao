@@ -24,7 +24,7 @@ describe("Welcome", function()
 
     it("says what's new in this version, with the changelog under it", function()
         assert.matches("What's new in v", welcome.changelogLabel:GetText())
-        assert.matches("every recipe", welcome.changelogText:GetText())
+        assert.matches("Craft button", welcome.changelogText:GetText())
     end)
 
     it("links to the other three addons, and not to itself", function()
