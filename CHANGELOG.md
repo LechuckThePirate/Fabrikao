@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- New (being tried out): the panel of a recipe you know has an amount box, "Craft" and "Craft all" buttons (what your bags allow), to craft
+  from the addon's window. While it is tried out, each craft says in the chat what the game answered.
+
 ## 0.1.1
 
 - Data: fresh recipe data (training costs and where some recipes are learned, as the public databases have them now).

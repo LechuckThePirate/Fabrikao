@@ -24,6 +24,7 @@ Modules\Data\Inventory.lua
 Modules\Map\Map.lua
 Modules\Professions\Professions.lua
 Modules\Professions\Recipes.lua
+Modules\Professions\Craft.lua
 Modules\UI\RecipeList.lua
 Modules\UI\FilterBar.lua
 Modules\UI\SearchPage.lua

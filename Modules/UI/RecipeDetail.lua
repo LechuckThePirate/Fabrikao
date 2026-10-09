@@ -6,6 +6,7 @@ local L = ns.L
 -- recipe of the lists opens it; ns.RecipeDetail_Show(recipe, opts) fills it, with `recipe` as the lists see it (ns.Recipes_FromData...)
 -- and opts = { parent = the window to dock to, alts = count the other characters too, rank = the character's skill in the
 -- profession (when the recipe has none of its own), onClose = function() }.
+-- A recipe the character knows has buttons to craft it (Modules/Professions/Craft.lua).
 -- The trainers and vendors of a recipe the character doesn't know have a button that shows them on the map and, with TomTom
 -- installed, another that sets a waypoint (Modules/Map/Map.lua).
 
@@ -349,10 +350,25 @@ local function npcRow(y, npc, withWaypoint)
     return y + height + 6
 end
 
+-- The craft buttons: only for a recipe the character knows; "all" is what the bags allow.
+local function updateCraftBar()
+    if not (panel and current) then return end
+    local recipe = current.recipe
+    local known = recipe.learned and true or false
+    panel.craftBar:SetShown(known)
+    if not known then return end
+    local craftable = ns.Recipes_Craftable and ns.Recipes_Craftable(recipe, false) or 0
+    panel.craftAll:SetText(L["Craft all (%d)"]:format(craftable))
+    panel.craftAll:SetEnabled(craftable > 0)
+    panel.craftOne:SetEnabled(craftable > 0)
+    panel.craftAll.count = craftable
+end
+
 local function render()
     if not (panel and current) then return end
     local data = ns.RecipeDetail_Build(current.recipe, current.opts)
     releaseAll()
+    updateCraftBar()
 
     panel.name:SetText(data.name)
     panel.name:SetTextColor(data.color[1], data.color[2], data.color[3])
@@ -461,10 +477,51 @@ local function create(parent)
 
     panel.scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
     panel.scroll:SetPoint("TOPLEFT", MARGIN, -(MARGIN + 72 + 58))
-    panel.scroll:SetPoint("BOTTOMRIGHT", -SCROLL_W, MARGIN)
+    panel.scroll:SetPoint("BOTTOMRIGHT", -SCROLL_W, MARGIN + 38)
     panel.child = CreateFrame("Frame", nil, panel.scroll)
     panel.child:SetSize(TEXT_W, 1)
     panel.scroll:SetScrollChild(panel.child)
+
+    -- crafting: an amount, "Craft" and "Craft all" (what the bags allow)
+    panel.craftBar = CreateFrame("Frame", nil, panel)
+    panel.craftBar:SetPoint("BOTTOMLEFT", MARGIN, MARGIN - 2)
+    panel.craftBar:SetPoint("BOTTOMRIGHT", -MARGIN, MARGIN - 2)
+    panel.craftBar:SetHeight(28)
+    local amountLabel = panel.craftBar:CreateFontString(nil, "OVERLAY", FONT_LABEL)
+    amountLabel:SetPoint("LEFT", 0, 0)
+    amountLabel:SetText(L["Amount:"])
+    panel.amount = CreateFrame("EditBox", nil, panel.craftBar, "InputBoxTemplate")
+    panel.amount:SetSize(46, 22)
+    panel.amount:SetPoint("LEFT", amountLabel, "RIGHT", 10, 0)
+    panel.amount:SetAutoFocus(false)
+    panel.amount:SetNumeric(true)
+    panel.amount:SetMaxLetters(3)
+    panel.amount:SetText("1")
+    panel.amount:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    panel.amount:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    panel.craftOne = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
+    panel.craftOne:SetSize(90, 24)
+    panel.craftOne:SetPoint("LEFT", panel.amount, "RIGHT", 12, 0)
+    panel.craftOne:SetText(L["Craft"])
+    panel.craftOne:SetScript("OnClick", function()
+        local recipe = current and current.recipe
+        if recipe then ns.Craft_Make(recipe.id, tonumber(panel.amount:GetText()) or 1) end
+    end)
+    panel.craftAll = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
+    panel.craftAll:SetSize(140, 24)
+    panel.craftAll:SetPoint("LEFT", panel.craftOne, "RIGHT", 6, 0)
+    panel.craftAll:SetScript("OnClick", function(self)
+        local recipe = current and current.recipe
+        if recipe and (self.count or 0) > 0 then ns.Craft_Make(recipe.id, self.count) end
+    end)
+    panel.craftBar:Hide()
+
+    -- the bags changed (a craft used the ingredients up): the counts follow
+    local bags = CreateFrame("Frame")
+    bags:RegisterEvent("BAG_UPDATE_DELAYED")
+    bags:SetScript("OnEvent", function()
+        if panel:IsShown() then updateCraftBar() end
+    end)
 
     -- item names arrive late: draw again once (a burst of them makes one redraw)
     local events = CreateFrame("Frame")

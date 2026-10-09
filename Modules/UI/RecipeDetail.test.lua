@@ -289,6 +289,54 @@ describe("Recipe detail", function()
         end)
     end)
 
+    describe("crafting", function()
+        local crafted
+
+        before_each(function()
+            crafted = {}
+            _G.C_TradeSkillUI = { CraftRecipe = function(id, count) crafted[#crafted + 1] = { id = id, count = count } end }
+            _G.C_Item.GetItemCount = function(id) return ({ [10] = 5, [11] = 3 })[id] or 0 end -- enough for 2
+        end)
+
+        it("a recipe the character knows has the buttons, and one it doesn't has not", function()
+            click(recipeRow("Elixir of Wisdom"))
+            assert.is_true(panel().craftBar:IsShown())
+            click(recipeRow("Flask of the Titans"))
+            assert.is_false(panel().craftBar:IsShown())
+        end)
+
+        it("Craft all makes what the bags allow", function()
+            click(recipeRow("Elixir of Wisdom"))
+            assert.are.equal("Craft all (2)", panel().craftAll._text)
+            click(panel().craftAll)
+            assert.are.same({ { id = 1, count = 2 } }, crafted)
+        end)
+
+        it("Craft makes the amount typed", function()
+            click(recipeRow("Elixir of Wisdom"))
+            panel().amount:SetText("2")
+            click(panel().craftOne)
+            assert.are.same({ { id = 1, count = 2 } }, crafted)
+        end)
+
+        it("the buttons are off when the bags allow nothing", function()
+            _G.C_Item.GetItemCount = function() return 0 end
+            click(recipeRow("Elixir of Wisdom"))
+            assert.are.equal("Craft all (0)", panel().craftAll._text)
+            assert.is_false(panel().craftAll:IsEnabled())
+            assert.is_false(panel().craftOne:IsEnabled())
+        end)
+
+        it("the counts follow the bags", function()
+            click(recipeRow("Elixir of Wisdom"))
+            _G.C_Item.GetItemCount = function(id) return ({ [10] = 20, [11] = 20 })[id] or 0 end
+            for _, f in ipairs(WowMock.FindAll(function(f) return f._events and f._events.BAG_UPDATE_DELAYED and f._scripts.OnEvent end)) do
+                f._scripts.OnEvent(f, "BAG_UPDATE_DELAYED")
+            end
+            assert.are.equal("Craft all (10)", panel().craftAll._text)
+        end)
+    end)
+
     describe("opening and closing", function()
         it("a click on a recipe opens the panel with it, next to the window", function()
             assert.is_nil(panel())
