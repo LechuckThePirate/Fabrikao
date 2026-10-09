@@ -321,6 +321,18 @@ describe("Recipe detail", function()
             assert.are.equal("10 possible with your bags", panel().craftInfo._text)
         end)
 
+        it("the button is off when the bags allow nothing, and on again when they do", function()
+            _G.C_Item.GetItemCount = function() return 0 end
+            click(recipeRow("Elixir of Wisdom"))
+            assert.are.equal("0 possible with your bags", panel().craftInfo._text)
+            assert.is_false(panel().craftButton:IsEnabled())
+            _G.C_Item.GetItemCount = function(id) return ({ [10] = 5, [11] = 3 })[id] or 0 end
+            for _, f in ipairs(WowMock.FindAll(function(f) return f._events and f._events.BAG_UPDATE_DELAYED and f._scripts.OnEvent end)) do
+                f._scripts.OnEvent(f, "BAG_UPDATE_DELAYED")
+            end
+            assert.is_true(panel().craftButton:IsEnabled())
+        end)
+
         it("the button opens the game's profession window on the recipe", function()
             click(recipeRow("Elixir of Wisdom"))
             click(panel().craftButton)

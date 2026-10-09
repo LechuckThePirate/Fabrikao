@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix: the "Craft" button is off when your bags hold nothing to craft the recipe with.
 - New: a small public API for other addons, `FabrikaoAPI` (`ShowRecipesUsing(itemID)` opens the search page with the recipes that use that item). Embolsao!! uses it
   for the "Recipes" entry of its item menu.
 - New: the search of every recipe lists its results like a profession's page (table or detailed view, with the same filters and sorting) and a click

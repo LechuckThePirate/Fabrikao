@@ -359,6 +359,7 @@ local function updateCraftBar()
     if not known then return end
     local craftable = ns.Recipes_Craftable and ns.Recipes_Craftable(recipe, false) or 0
     panel.craftInfo:SetText(L["%d possible with your bags"]:format(craftable))
+    panel.craftButton:SetEnabled(craftable > 0) -- nothing to craft with what the bags hold
 end
 
 local function render()
