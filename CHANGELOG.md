@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix: the window comes above the windows of the author's other addons when it is shown or clicked (it was drawn under their contents and looked see-through).
 - Fix: the welcome window is opaque, so when the welcome windows of several of the author's addons open together each one hides the previous one instead of showing through it.
 
 ## 0.1.3
