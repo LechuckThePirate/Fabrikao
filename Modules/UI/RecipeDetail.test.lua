@@ -173,6 +173,57 @@ describe("Recipe detail", function()
         end)
     end)
 
+    describe("a recipe that comes from a quest (Completao)", function()
+        local shown
+
+        before_each(function()
+            shown = nil
+            ns.RECIPE_DATA = {
+                recipes = { [4] = { s = 171, n = "Quest Elixir", c = { 1, 2, 3, 4 }, k = { 4 }, i = 901 } },
+                items = { [901] = { n = "Recipe: Quest Elixir", lv = 10, k = { 4 }, qs = { { id = 38, n = "The Elixir Quest" } } } },
+                trainers = {},
+            }
+            _G.CompletaoAPI = {
+                version = 1,
+                HasQuest = function(id) return id == 38 end,
+                ShowQuest = function(id) shown = id; return true end,
+            }
+        end)
+
+        after_each(function() _G.CompletaoAPI = nil end)
+
+        local function open()
+            local recipe = ns.Recipes_FromRecord(4, ns.RECIPE_DATA.recipes[4], false, 100)
+            ns.RecipeDetail_Show(recipe, { parent = _G.FabrikaoFrame })
+            return recipe
+        end
+
+        it("its quest line keeps the quest's id", function()
+            local detail = ns.RecipeDetail_Build(ns.Recipes_FromRecord(4, ns.RECIPE_DATA.recipes[4], false, 100))
+            local line
+            for _, l in ipairs(detail.sources) do if l.title == "Quest" then line = l end end
+            assert.are.equal(38, line.entries[1].questID)
+            assert.are.equal("The Elixir Quest", line.entries[1].text)
+        end)
+
+        it("has a View Quest button when Completao knows the quest, and it opens the quest there", function()
+            open()
+            local button = WowMock.FindButton("View Quest")
+            assert.is_true(button:IsVisible())
+            click(button)
+            assert.are.equal(38, shown)
+        end)
+
+        it("has none without Completao, or when it doesn't know the quest", function()
+            _G.CompletaoAPI = nil
+            open()
+            assert.is_false(WowMock.FindButton("View Quest"):IsVisible())
+            _G.CompletaoAPI = { version = 1, HasQuest = function() return false end, ShowQuest = function() return false end }
+            open()
+            assert.is_false(WowMock.FindButton("View Quest"):IsVisible())
+        end)
+    end)
+
     describe("the waypoints (TomTom)", function()
         local function install()
             _G.TomTom = { AddWaypoint = function(_, map, x, y, options) waypoints[#waypoints + 1] = { map = map, x = x, y = y, options = options } end }

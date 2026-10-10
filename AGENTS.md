@@ -30,6 +30,8 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   the `useAlts` preference turns it all off. **Embolsao (like Auctionator) is optional**: everything goes through this module, and without
   it the counts are the character's own, the "Other characters" checkbox is hidden and the preferences say it isn't installed (tests
   cover that path in `Alts.test.lua`); never reference `EmbolsaoAPI` / `EmbolsaoDB` anywhere else
+- `Modules/Data/Quests.lua` — Completao!! (optional) through its public API (`CompletaoAPI.HasQuest / ShowQuest`): a recipe that comes from a quest
+  has a "View Quest" button in its panel when Completao knows the quest; without it nothing shows. Never reference `CompletaoAPI` anywhere else
 - `Modules/Data/Prices.lua` — approximate prices for the table view: auction prices from Auctionator's public API when it is installed,
   else what vendors pay; `Modules/UI/RecipeList.lua` — the two views of the recipe list (table with sortable columns, detailed
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search
