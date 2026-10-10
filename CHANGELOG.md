@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: the welcome window is opaque, so when the welcome windows of several of the author's addons open together each one hides the previous one instead of showing through it.
+
 ## 0.1.3
 
 - Fix: the "Craft" button is off when your bags hold nothing to craft the recipe with.
