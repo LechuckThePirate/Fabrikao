@@ -48,6 +48,11 @@ describe("MainWindow", function()
         StartAddon(ns)
     end)
 
+    it("is a top-level window, so it comes above the other addons' windows when shown or clicked", function()
+        ns.UI_Toggle()
+        assert.is_true(_G.FabrikaoFrame._set.SetToplevel[1])
+    end)
+
     it("opens and closes", function()
         ns.UI_Toggle()
         assert.is_true(_G.FabrikaoFrame:IsShown())

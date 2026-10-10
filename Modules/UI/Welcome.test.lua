@@ -12,6 +12,11 @@ describe("Welcome", function()
         welcome = _G.FabrikaoWelcomeFrame
     end)
 
+    it("is opaque: the welcome window of another addon behind it does not show through", function()
+        assert.matches("ChatFrameBackground", welcome._set.SetBackdrop[1].bgFile)
+        assert.are.equal(1, welcome._set.SetBackdropColor[4])
+    end)
+
     it("shows once by itself, the first time (or after a version bump)", function()
         assert.is_not_nil(welcome)
         assert.is_true(welcome:IsShown())
