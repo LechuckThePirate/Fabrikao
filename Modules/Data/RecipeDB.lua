@@ -302,11 +302,14 @@ function ns.RecipeDB_Where(recipe, full)
         end
 
         if item.qs then
-            local quests = {}
+            local quests, questEntries = {}, {}
             for _, quest in ipairs(item.qs) do
-                if forMySide(quest) and #quests < maxQuests then quests[#quests + 1] = quest.n end
+                if forMySide(quest) and #quests < maxQuests then
+                    quests[#quests + 1] = quest.n
+                    questEntries[#questEntries + 1] = { text = quest.n, questID = quest.id }
+                end
             end
-            if #quests > 0 then lines[#lines + 1] = { title = L["Quest"], text = table.concat(quests, "; "), entries = asEntries(quests) } end
+            if #quests > 0 then lines[#lines + 1] = { title = L["Quest"], text = table.concat(quests, "; "), entries = questEntries } end
         end
 
         if item.d then

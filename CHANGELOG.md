@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- New: with Completao!! installed, the recipes that come from a quest have a "View Quest" button in their panel that opens the quest there.
+
 ## 0.1.4
 
 - Data: fresh recipe data, as the public databases have them now.

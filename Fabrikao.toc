@@ -10,7 +10,7 @@
 ## Version: 0.1.4
 ## X-License: GPL-3.0
 ## IconTexture: Interface\AddOns\Fabrikao\Icons\Fabrikao.png
-## OptionalDeps: Embolsao, Auctionator
+## OptionalDeps: Embolsao, Auctionator, Completao
 ## SavedVariables: FabrikaoDB
 ## SavedVariablesPerCharacter: FabrikaoCharDB
 ## X-Curse-Project-ID: 1733457
@@ -21,6 +21,7 @@ Data\Generated\Recipes.lua
 Modules\Data\RecipeDB.lua
 Modules\Data\Prices.lua
 Modules\Data\Inventory.lua
+Modules\Data\Quests.lua
 Modules\Map\Map.lua
 Modules\Professions\Professions.lua
 Modules\Professions\Recipes.lua
