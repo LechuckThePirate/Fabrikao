@@ -21,11 +21,10 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
+    "- New: with Completao!! installed, the recipes that come from a quest have a \"View Quest\" button that opens the quest there.",
     "- New: the search of every recipe lists its results like a profession's page (table or detailed, same filters), and a click opens the recipe's panel.",
     "- New: a small public API, FabrikaoAPI, used by Embolsao!! for the \"Recipes\" entry of its item menu.",
     "- Fix: the Craft button is off when your bags hold nothing to craft the recipe with.",
-    "- Fix: the window comes above the other addons' windows, and the welcome window is opaque, instead of showing through them.",
-    "- Data: fresh recipe data.",
 }, "\n")
 
 local welcomeFrame
