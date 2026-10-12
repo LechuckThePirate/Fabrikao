@@ -26,24 +26,9 @@ local function newRow()
     row.text:SetJustifyH("LEFT")
     row.text:SetJustifyV("TOP")
     row.text:SetWordWrap(true)
-    local function button(text, width, tooltip, action)
-        local b = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-        b:SetSize(width, 22)
-        b:SetText(text)
-        b:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-            GameTooltip:SetText(tooltip, 1, 1, 1)
-            GameTooltip:AddLine(self.npc.name, 1, 0.82, 0)
-            GameTooltip:Show()
-        end)
-        b:SetScript("OnLeave", GameTooltip_Hide)
-        b:SetScript("OnClick", function(self) action(self.npc) end)
-        return b
-    end
-    -- (the same actions as the trainers of a recipe's panel)
-    row.tomButton = button("TomTom", 66, L["Set a TomTom waypoint"], function(npc) return ns.RecipeDetail_Waypoint(npc) end)
-    row.tomButton:SetPoint("TOPRIGHT", 0, 0)
-    row.mapButton = button(L["Map"], 52, L["View on map"], function(npc) return ns.RecipeDetail_ViewOnMap(npc) end)
+    -- (the same actions as the trainers of a recipe's panel, as small icons)
+    row.tomButton = ns.IconButton_Create(row, "pointer", L["Set a TomTom waypoint"], function(npc) return ns.RecipeDetail_Waypoint(npc) end)
+    row.mapButton = ns.IconButton_Create(row, "map", L["View on map"], function(npc) return ns.RecipeDetail_ViewOnMap(npc) end)
     return row
 end
 
@@ -69,7 +54,8 @@ local function render()
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 0, -y)
         row:SetWidth(TEXT_W)
-        row.text:SetWidth(TEXT_W - (spot and (withTomTom and 130 or 64) or 0))
+        local taken = ns.IconButton_Place(row.mapButton, row.tomButton, withTomTom, 0, 0)
+        row.text:SetWidth(TEXT_W - (spot and taken or 0))
         local lines = { GOLD .. trainer.name .. "|r" }
         if trainer.title and trainer.title ~= "" then lines[1] = lines[1] .. " " .. DIM .. "<" .. trainer.title .. ">|r" end
         local where = {}
@@ -80,8 +66,6 @@ local function render()
         row.text:SetText(table.concat(lines, "\n"))
         row.tomButton.npc, row.mapButton.npc = trainer, trainer
         row.tomButton:SetShown(spot ~= nil and withTomTom and true or false)
-        row.mapButton:ClearAllPoints()
-        row.mapButton:SetPoint("TOPRIGHT", withTomTom and -72 or 0, 0)
         row.mapButton:SetShown(spot ~= nil)
         local height = math.max(row.text:GetStringHeight(), spot and 22 or 0)
         row:SetHeight(height)

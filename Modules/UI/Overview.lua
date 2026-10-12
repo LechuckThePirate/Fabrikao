@@ -6,15 +6,16 @@ local L = ns.L
 --   top right     what can be learned: the ranks a trainer can teach, and the recipes the skill reaches that are not known, by
 --                 profession and by level
 --   bottom left   what the bags allow to craft now (a click opens the game's profession window on the recipe)
---   bottom right  the trainers close by that have something to teach, by profession, nearest first, with map and waypoint buttons
+--   bottom right  the trainers close by that have something to teach and the vendors that sell a recipe of the profession that is
+--                 not known, by profession, nearest first, with map and waypoint buttons
 -- A quadrant scrolls when its content is taller than it; with nothing to scroll the bar is not there and the space goes to the content
--- (AutoScroll.lua). The groups of the two right quadrants fold, and it is kept for the next time (ns.char.folded).
+-- (AutoScroll.lua). The groups of the two right quadrants are folded until they are opened, and it is kept (ns.char.folded).
 --   ns.Overview_Create(parent, top) -> the frame      ns.Overview_Refresh()   all of it
 --   ns.Overview_LayoutCraft()                         only "can craft now" (the bags changed)
 
 local GAP, TITLE_H = 8, 26
 local TOP_H = 84 -- the welcome line, the search box and the row of the picker
-local PROFESSION_H, ROW_H, TRAINER_H, HEADER_H = 48, 28, 42, 26
+local PROFESSION_H, ROW_H, TRAINER_H, HEADER_H = 48, 28, 36, 26
 local MAX_CRAFT, LEARN_PER_GROUP, TRAINERS_PER_GROUP = 100, 12, 6
 local PLUS, MINUS = "Interface\\Buttons\\UI-PlusButton-Up", "Interface\\Buttons\\UI-MinusButton-Up"
 local DIM = "|cff9a9a9a"
@@ -45,9 +46,10 @@ local function newPool(make)
     return pool
 end
 
+-- A group is folded until it is opened: ns.char.folded[kind][key] is false once it has been (and true if folded again).
 local function isFolded(kind, key)
     local folded = ns.char.folded
-    return folded ~= nil and folded[kind] ~= nil and folded[kind][key] == true
+    return not (folded ~= nil and folded[kind] ~= nil and folded[kind][key] == false)
 end
 
 local function setFolded(kind, key, value)
@@ -55,7 +57,7 @@ local function setFolded(kind, key, value)
     for k, v in pairs(ns.char.folded or {}) do folded[k] = v end
     local inKind = {}
     for k, v in pairs(folded[kind] or {}) do inKind[k] = v end
-    inKind[key] = value or nil
+    inKind[key] = value and true or false
     folded[kind] = inKind
     ns.char.folded = folded
 end
@@ -241,32 +243,20 @@ local function newRankRow(content)
     return b
 end
 
--- a trainer: name, zone and distance, and the buttons for the map and the waypoint
+-- a trainer: the name and title, under them the zone and the distance, and the icons of the map and the waypoint
 local function newTrainerRow(content)
     local row = CreateFrame("Frame", nil, content)
     row:SetHeight(TRAINER_H)
-    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    row.text:SetPoint("TOPLEFT", 8, -2)
-    row.text:SetJustifyH("LEFT")
-    row.text:SetJustifyV("TOP")
-    row.text:SetWordWrap(false)
-    local function button(text, width, tooltip, action)
-        local b = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-        b:SetSize(width, 22)
-        b:SetText(text)
-        b:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-            GameTooltip:SetText(tooltip, 1, 1, 1)
-            GameTooltip:AddLine(self.npc.name, 1, 0.82, 0)
-            GameTooltip:Show()
-        end)
-        b:SetScript("OnLeave", GameTooltip_Hide)
-        b:SetScript("OnClick", function(self) action(self.npc) end)
-        return b
-    end
-    row.tomButton = button("TomTom", 62, L["Set a TomTom waypoint"], function(npc) return ns.RecipeDetail_Waypoint(npc) end)
-    row.tomButton:SetPoint("TOPRIGHT", -4, -2)
-    row.mapButton = button(L["Map"], 48, L["View on map"], function(npc) return ns.RecipeDetail_ViewOnMap(npc) end)
+    row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.name:SetPoint("TOPLEFT", 8, -2)
+    row.name:SetJustifyH("LEFT")
+    row.name:SetWordWrap(false)
+    row.where = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    row.where:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1)
+    row.where:SetJustifyH("LEFT")
+    row.where:SetWordWrap(false)
+    row.tomButton = ns.IconButton_Create(row, "pointer", L["Set a TomTom waypoint"], function(npc) return ns.RecipeDetail_Waypoint(npc) end)
+    row.mapButton = ns.IconButton_Create(row, "map", L["View on map"], function(npc) return ns.RecipeDetail_ViewOnMap(npc) end)
     return row
 end
 
@@ -508,54 +498,70 @@ local function layoutCraft()
     finishLayout(q, y, #crafts == 0 and L["Nothing to craft with what your bags hold."] or nil)
 end
 
--- the trainers close by with something to teach, by profession (the one with the nearest trainer first), nearest first in each
+-- the trainers and vendors close by that have something for the character, by profession (the one with the nearest first)
 local function layoutTrainers()
     local q = quadrants.trainers
     q.rows.reset()
     local y = startLayout(q)
     local groups = ns.Recipes_TrainersNearby(ns.Professions_List(), TRAINERS_PER_GROUP)
     local withTomTom = ns.Map_HasTomTom and ns.Map_HasTomTom()
+
+    -- one line of a trainer or a vendor: the name (and title, or what the vendor sells) and under it the kind, the zone and how far
+    local function addRow(entry, kind)
+        local row = q.rows.next()
+        local spot = entry.id and ns.RecipeDB_NpcLocation(entry.id)
+        row.trainer, row.vendor = nil, nil
+        row[kind] = entry
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
+        row:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
+        local name = entry.name
+        if kind == "trainer" and entry.title and entry.title ~= "" then
+            name = name .. " " .. DIM .. "<" .. entry.title .. ">|r"
+        elseif kind == "vendor" and entry.recipes and #entry.recipes > 0 then
+            local sold = entry.recipes[1] .. (#entry.recipes > 1 and (" +" .. (#entry.recipes - 1)) or "")
+            name = name .. " " .. DIM .. "<" .. sold .. ">|r"
+        end
+        local where = { kind == "trainer" and L["Trainer"] or L["Vendor"] }
+        if entry.zones and entry.zones ~= "" then where[#where + 1] = entry.zones end
+        local distance = entry.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(entry.distance)
+        if distance and distance ~= "" then where[#where + 1] = distance end
+        row.name:SetText(name)
+        row.where:SetText(table.concat(where, "  -  "))
+        row.tomButton.npc, row.mapButton.npc = entry, entry
+        row.tomButton:SetShown(spot ~= nil and withTomTom and true or false)
+        row.mapButton:SetShown(spot ~= nil)
+        local taken = ns.IconButton_Place(row.mapButton, row.tomButton, withTomTom, 4, 7)
+        local reserved = spot and taken or 8 -- (the texts stop short of the icons)
+        row.name:SetPoint("RIGHT", row, "RIGHT", -reserved, 0)
+        row.where:SetPoint("RIGHT", row, "RIGHT", -reserved, 0)
+        y = y + TRAINER_H
+    end
+
+    local function moreLine(text)
+        local more = q.sections.next()
+        more:ClearAllPoints()
+        more:SetPoint("TOPLEFT", q.content, "TOPLEFT", 28, -y - 2)
+        more:SetText(DIM .. text .. "|r")
+        more:SetShownWithLine(true)
+        more.line:Hide()
+        y = y + 22
+    end
+
     for _, group in ipairs(groups) do
         local p = group.profession
         local note = group.nextRank and L["Can train: %s"]:format(group.nextRank) or nil
         local folded
-        folded, y = groupHeader(q, "trainers", p, y, ("%s (%d)"):format(p.name, group.total), note)
+        folded, y = groupHeader(q, "trainers", p, y, ("%s (%d)"):format(p.name, group.total + group.vendorTotal), note)
         if not folded then
-            for _, trainer in ipairs(group.trainers) do
-                local row = q.rows.next()
-                local spot = trainer.id and ns.RecipeDB_NpcLocation(trainer.id)
-                row.trainer = trainer
-                row:ClearAllPoints()
-                row:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
-                row:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
-                local name = trainer.name
-                if trainer.title and trainer.title ~= "" then name = name .. " " .. DIM .. "<" .. trainer.title .. ">|r" end
-                local where = {}
-                if trainer.zones and trainer.zones ~= "" then where[#where + 1] = trainer.zones end
-                local distance = trainer.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(trainer.distance)
-                if distance and distance ~= "" then where[#where + 1] = distance end
-                row.text:SetText(name .. (#where > 0 and ("\n" .. DIM .. table.concat(where, "  -  ") .. "|r") or ""))
-                row.text:SetPoint("RIGHT", row, "RIGHT", spot and (withTomTom and -118 or -60) or -8, 0)
-                row.tomButton.npc, row.mapButton.npc = trainer, trainer
-                row.tomButton:SetShown(spot ~= nil and withTomTom and true or false)
-                row.mapButton:ClearAllPoints()
-                row.mapButton:SetPoint("TOPRIGHT", withTomTom and -70 or -4, -2)
-                row.mapButton:SetShown(spot ~= nil)
-                y = y + TRAINER_H
-            end
-            if group.total > #group.trainers then
-                local more = q.sections.next()
-                more:ClearAllPoints()
-                more:SetPoint("TOPLEFT", q.content, "TOPLEFT", 28, -y - 2)
-                more:SetText(DIM .. L["and %d more"]:format(group.total - #group.trainers) .. "|r")
-                more:SetShownWithLine(true)
-                more.line:Hide()
-                y = y + 22
-            end
+            for _, trainer in ipairs(group.trainers) do addRow(trainer, "trainer") end
+            if group.total > #group.trainers then moreLine(L["and %d more"]:format(group.total - #group.trainers)) end
+            for _, vendor in ipairs(group.vendors) do addRow(vendor, "vendor") end
+            if group.vendorTotal > #group.vendors then moreLine(L["and %d more"]:format(group.vendorTotal - #group.vendors)) end
             y = y + 4
         end
     end
-    finishLayout(q, y, #groups == 0 and L["No trainer has anything new to teach you."] or nil)
+    finishLayout(q, y, #groups == 0 and L["No trainer or vendor has anything new for you."] or nil)
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -678,7 +684,7 @@ function ns.Overview_Create(parent, top)
         f:SetPoint("TOPLEFT", grid, "CENTER", half, -half)
         f:SetPoint("BOTTOMRIGHT", grid, "BOTTOMRIGHT", 0, 0)
     end)
-    trainers.title:SetText(L["Trainers nearby"])
+    trainers.title:SetText(L["Trainers and vendors nearby"])
     trainers.rows = newPool(function() return newTrainerRow(trainers.content) end)
     trainers.relayout = layoutTrainers
 

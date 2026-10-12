@@ -12,15 +12,21 @@ describe("The start screen", function()
             [4] = { s = 171, n = "Flask of the Titans", c = { 250, 270, 290, 310 }, m = { { 11, 1 } }, k = { 6 } },
             [5] = { s = 164, n = "Iron Sword", c = { 50, 70, 90, 110 }, m = { { 12, 1 } }, k = { 6 } },
             [6] = { s = 164, n = "Steel Axe", c = { 150, 170, 190, 210 }, m = { { 12, 1 } }, k = { 6 } },
-            [7] = { s = 164, n = "Dropped Dagger", c = { 40, 60, 80, 100 }, m = { { 12, 1 } }, k = { 2 } },
+            -- taught by an item a vendor sells
+            [7] = { s = 164, n = "Dropped Dagger", c = { 40, 60, 80, 100 }, m = { { 12, 1 } }, k = { 5 }, i = 900 },
+            -- the same, but it asks for more skill than the smith has
+            [8] = { s = 164, n = "Vendor Hammer", c = { 140, 160, 180, 200 }, m = { { 12, 1 } }, k = { 5 }, i = 901 },
         },
-        items = {},
+        items = {
+            [900] = { n = "Plans: Dropped Dagger", k = { 5 }, v = { { id = 13, n = "Vendor Vic", z = { 1519 }, g = 500 }, { id = 14, n = "Horde Hank", z = { 1637 }, f = "H" } } },
+            [901] = { n = "Plans: Vendor Hammer", k = { 5 }, v = { { id = 15, n = "Hammer Hal", z = { 1519 } } } },
+        },
         trainers = {
             [171] = { { id = 9, n = "Near Anna", t = "Alchemist", z = { 1519 } }, { id = 10, n = "Far Ben", z = { 46 } } },
             [164] = { { id = 11, n = "Smith Sam", t = "Blacksmith", z = { 1519 } } },
             [185] = { { id = 12, n = "Cook Cora", z = { 1519 } } },
         },
-        npcs = { [9] = { 1453, 40, 60 }, [10] = { 36, 30, 20 }, [11] = { 1453, 20, 20 }, [12] = { 1453, 30, 30 } },
+        npcs = { [9] = { 1453, 40, 60 }, [10] = { 36, 30, 20 }, [11] = { 1453, 20, 20 }, [12] = { 1453, 30, 30 }, [13] = { 1453, 60, 60 } },
     }
 
     local function framesWith(field)
@@ -43,13 +49,28 @@ describe("The start screen", function()
         return out
     end
 
-    local function headers()
+    local function headers(kind)
         local out = {}
-        for _, f in ipairs(framesWith("kind")) do out[#out + 1] = { kind = f.kind, key = f.key, text = f.text._text, frame = f } end
+        for _, f in ipairs(framesWith("kind")) do
+            if kind == nil or f.kind == kind then out[#out + 1] = { kind = f.kind, key = f.key, text = f.text._text, frame = f } end
+        end
         return out
     end
 
+    -- the groups are folded until they are opened: this opens every group of a kind ("learn" or "trainers")
+    local function open(kind)
+        for _ = 1, 10 do
+            local closed
+            for _, header in ipairs(headers(kind)) do
+                if header.frame.folded then closed = header.frame break end
+            end
+            if not closed then return end
+            click(closed)
+        end
+    end
+
     local function trainerRows() return framesWith("trainer") end
+    local function vendorRows() return framesWith("vendor") end
 
     before_each(function()
         WowMock.Reset()
@@ -70,7 +91,7 @@ describe("The start screen", function()
         _G.C_TradeSkillUI = { CanTradeSkillShowCraftingUI = function() return true end }
         _G.C_Item = { GetItemCount = function(id) return bag[id] or 0 end, GetItemNameByID = function(id) return "Item" .. id end,
             GetItemIconByID = function() return 1 end }
-        _G.C_Map = { GetAreaInfo = function(id) return ({ [1519] = "Stormwind City", [46] = "Burning Steppes" })[id] end,
+        _G.C_Map = { GetAreaInfo = function(id) return ({ [1519] = "Stormwind City", [46] = "Burning Steppes", [1637] = "Orgrimmar" })[id] end,
             GetBestMapForUnit = function() return 1453 end }
         _G.UnitName = function() return "Tester" end
         _G.GetRealmName = function() return "Realm" end
@@ -103,7 +124,7 @@ describe("The start screen", function()
             assert.is_true(#text("^Professions$") >= 1) -- (and the title of its group of primary professions)
             assert.are.equal(1, #text("^You can learn %("))
             assert.are.equal(1, #text("^You can craft now %("))
-            assert.are.equal(1, #text("^Trainers nearby$"))
+            assert.are.equal(1, #text("^Trainers and vendors nearby$"))
         end)
 
         it("the top left lists the professions with their bar and skill", function()
@@ -125,41 +146,55 @@ describe("The start screen", function()
             assert.are.equal("skill 150", ranks[1].skillText._text)
         end)
 
-        it("lists the recipes the skill reaches that are not known, by profession and by level", function()
-            -- Alchemy (skill 150): Mana Potion needs 30, Healing Potion 100; the Elixir is known, the Flask asks for 250.
-            -- Blacksmithing (skill 75): the Sword needs 50 and the Dagger 40; the Axe asks for 150
-            assert.are.same({ "Mana Potion", "Healing Potion", "Dropped Dagger", "Iron Sword" }, learnNames())
-            local h = headers()
+        it("has the groups folded at first, with how many each has", function()
+            assert.are.same({}, learnNames())
+            local h = headers("learn")
+            assert.are.equal(2, #h)
             assert.matches("^Alchemy %(2%)", h[1].text)
-            assert.matches("^Blacksmithing %(2%)", h[3 - 1].text)
+            assert.matches("^Blacksmithing %(2%)", h[2].text)
+        end)
+
+        it("lists the recipes the skill reaches that are not known, by profession and by level, once opened", function()
+            -- Alchemy (skill 150): Mana Potion needs 30, Healing Potion 100; the Elixir is known, the Flask asks for 250.
+            -- Blacksmithing (skill 75): the Sword needs 50 and the Dagger 40; the Axe and the Hammer ask for more
+            open("learn")
+            assert.are.same({ "Mana Potion", "Healing Potion", "Dropped Dagger", "Iron Sword" }, learnNames())
         end)
 
         it("each recipe has its level and where it is learned", function()
+            open("learn")
             local first = framesWith("learn")[1]
             assert.matches("^30", first.skillText._text)
             assert.matches("Trainer", first.skillText._text)
         end)
 
         it("a click on a recipe opens its panel", function()
+            open("learn")
             click(framesWith("learn")[1])
             assert.is_true(_G.FabrikaoDetailFrame:IsShown())
             assert.are.equal("Mana Potion", _G.FabrikaoDetailFrame.name._text)
         end)
 
-        it("a group folds with a click on its title, and it is kept", function()
-            click(headers()[1].frame)
-            assert.are.same({ "Dropped Dagger", "Iron Sword" }, learnNames())
+        it("a group opens and folds with a click on its title, and it is kept", function()
+            click(headers("learn")[1].frame)
+            assert.are.same({ "Mana Potion", "Healing Potion" }, learnNames())
+            assert.is_false(FabrikaoCharDB.folded.learn[171])
+            click(headers("learn")[1].frame)
+            assert.are.same({}, learnNames())
             assert.is_true(FabrikaoCharDB.folded.learn[171])
-            click(headers()[1].frame)
-            assert.are.equal(4, #learnNames())
-            assert.is_nil(FabrikaoCharDB.folded.learn[171])
         end)
 
-        it("a reset of the settings unfolds them all", function()
-            click(headers()[1].frame)
+        it("what was opened stays open when the screen is drawn again", function()
+            click(headers("learn")[1].frame)
+            ns.UI_ShowOverview()
+            assert.are.same({ "Mana Potion", "Healing Potion" }, learnNames())
+        end)
+
+        it("a reset of the settings folds them all again", function()
+            open("learn")
             ns.ResetSettings()
             assert.is_nil(FabrikaoCharDB.folded)
-            assert.are.equal(4, #learnNames())
+            assert.are.same({}, learnNames())
         end)
 
         it("says so when there is nothing", function()
@@ -170,61 +205,100 @@ describe("The start screen", function()
         end)
     end)
 
-    describe("the trainers close by (bottom right)", function()
-        it("are grouped by profession, the one with the nearest trainer first, nearest first inside", function()
-            local h = {}
-            for _, header in ipairs(headers()) do if header.kind == "trainers" then h[#h + 1] = header.text end end
-            assert.are.same({ "Blacksmithing (1)", "Alchemy (2)" }, h)
+    describe("the trainers and vendors close by (bottom right)", function()
+        local function groupTexts()
+            local out = {}
+            for _, header in ipairs(headers("trainers")) do out[#out + 1] = header.text end
+            return out
+        end
+
+        it("are grouped by profession, folded at first, the one with the nearest first", function()
+            -- the smith: its trainer (100 yards) and its vendor (400); alchemy: its trainers (400 and 4000)
+            assert.are.same({ "Blacksmithing (2)", "Alchemy (2)" }, groupTexts())
+            assert.are.equal(0, #trainerRows() + #vendorRows())
+        end)
+
+        it("once opened, the trainers come nearest first and then the vendors", function()
+            open("trainers")
             local names = {}
             for _, row in ipairs(trainerRows()) do names[#names + 1] = row.trainer.name end
             assert.are.same({ "Smith Sam", "Near Anna", "Far Ben" }, names)
+            assert.are.equal(1, #vendorRows())
+            assert.are.equal("Vendor Vic", vendorRows()[1].vendor.name)
+        end)
+
+        it("a vendor is only there for what it sells of the profession: a recipe that is not known and that the skill reaches", function()
+            open("trainers")
+            -- Hammer Hal sells the plans of a recipe that asks for more skill than the smith has; Horde Hank is the Horde's
+            local names = {}
+            for _, row in ipairs(vendorRows()) do names[#names + 1] = row.vendor.name end
+            assert.are.same({ "Vendor Vic" }, names)
+            assert.is_nil(WowMock.Find(function(f) return f.vendor and f.vendor.name == "Hammer Hal" end))
+        end)
+
+        it("says what the vendor sells and what it is, in the line of the vendor", function()
+            open("trainers")
+            local row = vendorRows()[1]
+            assert.matches("Vendor Vic", row.name._text)
+            assert.matches("Dropped Dagger", row.name._text)
+            assert.matches("^Vendor", row.where._text)
+            assert.matches("Stormwind City", row.where._text)
+        end)
+
+        it("a vendor that sells nothing of what is left to learn is gone", function()
+            known = { [1] = true, [7] = true } -- the dagger is known now
+            ns.UI_ShowOverview()
+            open("trainers")
+            assert.are.equal(0, #vendorRows())
         end)
 
         it("says the rank in the group that can train it", function()
             local noted
-            for _, header in ipairs(headers()) do
-                if header.kind == "trainers" and header.text:match("^Blacksmithing") then noted = header.frame.note._text end
+            for _, header in ipairs(headers("trainers")) do
+                if header.text:match("^Blacksmithing") then noted = header.frame.note._text end
             end
             assert.matches("Can train: .*Journeyman", noted)
         end)
 
-        it("only the professions whose trainers teach something that is not known yet", function()
-            -- cooking has trainers in the data but the character has no cooking: nothing of it; and when alchemy has nothing
-            -- left for a trainer to teach, it goes
-            known = { [1] = true, [2] = true, [3] = true, [4] = true }
+        it("only the professions whose trainers teach something that is not known yet, or whose vendors sell something", function()
+            -- cooking has trainers in the data but the character has no cooking; alchemy has nothing left for a trainer
+            known = { [1] = true, [2] = true, [3] = true, [4] = true, [7] = true }
             ns.UI_ShowOverview()
-            local h = {}
-            for _, header in ipairs(headers()) do if header.kind == "trainers" then h[#h + 1] = header.text end end
-            assert.are.same({ "Blacksmithing (1)" }, h)
+            assert.are.same({ "Blacksmithing (1)" }, groupTexts())
         end)
 
-        it("each trainer has the map button, which shows it on the map", function()
+        it("each one has the map and waypoint icons, and the map one shows it on the map", function()
+            open("trainers")
             local row = trainerRows()[1]
             assert.is_true(row.mapButton:IsShown())
+            assert.are.equal("map", row.mapButton.iconKind)
+            assert.are.equal("pointer", row.tomButton.iconKind)
             click(row.mapButton)
             assert.are.same({ { map = 1453, x = 20, y = 20 } }, mapped)
         end)
 
-        it("has the waypoint button with TomTom installed", function()
+        it("has the waypoint icon with TomTom installed", function()
             _G.TomTom = { AddWaypoint = function() return {} end }
             ns.UI_ShowOverview()
+            open("trainers")
             assert.is_true(trainerRows()[1].tomButton:IsShown())
         end)
 
-        it("a group folds, and it is kept", function()
-            for _, header in ipairs(headers()) do
-                if header.kind == "trainers" and header.text:match("^Blacksmithing") then click(header.frame) end
-            end
-            assert.are.equal(2, #trainerRows())
-            assert.is_true(FabrikaoCharDB.folded.trainers[164])
+        it("each one takes two lines: the name, and under it what it is, where and how far", function()
+            open("trainers")
+            local row = trainerRows()[1]
+            assert.matches("Smith Sam", row.name._text)
+            assert.matches("^Trainer", row.where._text)
+            assert.matches("Stormwind City", row.where._text)
+            assert.is_true(row:GetHeight() <= 40) -- (not the roomy lines of before)
         end)
 
-        it("says so when no trainer has anything to teach", function()
-            known = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true }
+        it("says so when nothing has anything for the character", function()
+            known = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true }
             WowMock.level = 5 -- and no rank to train
             ns.UI_ShowOverview()
-            assert.are.equal(0, #trainerRows())
-            assert.are.equal(1, #text("^No trainer has anything new"))
+            assert.are.equal(0, #headers("trainers"))
+            assert.are.equal(1, #text("^No trainer or vendor has anything new"))
         end)
     end)
 
@@ -239,6 +313,7 @@ describe("The start screen", function()
         it("the learnable recipes are the alt's: its skill and what it knows", function()
             -- skill 40: the Elixir (1) and the Mana Potion (30) are within reach; the alt knows the potion, not the elixir (the
             -- playing character does)
+            open("learn")
             assert.are.same({ "Elixir of Wisdom" }, learnNames())
         end)
 

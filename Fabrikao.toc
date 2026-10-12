@@ -28,6 +28,7 @@ Modules\Professions\Roster.lua
 Modules\Professions\Recipes.lua
 Modules\Professions\Craft.lua
 Modules\UI\AutoScroll.lua
+Modules\UI\IconButton.lua
 Modules\UI\RecipeList.lua
 Modules\UI\FilterBar.lua
 Modules\UI\SearchPage.lua

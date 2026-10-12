@@ -386,40 +386,83 @@ function ns.Recipes_LearnableNow(professions, limit)
     return groups
 end
 
--- The trainers close to the character that have something to teach it: for each profession it has, when the next rank can be trained
--- or some recipe of the profession that a trainer teaches is one it doesn't know and its skill allows, that profession's trainers
--- (for the character's side), nearest first. Returns { { profession =, nextRank = name or nil, trainers = { ... as
--- ns.RecipeDB_Trainers ... }, total = n }, ... }, the professions with the nearest trainer first; `limit` cuts each group's trainers.
+-- The trainers and vendors close to the character that have something for it, by profession. For each profession it has:
+--   * its trainers (for the character's side, nearest first) when the next rank can be trained or some recipe of the profession that
+--     a trainer teaches is one it doesn't know and its skill allows;
+--   * its vendors that sell the item that teaches a recipe of the profession that it doesn't know and its skill allows (only those:
+--     a vendor of anything else is not listed).
+-- Returns { { profession =, nextRank = name or nil, trainers = { as ns.RecipeDB_Trainers... }, total = trainers there are,
+-- vendors = { { id =, name =, zones =, distance =, recipes = { names } }... nearest first }, vendorTotal = n }, ... }, the professions
+-- with the nearest one first; `limit` cuts each list.
 function ns.Recipes_TrainersNearby(professions, limit)
     local have = {}
     for _, p in ipairs(professions) do
         if p.learned ~= false and p.skillLine then have[p.skillLine] = p end
     end
-    -- a recipe of its profession that trainers teach (source code 6), not known and within its skill
-    local teaches = {}
+    -- what the skill reaches and is not known: whether a trainer teaches some, and who sells the item that teaches the others
+    local teaches, sells = {}, {}
     for id, db in ns.RecipeDB_Each() do
         local p = have[db.s]
-        if p and p.rank and not teaches[db.s] then
-            local byTrainer = false
-            for _, code in ipairs(db.k or {}) do if code == 6 then byTrainer = true end end
-            local required = byTrainer and ns.RecipeDB_Required(db)
-            if required and required <= p.rank and not knownByView(id) then teaches[db.s] = true end
-        end
-    end
-    local groups = {}
-    for index, p in ipairs(professions) do
-        if have[p.skillLine] then
-            local nextRank = ns.Professions_NextRank and ns.Professions_NextRank(p) or nil
-            if nextRank or teaches[p.skillLine] then
-                local trainers, total = ns.RecipeDB_Trainers(p.skillLine, limit)
-                if #trainers > 0 then
-                    groups[#groups + 1] = { profession = p, nextRank = nextRank, trainers = trainers, total = total, order = index }
+        if p and p.rank then
+            local required = ns.RecipeDB_Required(db)
+            if required and required <= p.rank and not knownByView(id) then
+                for _, code in ipairs(db.k or {}) do
+                    if code == 6 then teaches[db.s] = true end
+                end
+                local item = db.i and ns.RecipeDB_Item(db)
+                for _, vendor in ipairs(item and item.v or {}) do
+                    local bySkill = sells[db.s] or {}
+                    sells[db.s] = bySkill
+                    local entry = bySkill[vendor.id]
+                    if not entry then
+                        entry = { id = vendor.id, n = vendor.n, z = vendor.z, f = vendor.f, recipes = {} }
+                        bySkill[vendor.id] = entry
+                    end
+                    entry.recipes[#entry.recipes + 1] = db.n
                 end
             end
         end
     end
+
+    local groups = {}
+    for index, p in ipairs(professions) do
+        if have[p.skillLine] then
+            local nextRank = ns.Professions_NextRank and ns.Professions_NextRank(p) or nil
+            local trainers, total = {}, 0
+            if nextRank or teaches[p.skillLine] then
+                trainers, total = ns.RecipeDB_Trainers(p.skillLine, limit)
+            end
+            local vendors, vendorTotal = {}, 0
+            local list = {}
+            for _, entry in pairs(sells[p.skillLine] or {}) do list[#list + 1] = entry end
+            table.sort(list, function(a, b) return a.id < b.id end) -- (a fixed order among equals)
+            local ordered, distances = ns.RecipeDB_NearestFor(list)
+            vendorTotal = #ordered
+            for i, entry in ipairs(ordered) do
+                if limit and i > limit then break end
+                table.sort(entry.recipes)
+                vendors[#vendors + 1] = {
+                    id = entry.id, name = entry.n, zones = ns.RecipeDB_Zones(entry.z), distance = distances[entry],
+                    recipes = entry.recipes,
+                }
+            end
+            if #trainers > 0 or #vendors > 0 then
+                groups[#groups + 1] = {
+                    profession = p, nextRank = nextRank, trainers = trainers, total = total, vendors = vendors,
+                    vendorTotal = vendorTotal, order = index,
+                }
+            end
+        end
+    end
+    -- the nearest of its trainers and vendors decides where a profession goes
+    local function nearest(group)
+        local best = math.huge
+        if group.trainers[1] and group.trainers[1].distance then best = math.min(best, group.trainers[1].distance) end
+        if group.vendors[1] and group.vendors[1].distance then best = math.min(best, group.vendors[1].distance) end
+        return best
+    end
     table.sort(groups, function(a, b)
-        local da, db = a.trainers[1].distance or math.huge, b.trainers[1].distance or math.huge
+        local da, db = nearest(a), nearest(b)
         if da ~= db then return da < db end
         return a.order < b.order
     end)
