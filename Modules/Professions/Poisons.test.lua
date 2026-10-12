@@ -89,6 +89,33 @@ describe("Poisons", function()
             assert.are.equal(137, ns.Professions_List()[2].rank)
         end)
 
+        it("is the game's own entry when the game lists Poisons with the professions: not twice", function()
+            setup("ROGUE", 40, true)
+            _G.GetProfessions = function() return 1, 2, 3 end
+            _G.GetProfessionInfo = function(index)
+                if index == 1 then return "Alchemy", 111, 150, 300, 1, 10, 171, 0 end
+                if index == 2 then return "Cooking", 333, 90, 150, 1, 20, 185, 0 end
+                return "Poisons", 444, 116, 110, 1, 30, 40, 0 -- (its numbers are the game's)
+            end
+            local list = ns.Professions_List()
+            assert.are.same({ "Alchemy", "Poisons", "Cooking" }, names(list))
+            assert.are.equal(116, list[2].rank)
+            assert.are.equal(110, list[2].maxRank)
+            assert.are.equal(444, list[2].icon)
+        end)
+
+        it("the game's entry is the profession of the data's skill even when the game numbers it differently", function()
+            setup("ROGUE", 40, true)
+            _G.GetProfessions = function() return 1, 2 end
+            _G.GetProfessionInfo = function(index)
+                if index == 1 then return "Alchemy", 111, 150, 300, 1, 10, 171, 0 end
+                return "Poisons", 444, 116, 300, 1, 30, 999, 0
+            end
+            local list = ns.Professions_List()
+            assert.are.same({ "Alchemy", "Poisons" }, names(list))
+            assert.are.equal(40, list[2].skillLine)
+        end)
+
         it("is not there for another class, or for a rogue that has not learned it yet", function()
             setup("MAGE", 40, true)
             assert.are.same({ "Alchemy", "Cooking" }, names(ns.Professions_List()))

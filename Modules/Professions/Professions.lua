@@ -54,6 +54,10 @@ local function playerClass()
     return UnitClass and select(2, UnitClass("player")) or nil
 end
 
+local function poisonsName()
+    return ns.RecipeDB_SkillName and ns.RecipeDB_SkillName(POISONS) or "Poisons"
+end
+
 local function knowsSpell(id)
     if C_SpellBook and C_SpellBook.IsSpellKnown then
         local ok, known = pcall(C_SpellBook.IsSpellKnown, id)
@@ -92,6 +96,8 @@ function ns.Professions_Mine()
         if index then
             local name, icon, rank, maxRank, _, spellOffset, skillLine = GetProfessionInfo(index)
             if name and skillLine ~= ARCHAEOLOGY then
+                -- (the game lists Poisons for a rogue in some clients: its own entry is the one, by the number of the skill the data uses)
+                if name == poisonsName() then skillLine = POISONS end
                 list[#list + 1] = {
                     name = name, icon = icon, rank = rank or 0, maxRank = maxRank or 0, skillLine = skillLine,
                     primary = not SECONDARY[skillLine], hasRecipes = hasRecipes(spellOffset),
@@ -100,10 +106,14 @@ function ns.Professions_Mine()
             end
         end
     end
-    if playerClass() == ROGUE and knowsSpell(POISONS_SPELL) then
+    local listed = false
+    for _, p in ipairs(list) do
+        if p.skillLine == POISONS then listed = true end
+    end
+    if not listed and playerClass() == ROGUE and knowsSpell(POISONS_SPELL) then
         local rank, maxRank = poisonsSkill()
         list[#list + 1] = {
-            name = ns.RecipeDB_SkillName and ns.RecipeDB_SkillName(POISONS) or "Poisons", icon = poisonsIcon(), rank = rank, maxRank = maxRank,
+            name = poisonsName(), icon = poisonsIcon(), rank = rank, maxRank = maxRank,
             -- listed with the main skills, after the primary professions and before First Aid, Cooking and Fishing
             skillLine = POISONS, primary = true, hasRecipes = true, order = #list + 1,
         }
