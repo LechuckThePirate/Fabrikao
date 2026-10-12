@@ -278,6 +278,7 @@ local function newIngredient()
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.itemID) else GameTooltip:SetText(itemName(self.itemID), 1, 1, 1) end
         if ns.Inventory_AddTooltipLines then ns.Inventory_AddTooltipLines(GameTooltip, self.itemID) end
+        GameTooltip:AddLine(L["Click to see where to get it"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     row:SetScript("OnLeave", GameTooltip_Hide)
@@ -286,6 +287,8 @@ local function newIngredient()
             local info = C_Item and C_Item.GetItemInfo or GetItemInfo
             local link = info and select(2, info(self.itemID))
             if link then ChatEdit_InsertLink(link) end
+        else
+            ns.RecipeDetail_ToggleReagent(self.itemID)
         end
     end)
     return row
@@ -346,15 +349,16 @@ end
 
 -- An entry of a source (a trainer, a vendor, a creature that drops it, a quest...) on its own line, with the map and waypoint buttons
 -- when it is an NPC with a known location, and the "View Quest" button when it is a quest Completao has.
-local function npcRow(y, npc)
+local function npcRow(y, npc, indent)
     local row = acquire("npc", newNpc)
+    local x = indent or 14
     local spot = npc.id and ns.RecipeDB_NpcLocation(npc.id)
     local withTomTom = spot and ns.Map_HasTomTom()
     local quest = npc.questID and ns.Quests_Known(npc.questID)
     row:ClearAllPoints()
-    row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 14, -y)
-    row:SetWidth(TEXT_W - 14)
-    row.text:SetWidth(TEXT_W - 14 - (spot and (withTomTom and 130 or 64) or 0) - (quest and QUEST_BUTTON_W + 6 or 0))
+    row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", x, -y)
+    row:SetWidth(TEXT_W - x)
+    row.text:SetWidth(TEXT_W - x - (spot and (withTomTom and 130 or 64) or 0) - (quest and QUEST_BUTTON_W + 6 or 0))
     -- how far it is, when the game says (the list is in that order)
     local distance = npc.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(npc.distance)
     row.text:SetText(distance and (npc.text .. "  " .. DIM .. distance .. "|r") or npc.text)
@@ -368,6 +372,21 @@ local function npcRow(y, npc)
     local height = math.max(row.text:GetStringHeight(), (spot or quest) and 22 or 0)
     row:SetHeight(height)
     return y + height + 6
+end
+
+-- Where an ingredient can be had, under its row (a click on the row opens and closes it): who sells it, the creatures that drop it, the
+-- zones it is fished in... with the map and waypoint buttons of the ones that have a place.
+local function reagentSources(y, itemID)
+    local lines = ns.RecipeDB_ReagentWhere and ns.RecipeDB_ReagentWhere(itemID) or {}
+    if #lines == 0 then
+        return y + put(FONT_SMALL, 14, y, TEXT_W - 14, L["No known source."], nil, { 0.6, 0.6, 0.6 }) + 10
+    end
+    for _, line in ipairs(lines) do
+        y = y + put(FONT_LABEL, 14, y, TEXT_W - 14, line.title, nil, { 1, 0.82, 0 }) + 4
+        for _, entry in ipairs(line.entries) do y = npcRow(y, entry, 28) end
+        y = y + 4
+    end
+    return y + 6
 end
 
 -- The craft button: only for a recipe the character knows, with how many the bags allow.
@@ -406,7 +425,10 @@ local function render()
 
     if #data.reagents > 0 then
         y = heading(y + 10, (L["Ingredients:"]:gsub(":$", "")))
-        for _, reagent in ipairs(data.reagents) do y = ingredientRow(y, reagent) end
+        for _, reagent in ipairs(data.reagents) do
+            y = ingredientRow(y, reagent)
+            if current.expanded[reagent.itemID] then y = reagentSources(y, reagent.itemID) end
+        end
     end
 
     if #data.economy > 0 then
@@ -587,9 +609,26 @@ function ns.RecipeDetail_Show(recipe, opts)
     if not panel then create(window) end
     panel:SetScale(window:GetScale())
     dock(window)
-    current = { recipe = recipe, opts = opts }
+    -- what was opened under the ingredients stays while the same recipe is filled again
+    local expanded = current and current.recipe and recipe and current.recipe.id == recipe.id and current.expanded or {}
+    current = { recipe = recipe, opts = opts, expanded = expanded }
     render()
     panel:Show()
+end
+
+-- Opens or closes where to get an ingredient, under its row; false when no recipe is open.
+function ns.RecipeDetail_ToggleReagent(itemID)
+    if not (panel and current and current.expanded and itemID) then return false end
+    current.expanded[itemID] = not current.expanded[itemID] or nil
+    local offset = panel.scroll:GetVerticalScroll()
+    render()
+    panel.scroll:SetVerticalScroll(offset)
+    return true
+end
+
+-- Is where to get the ingredient open?
+function ns.RecipeDetail_ReagentOpen(itemID)
+    return current ~= nil and current.expanded ~= nil and current.expanded[itemID] == true
 end
 
 function ns.RecipeDetail_Hide()

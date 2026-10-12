@@ -38,7 +38,8 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   of every recipe (dropdowns of the game's menus, `WowStyle1DropdownTemplate` + `SetupMenu` with radios, falling back to cycling buttons when
   the templates are missing; each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`; the category of a recipe comes from
   its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/Trainers.lua` — the panel of a profession's trainers, nearest first, with map and TomTom buttons (`ns.RecipeDB_Trainers`; the "Trainers"
-  button of the recipes page; it takes the place of a recipe's panel); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window
+  button of the recipes page; it takes the place of a recipe's panel); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window (a click on an ingredient opens, under it, where to
+  get it: `ns.RecipeDB_ReagentWhere`, with the map and waypoint buttons of the vendors and creatures)
   on a click (`ns.RecipeDetail_Build` makes its content as data, `_Show`/`_Hide` the frame); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
 - `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing; `Professions_NextRank` says which rank a trainer can teach it now: skill at the
   rank's cap, the level the rank asks for and a higher rank in the data's recipes; `Professions_Mine` is the
@@ -68,7 +69,11 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
 never written in anything tracked**: README, CHANGELOG, CurseForge text, commit messages, code comments — credit it only as "public
 databases", like Completao). Steps: `node tools/local/recipes_fetch.mjs` (a spell listing and a skill page per profession),
 `node tools/local/recipes_items.mjs` (slow: one page per recipe item whose source isn't named yet; resumable; one request every 3 s,
-the source answers 403 beyond that), then `node tools/local/recipes_write.mjs <worktree>/Data/Generated/Recipes.lua` (which also writes
+the source answers 403 beyond that), `node tools/local/reagents_fetch.mjs` (where each ingredient can be had: who sells it, which
+creatures drop it or are skinned for it, the zones it is fished in, the nodes it is gathered from, what makes it; one page per ingredient,
+about 600, so the first run is long; it ends up as `reagents[itemID]` in the data, read by `ns.RecipeDB_ReagentWhere`, and the creatures and
+vendors it names are among the NPCs whose positions are fetched), then
+`node tools/local/recipes_write.mjs <worktree>/Data/Generated/Recipes.lua` (which also writes
 `cache/npc_wanted.json`: the vendors, trainers and creatures of the data), `node tools/local/npc_coords.mjs` (where each stands: one page
 each, for the map and TomTom buttons) and `recipes_write.mjs` again to put the positions in. Pages are cached in `tools/local/cache/`
 (`CACHE_TTL_DAYS` and `REFRESH_BUDGET` make a run download the oldest ones again, a few at a time). Source codes in the data: 1 crafted, 2 drop, 3 PvP, 4 quest, 5 vendor, 6 trainer, 16 gathered, 21 salvaged.

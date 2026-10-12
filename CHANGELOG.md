@@ -17,6 +17,9 @@
   It follows an alt's own level when you look at an alt.
 - Fix: the trainers of Herbalism, Skinning and Fishing are listed too (the data had none of them). Those professions have no recipes, but
   their page opens from the main screen so you can reach its Trainers button.
+- New: a click on an ingredient in a recipe's panel opens, under it, where to get it: who sells it, which creatures drop it or are skinned for it
+  (with their level and the chance), the zones it is fished in, the nodes it is gathered from and what makes it. The vendors and creatures have a
+  "Map" button and, with TomTom installed, a waypoint button, and come nearest first.
 
 ## 0.2.0
 

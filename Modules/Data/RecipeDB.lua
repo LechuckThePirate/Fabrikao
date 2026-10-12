@@ -246,6 +246,90 @@ local function nearestFirst(list)
     return sorted, distances
 end
 
+-- Where an ingredient (an item id) can be had, from the data's `reagents`: lines { title =, entries = { { text =, id =, name =,
+-- distance = }... } } -- the vendors for the character's side (nearest first), the creatures that drop it and the ones skinned for it
+-- (likeliest first, with the chance and how far they are), the zones it is fished in, the nodes it is gathered from and what makes it.
+-- `id` and `name` are there for the creatures and vendors, who can be shown on the map. Empty when the data knows nothing of it.
+function ns.RecipeDB_ReagentWhere(itemID)
+    local db = data()
+    local rec = db and db.reagents and db.reagents[itemID]
+    local lines = {}
+    if not rec then return lines end
+
+    local function percent(pm)
+        if not pm then return nil end
+        return pm > 0 and pm < 10 and "<0.1%" or ("%.1f%%"):format(pm / 100)
+    end
+
+    local vendors = {}
+    for _, vendor in ipairs(rec.v or {}) do
+        if forMySide(vendor) then vendors[#vendors + 1] = vendor end
+    end
+    if #vendors > 0 then
+        local ordered, distances = nearestFirst(vendors)
+        local entries = {}
+        for _, vendor in ipairs(ordered) do
+            local price = money(vendor.g)
+            entries[#entries + 1] = {
+                id = vendor.id, name = vendor.n, text = named(vendor, true) .. (price and (" -- " .. price) or ""),
+                distance = distances[vendor],
+            }
+        end
+        lines[#lines + 1] = { title = L["Sold by"], entries = entries }
+    end
+
+    -- creatures keep the order of the data (the likeliest first); how far each is goes with it
+    local function creatures(list, title)
+        if not list or #list == 0 then return end
+        local _, distances = nearestFirst(list)
+        local entries = {}
+        for _, creature in ipairs(list) do
+            local extra = {}
+            if creature.lo then
+                extra[#extra + 1] = L["level %s"]:format(creature.lo == creature.hi and creature.lo or (creature.lo .. "-" .. (creature.hi or creature.lo)))
+            end
+            local chance = percent(creature.pm)
+            if chance then extra[#extra + 1] = chance end
+            local text = named(creature, true)
+            if #extra > 0 then text = text .. " -- " .. table.concat(extra, ", ") end
+            entries[#entries + 1] = { id = creature.id, name = creature.n, text = text, distance = distances[creature] }
+        end
+        lines[#lines + 1] = { title = title, entries = entries }
+    end
+    creatures(rec.d, L["Dropped by"])
+    creatures(rec.k, L["Skinned from"])
+
+    if rec.f and #rec.f > 0 then
+        local entries = {}
+        for _, zone in ipairs(rec.f) do
+            local name = zoneName(zone.z)
+            if name then
+                local chance = percent(zone.pm)
+                entries[#entries + 1] = { text = chance and (name .. " -- " .. chance) or name }
+            end
+        end
+        if #entries > 0 then lines[#lines + 1] = { title = L["Fished in"], entries = entries } end
+    end
+
+    if rec.g and #rec.g > 0 then
+        local entries = {}
+        for _, node in ipairs(rec.g) do
+            local zones = zoneList(node.z)
+            entries[#entries + 1] = { text = zones ~= "" and ("%s (%s)"):format(node.n, zones) or node.n }
+        end
+        lines[#lines + 1] = { title = L["Gathered from"], entries = entries }
+    end
+
+    if rec.c and #rec.c > 0 then
+        local entries = {}
+        for _, made in ipairs(rec.c) do
+            entries[#entries + 1] = { text = made.s and ("%s: %s"):format(ns.RecipeDB_SkillName(made.s), made.n) or made.n }
+        end
+        lines[#lines + 1] = { title = L["Made by"], entries = entries }
+    end
+    return lines
+end
+
 -- The trainers of a profession (a skill line) that are for the character's side, nearest first (see nearestFirst):
 -- { { id =, name =, title =, zones = text, text = "name (zones)", distance = yards or nil }, ... }, cut to `limit` when given, and how
 -- many there are in all.
