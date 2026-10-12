@@ -49,7 +49,7 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   another character (read only: no live trade skill read, no Craft button, ingredient counts from Embolsao's copies of that character; the
   window is tinted blue and the title and a line on the recipes page name it; closing the window puts the playing character back).
   Everything that asks "does the character know it?" goes through `ns.Roster_Knows`, and the professions through `ns.Professions_List`
-- `Modules/UI/` — `MainWindow.lua` (professions page with "You can craft now" under it, from `ns.Recipes_CraftableNow`; recipes page), `SearchPage.lua` (search of every recipe in the data, with a detail
+- `Modules/UI/` — `MainWindow.lua` (professions page with a foldable "You can craft now" above it, from `ns.Recipes_CraftableNow`; recipes page), `SearchPage.lua` (search of every recipe in the data, with a detail
   panel) and `MinimapButton.lua`; `Bindings.xml` has the key binding (the game loads it itself: **never list it in the TOC**)
 - `Data/Generated/Recipes.lua` (**generated, never edit by hand**) — every recipe of the crafting professions (skill levels where each
   turns orange / yellow / green / grey, ingredients, product, how it is learned), the items that teach them (vendors, drops, quests)

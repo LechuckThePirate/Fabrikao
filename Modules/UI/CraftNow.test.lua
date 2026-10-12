@@ -77,10 +77,45 @@ describe("You can craft now", function()
         assert.are.same({ 1, 0.5, 0.25 }, rows()[1].name._set.SetTextColor)
     end)
 
-    it("is under the professions, with its own title", function()
+    -- the title of the list: a button with its text and the count
+    local function title()
+        return WowMock.FindAll(function(f)
+            return f.text and f.text._text and f.text._text:match("^You can craft now") and f:IsVisible()
+        end)[1]
+    end
+
+    -- how far down from the top of the content a frame starts
+    local function top(f) return -f._points[1][5] end
+
+    it("is the first thing of the screen, above the professions, with the count in its title", function()
         ns.UI_Show()
-        local titles = WowMock.FindAll(function(f) return f._text == "You can craft now" and f:IsVisible() end)
-        assert.are.equal(1, #titles)
+        assert.are.equal("You can craft now (2)", title().text._text)
+        local firstProfession = framesWith("profession")[1]
+        assert.is_true(top(title()) < top(rows()[1]))
+        assert.is_true(top(rows()[#rows()]) < top(firstProfession))
+    end)
+
+    it("folds with a click on its title: the rows go, the count stays, and it is remembered", function()
+        ns.UI_Show()
+        click(title())
+        assert.are.same({}, names())
+        assert.are.equal("You can craft now (2)", title().text._text)
+        assert.is_true(FabrikaoCharDB.craftCollapsed)
+        assert.matches("PlusButton", title().icon._set.SetTexture[1])
+        -- the professions come up to fill its place
+        assert.is_true(top(framesWith("profession")[1]) < 80)
+        click(title())
+        assert.are.equal(2, #rows())
+        assert.matches("MinusButton", title().icon._set.SetTexture[1])
+    end)
+
+    it("starts folded when it was left that way, and a reset of the settings unfolds it", function()
+        ns.char.craftCollapsed = true
+        ns.UI_Show()
+        assert.are.same({}, names())
+        ns.ResetSettings()
+        assert.is_nil(FabrikaoCharDB.craftCollapsed)
+        assert.are.equal(2, #rows())
     end)
 
     it("a click opens the game's profession window on the recipe, as the Craft button does", function()
@@ -113,6 +148,7 @@ describe("You can craft now", function()
         assert.are.equal(2, #rows())
         ns.UI_ViewCharacter("Elsa-Realm")
         assert.are.same({}, names())
+        assert.is_nil(title()) -- not even its title
         ns.UI_ViewCharacter(nil)
         assert.are.equal(2, #rows())
     end)

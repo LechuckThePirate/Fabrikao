@@ -7,8 +7,9 @@
   copies, when installed). The window turns blue and says whose they are, as Embolsao!! does with another character's bags, and there is no
   crafting. An alt appears once you have logged in with it with this version.
 - New: a button above the professions lists the professions you have not learned too, so you can browse their recipes.
-- New: under the professions, "You can craft now" lists what your bags allow you to make with the recipes you know, in any of your
-  professions (orange first, with how many). A click opens the game's profession window on that recipe, as the Craft button does.
+- New: at the top of the main screen, "You can craft now" lists what your bags allow you to make with the recipes you know, in any of your
+  professions (orange first, with how many). A click opens the game's profession window on that recipe, as the Craft button does;
+  a click on its title folds the list.
 
 ## 0.2.0
 
