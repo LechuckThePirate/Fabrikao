@@ -66,6 +66,10 @@ describe("Recipe data", function()
             for _, key in ipairs({ "v", "d" }) do
                 for _, entry in ipairs(item[key] or {}) do listed[entry.id] = true end
             end
+            -- and who gives the quests that teach a recipe
+            for _, quest in ipairs(item.qs or {}) do
+                for _, giver in ipairs(quest.g or {}) do listed[giver.id] = true end
+            end
         end
         for _, trainers in pairs(db.trainers) do
             for _, trainer in ipairs(trainers) do listed[trainer.id] = true end
