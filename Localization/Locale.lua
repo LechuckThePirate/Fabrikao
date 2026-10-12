@@ -23,6 +23,7 @@ local es = {
     ["Not learned"] = "Sin aprender",
     ["You can craft now"] = "Puedes fabricar ahora",
     ["Trainers"] = "Entrenadores",
+    ["Click to see its trainers"] = "Clic para ver sus entrenadores",
     ["Apprentice"] = "Aprendiz",
     ["Journeyman"] = "Oficial",
     ["Expert"] = "Experto",

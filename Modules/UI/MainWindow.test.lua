@@ -81,13 +81,15 @@ describe("MainWindow", function()
         assert.are.equal(111, buttons[1].icon._set.SetTexture[1])
     end)
 
-    it("a profession with recipes opens its page; one without doesn't", function()
+    it("a profession opens its page; one with no recipes (herbalism) too, for its trainers", function()
         ns.UI_Toggle()
         local buttons = framesWith("profession")
-        click(buttons[2]) -- herbalism
-        assert.is_nil(requested)
         click(buttons[1])
         assert.are.equal(171, requested)
+        ns.UI_ShowOverview()
+        click(buttons[2]) -- herbalism
+        assert.are.equal(182, requested)
+        assert.is_true(_G.FabrikaoFrame:IsShown())
     end)
 
     it("the recipe page shows the known ones in difficulty color, with how many can be made, then the unknown ones (already sorted)", function()

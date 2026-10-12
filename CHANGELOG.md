@@ -15,6 +15,8 @@
 - New: when a profession's skill is at the cap of its rank and your level lets a trainer teach the next one (Journeyman, Expert,
   Artisan...), the profession says "Can train: Journeyman" on the main screen, next to its skill on its page and in the trainers' panel.
   It follows an alt's own level when you look at an alt.
+- Fix: the trainers of Herbalism, Skinning and Fishing are listed too (the data had none of them). Those professions have no recipes, but
+  their page opens from the main screen so you can reach its Trainers button.
 
 ## 0.2.0
 

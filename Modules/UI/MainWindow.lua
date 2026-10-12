@@ -51,6 +51,7 @@ local function showProfessionTooltip(button)
         GameTooltip:AddLine(L["Click to see its recipes"], 0.7, 0.7, 0.7)
     else
         GameTooltip:AddLine(L["This profession has no recipes"], 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L["Click to see its trainers"], 0.7, 0.7, 0.7)
     end
     GameTooltip:Show()
 end
@@ -79,7 +80,7 @@ local function newProfessionButton()
     b.train:SetTextColor(0.25, 1, 0.25)
     b.train:Hide()
     b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    b:SetScript("OnClick", function(self) if self.profession.hasRecipes then openProfession(self.profession) end end)
+    b:SetScript("OnClick", function(self) openProfession(self.profession) end)
     b:SetScript("OnEnter", showProfessionTooltip)
     b:SetScript("OnLeave", GameTooltip_Hide)
     return b
@@ -329,7 +330,8 @@ local function refreshRecipes()
     ns.RecipeList_Set(rows, viewName(), filters.sort, state.copy.rank)
     local shown = 0
     for _, row in ipairs(rows) do if row.kind == "recipe" then shown = shown + 1 end end
-    setStatus(shown == 0 and L["No recipes match"] or nil)
+    local none = #state.copy.known + #state.copy.unknown == 0
+    setStatus(shown == 0 and (none and L["This profession has no recipes"] or L["No recipes match"]) or nil)
     page.count:SetText(L["%d shown, %d known, %d not known"]:format(shown, #state.copy.known, #state.copy.unknown))
     updateControls()
 end
