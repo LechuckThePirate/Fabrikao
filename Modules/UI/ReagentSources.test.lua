@@ -19,7 +19,10 @@ describe("Where to get an ingredient", function()
                     { id = 3, n = "Far Vendor", z = { 46 }, g = 50 },
                     { id = 1, n = "Alliance Vendor", z = { 1519 }, g = 42, f = "A" },
                 },
-                d = { { id = 20, n = "Murloc Forager", z = { 12 }, lo = 9, hi = 10, pm = 1250 }, { id = 21, n = "Deeb", z = { 85 }, lo = 12, hi = 12, pm = 5 } },
+                d = {
+                    { id = 20, n = "Murloc Forager", z = { 12 }, lo = 9, hi = 10, pm = 1250 },
+                    { id = 21, n = "Deeb", z = { 85 }, lo = 12, hi = 12, pm = 5 },
+                },
                 k = { { id = 22, n = "Great Goretusk", z = { 12 }, lo = 16, hi = 17, pm = 7310 } },
                 f = { { z = 12, pm = 1300 }, { z = 46, pm = 100 } },
                 g = { { n = "Silverleaf", z = { 12, 46 } } },
@@ -59,10 +62,6 @@ describe("Where to get an ingredient", function()
         return #WowMock.FindAll(function(f) return f._text == text and f:IsVisible() end) > 0
     end
 
-    local function textLike(pattern)
-        return #WowMock.FindAll(function(f) return f._text and f._text:match(pattern) and f:IsVisible() end) > 0
-    end
-
     -- the rows with a name and place under the ingredients, in the panel's order
     local function placeRows()
         local out = {}
@@ -84,7 +83,9 @@ describe("Where to get an ingredient", function()
             end,
             GetBestMapForUnit = function() return 1453 end,
         }
-        _G.C_Item = { GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end }
+        _G.C_Item = {
+            GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end,
+        }
         _G.C_TradeSkillUI = nil
         ns = LoadAddon()
         ns.RECIPE_DATA = DATA

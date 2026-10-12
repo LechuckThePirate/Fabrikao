@@ -23,7 +23,6 @@ local es = {
     ["Not learned"] = "Sin aprender",
     ["You can craft now"] = "Puedes fabricar ahora",
     ["Trainers"] = "Entrenadores",
-    ["Welcome to Fabrikao!!"] = "Bienvenido a Fabrikao!!",
     ["You can learn"] = "Puedes aprender",
     ["Skill ranges"] = "Rangos de habilidad",
     ["Recipes"] = "Recetas",

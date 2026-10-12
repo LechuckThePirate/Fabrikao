@@ -572,13 +572,13 @@ function ns.RecipeList_Set(newRows, newView, currentSort, rank)
     draw()
 end
 
--- Where the page puts the list: place(withBar) anchors the column titles and the scroll, with room for the bar or without it. It is
+-- Where the page puts the list: placeFn(withBar) anchors the column titles and the scroll, with room for the bar or without it. It is
 -- called now and again whenever the bar comes or goes.
-function ns.RecipeList_Place(place)
+function ns.RecipeList_Place(placeFn)
     if not list then return end
-    list.place = place
+    list.place = placeFn
     list.withBar = list.withBar == nil and true or list.withBar
-    place(list.withBar)
+    placeFn(list.withBar)
 end
 
 -- Marks the recipe (by id) whose panel is open; nil for none.

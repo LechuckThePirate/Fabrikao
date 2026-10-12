@@ -107,9 +107,9 @@ describe("Recipe data", function()
         for _, r in pairs(db.recipes) do
             for _, m in ipairs(r.m or {}) do used[m[1]] = true end
         end
-        local count = 0
+        local listed = 0
         for id, reagent in pairs(db.reagents) do
-            count = count + 1
+            listed = listed + 1
             assert.is_true(used[id] == true, "ingredient " .. id .. " is used by no recipe")
             for _, key in ipairs({ "v", "d", "k" }) do
                 for _, entry in ipairs(reagent[key] or {}) do
@@ -128,15 +128,15 @@ describe("Recipe data", function()
                 assert.is_truthy(type(made.n) == "string" and type(made.i) == "number", "maker of " .. id)
             end
         end
-        assert.is_true(count > 300)
+        assert.is_true(listed > 300)
     end)
 
     it("the ranks of a book or a quest have the book with its vendors, or the quest with its givers", function()
-        local count = 0
+        local ranks = 0
         for skill, caps in pairs(db.ranks) do
             assert.is_not_nil(db.trainers[skill], "profession " .. skill)
             for cap, rank in pairs(caps) do
-                count = count + 1
+                ranks = ranks + 1
                 assert.is_true(cap == 225 or cap == 300, "the skill " .. cap .. " of profession " .. skill)
                 assert.is_truthy(rank.b or rank.q, "profession " .. skill .. " rank " .. cap .. " has neither")
                 for _, book in ipairs(rank.b or {}) do
@@ -147,7 +147,7 @@ describe("Recipe data", function()
                 end
             end
         end
-        assert.is_true(count >= 4) -- Expert and Artisan of at least two professions
+        assert.is_true(ranks >= 4) -- Expert and Artisan of at least two professions
     end)
 
     it("vendors, drops and quests are named", function()

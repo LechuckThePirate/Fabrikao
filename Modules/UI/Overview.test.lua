@@ -21,7 +21,9 @@ describe("The start screen", function()
             [9] = { s = 164, n = "Orphan Plans", c = { 60, 80, 100, 120 }, m = { { 12, 1 } }, k = { 2 } },
         },
         items = {
-            [900] = { n = "Plans: Dropped Dagger", k = { 5 }, v = { { id = 13, n = "Vendor Vic", z = { 1519 }, g = 500 }, { id = 14, n = "Horde Hank", z = { 1637 }, f = "H" } } },
+            [900] = { n = "Plans: Dropped Dagger", k = { 5 }, v = {
+                { id = 13, n = "Vendor Vic", z = { 1519 }, g = 500 }, { id = 14, n = "Horde Hank", z = { 1637 }, f = "H" },
+            } },
             [901] = { n = "Plans: Vendor Hammer", k = { 5 }, v = { { id = 15, n = "Hammer Hal", z = { 1519 } } } },
         },
         trainers = {
@@ -426,7 +428,9 @@ describe("The bar of the list of recipes", function()
         _G.Enum = { SpellBookSpellBank = { Player = 0 }, CraftingReagentType = { Basic = 1 } }
         _G.C_SpellBook = { GetSpellBookItemInfo = function(slot) return { spellID = slot } end, IsSpellKnown = function() return false end }
         _G.C_TradeSkillUI = { CanTradeSkillShowCraftingUI = function() return true end }
-        _G.C_Item = { GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end }
+        _G.C_Item = {
+            GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end,
+        }
         _G.UnitName = function() return "Tester" end
         _G.GetRealmName = function() return "Realm" end
         ns = LoadAddon()
@@ -525,7 +529,9 @@ describe("Ranks of a book or a quest", function()
         _G.Enum = { SpellBookSpellBank = { Player = 0 }, CraftingReagentType = { Basic = 1 } }
         _G.C_SpellBook = { GetSpellBookItemInfo = function(slot) return { spellID = slot } end, IsSpellKnown = function() return false end }
         _G.C_TradeSkillUI = { CanTradeSkillShowCraftingUI = function() return true end }
-        _G.C_Item = { GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end }
+        _G.C_Item = {
+            GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end,
+        }
         _G.C_Map = { GetAreaInfo = function(id) return ({ [1519] = "Stormwind City", [1637] = "Orgrimmar", [46] = "Burning Steppes" })[id] end,
             GetBestMapForUnit = function() return 1453 end }
         _G.UnitName = function() return "Tester" end
