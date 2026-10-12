@@ -70,6 +70,12 @@ describe("Recipe data", function()
         for _, trainers in pairs(db.trainers) do
             for _, trainer in ipairs(trainers) do listed[trainer.id] = true end
         end
+        -- and the vendors and creatures that give an ingredient
+        for _, reagent in pairs(db.reagents or {}) do
+            for _, key in ipairs({ "v", "d", "k" }) do
+                for _, entry in ipairs(reagent[key] or {}) do listed[entry.id] = true end
+            end
+        end
         local located = 0
         for id, spot in pairs(db.npcs) do
             located = located + 1
@@ -79,6 +85,35 @@ describe("Recipe data", function()
             assert.is_truthy(type(spot[3]) == "number" and spot[3] >= 0 and spot[3] <= 100, "y of npc " .. id)
         end
         assert.is_true(located > 400)
+    end)
+
+    it("the sources of an ingredient are for an ingredient of some recipe, named, with chances and prices in range", function()
+        local used = {}
+        for _, r in pairs(db.recipes) do
+            for _, m in ipairs(r.m or {}) do used[m[1]] = true end
+        end
+        local count = 0
+        for id, reagent in pairs(db.reagents) do
+            count = count + 1
+            assert.is_true(used[id] == true, "ingredient " .. id .. " is used by no recipe")
+            for _, key in ipairs({ "v", "d", "k" }) do
+                for _, entry in ipairs(reagent[key] or {}) do
+                    assert.is_truthy(type(entry.id) == "number" and type(entry.n) == "string", key .. " of ingredient " .. id)
+                    assert.is_truthy(entry.pm == nil or (entry.pm >= 0 and entry.pm <= 10000), "chance of " .. entry.id)
+                    assert.is_truthy(entry.g == nil or entry.g >= 0, "price of " .. entry.id)
+                end
+            end
+            for _, zone in ipairs(reagent.f or {}) do
+                assert.is_truthy(type(zone.z) == "number" and (zone.pm == nil or (zone.pm >= 0 and zone.pm <= 10000)), "fishing zone of " .. id)
+            end
+            for _, node in ipairs(reagent.g or {}) do
+                assert.is_truthy(type(node.n) == "string" and type(node.z) == "table", "node of " .. id)
+            end
+            for _, made in ipairs(reagent.c or {}) do
+                assert.is_truthy(type(made.n) == "string" and type(made.i) == "number", "maker of " .. id)
+            end
+        end
+        assert.is_true(count > 300)
     end)
 
     it("vendors, drops and quests are named", function()
