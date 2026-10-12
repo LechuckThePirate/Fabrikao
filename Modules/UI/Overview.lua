@@ -461,6 +461,7 @@ function layoutLearn()
         row:SetPoint("TOPLEFT", q.content, "TOPLEFT", 24, -y)
         row:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
         local where = { (entry.kind == "trainer" and L["Trainer"]) or (entry.kind == "quest" and L["Quest"]) or L["Vendor"] }
+        if entry.kind == "quest" and entry.giver then where[#where + 1] = L["from %s"]:format(entry.giver) end
         local distance = entry.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(entry.distance)
         if distance and distance ~= "" then where[#where + 1] = distance end
         row.name:SetText(entry.text or entry.name)

@@ -27,6 +27,7 @@ local es = {
     ["You can learn"] = "Puedes aprender",
     ["Skill ranges"] = "Rangos de habilidad",
     ["Recipes"] = "Recetas",
+    ["from %s"] = "de %s",
     ["skill %d"] = "habilidad %d",
     ["Click to see where to learn it"] = "Clic para ver dónde aprenderla",
     ["Nothing new to learn with your skill."] = "Nada nuevo que aprender con tu habilidad.",

@@ -467,8 +467,14 @@ describe("Ranks of a book or a quest", function()
         recipes = {
             [1] = { s = 185, n = "Spiced Wolf Meat", c = { 1, 20, 40, 60 }, m = { { 10, 1 } }, k = { 6 } },
             [2] = { s = 185, n = "Expert Stew", c = { 250, 260, 270, 280 }, m = { { 10, 1 } }, k = { 6 } }, -- the game goes past 225
+            [3] = { s = 185, n = "Quest Stew", c = { 5, 25, 45, 65 }, m = { { 10, 1 } }, k = { 4 }, i = 902 }, -- comes from a quest
         },
-        items = {},
+        items = {
+            [902] = { n = "Recipe: Quest Stew", k = { 4 }, qs = {
+                { id = 2178, n = "Easy Strider Living", g = { { id = 24, n = "Quest Giver Quinn", z = { 1519 } } } },
+                { id = 2179, n = "A Quest Nobody Gives" }, -- (the data does not know who gives it)
+            } },
+        },
         trainers = { [185] = { { id = 30, n = "Cook Cora", z = { 1519 } } } },
         ranks = {
             [185] = { [225] = { b = { { i = 16072, n = "Expert Cookbook", v = {
@@ -480,7 +486,7 @@ describe("Ranks of a book or a quest", function()
                 { id = 6700, n = "Horde Version", lv = 35, f = "H", g = { { id = 23, n = "Horde Giver", z = { 1637 } } } },
             } } },
         },
-        npcs = { [20] = { 1453, 10, 10 }, [21] = { 1454, 10, 10 }, [22] = { 1453, 50, 50 }, [30] = { 1453, 90, 90 } },
+        npcs = { [20] = { 1453, 10, 10 }, [21] = { 1454, 10, 10 }, [22] = { 1453, 50, 50 }, [24] = { 1453, 70, 70 }, [30] = { 1453, 90, 90 } },
     }
 
     local function framesWith(field)
@@ -543,12 +549,15 @@ describe("Ranks of a book or a quest", function()
             assert.matches("<Expert Cookbook>", list[1].text)
         end)
 
-        it("has the givers of the quest, the id of the quest and the sides", function()
+        it("has the quest by its name, with the id, and its giver apart (the name, the place and the distance are the giver's)", function()
             local list = ns.RecipeDB_RankSources(356, 300)
             assert.are.equal(1, #list) -- the Horde's version is not for an Alliance character
+            assert.are.equal("Nat Pagle, Angler Extreme", list[1].text)
             assert.are.equal("Nat Pagle", list[1].name)
+            assert.matches("Nat Pagle", list[1].giver)
             assert.are.equal("quest", list[1].kind)
             assert.are.equal(6607, list[1].questID)
+            assert.are.equal(22, list[1].id)
         end)
 
         it("has nothing for a rank a trainer teaches", function()
@@ -574,6 +583,14 @@ describe("Ranks of a book or a quest", function()
             assert.are.equal(6607, list[1].questID)
             local row = framesWith("teacher")[1]
             assert.matches("^Quest", row.where._text)
+        end)
+
+        it("is shown by the name of the quest, with who gives it under it", function()
+            click(rankRow("Fishing"))
+            local row = framesWith("teacher")[1]
+            assert.are.equal("Nat Pagle, Angler Extreme", row.name._text)
+            assert.matches("^Quest", row.where._text)
+            assert.matches("from .*Nat Pagle", row.where._text)
         end)
 
         it("the giver has the map icon, which shows it on the map", function()
@@ -608,6 +625,73 @@ describe("Ranks of a book or a quest", function()
             ns.UI_ShowOverview()
             click(rankRow("Cooking"))
             assert.is_false(framesWith("teacher")[1].questButton:IsShown())
+        end)
+    end)
+    describe("the quests of a recipe", function()
+        local function openCooking()
+            for _, f in ipairs(framesWith("kind")) do
+                if f.folded and f.key == 185 then click(f) break end
+            end
+        end
+
+        local function recipeRow(name)
+            for _, f in ipairs(framesWith("learn")) do
+                if f.name._text == name then return f end
+            end
+        end
+
+        it("a recipe that comes from a quest lists the quest by its name, with the buttons of who gives it", function()
+            openCooking()
+            click(recipeRow("Quest Stew"))
+            local quests = {}
+            for _, row in ipairs(framesWith("teacher")) do
+                if row.teacher.kind == "quest" then quests[#quests + 1] = row end
+            end
+            assert.are.equal(2, #quests)
+            -- the one whose giver the data knows is first (it has a distance): its name, who gives it and the map icon
+            assert.are.equal("Easy Strider Living", quests[1].name._text)
+            assert.matches("Quest Giver Quinn", quests[1].where._text)
+            assert.is_true(quests[1].mapButton:IsShown())
+            click(quests[1].mapButton)
+            assert.are.same({ { map = 1453, x = 70, y = 70 } }, mapped)
+        end)
+
+        it("a quest whose giver is not known is still there, by its name, without the map", function()
+            openCooking()
+            click(recipeRow("Quest Stew"))
+            local row
+            for _, f in ipairs(framesWith("teacher")) do
+                if f.teacher.questID == 2179 then row = f end
+            end
+            assert.is_not_nil(row)
+            assert.are.equal("A Quest Nobody Gives", row.name._text)
+            assert.is_false(row.mapButton:IsShown())
+        end)
+
+        it("with Completao a quest has its icon, and it opens the quest there", function()
+            _G.CompletaoAPI = { HasQuest = function(id) return id == 2178 end, ShowQuest = function(id) shown[#shown + 1] = id return true end }
+            ns.UI_ShowOverview()
+            openCooking()
+            click(recipeRow("Quest Stew"))
+            local row
+            for _, f in ipairs(framesWith("teacher")) do
+                if f.teacher.questID == 2178 then row = f end
+            end
+            assert.is_true(row.questButton:IsShown())
+            click(row.questButton)
+            assert.are.same({ 2178 }, shown)
+        end)
+
+        it("the panel of the recipe has the same: the quest and the buttons of its giver", function()
+            local lines = ns.RecipeDB_Where(DATA.recipes[3], true)
+            local quest
+            for _, line in ipairs(lines) do
+                if line.title == "Quest" then quest = line.entries[1] end
+            end
+            assert.are.equal("Easy Strider Living", quest.text)
+            assert.are.equal(24, quest.id)
+            assert.are.equal("Quest Giver Quinn", quest.name)
+            assert.are.equal(2178, quest.questID)
         end)
     end)
 end)

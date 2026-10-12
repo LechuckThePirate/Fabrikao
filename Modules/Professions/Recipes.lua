@@ -389,16 +389,23 @@ function ns.Recipes_LearnableNow(professions, limit)
     return groups
 end
 
--- The trainers and vendors that teach a recipe of the data (`db` is its record), nearest first (those that are for the character's
--- side): { { id =, name =, text = "name (zones)" and the price, distance = yards or nil, kind = "trainer" | "vendor" }, ... }.
--- The trainers of a recipe are all those of its profession (the data does not say which of them teaches it).
+-- Who teaches a recipe of the data (`db` is its record), nearest first (those that are for the character's side): the trainers, the
+-- vendors of the item that teaches it, and the quests that give it:
+-- { { id =, name =, text =, distance = yards or nil, kind = "trainer" | "vendor" | "quest", questID =, giver = }, ... }.
+-- A trainer or a vendor is "name (zones)" and the price; a quest is its name, and the id, name and distance are those of the NPC that
+-- gives it (for the map and waypoint buttons) when the data has it. The trainers of a recipe are all those of its profession (the data
+-- does not say which of them teaches it).
 function ns.Recipes_Teachers(db)
     local out = {}
     for _, line in ipairs(ns.RecipeDB_Where(db, true)) do
-        local kind = (line.title == ns.L["Trainer"] and "trainer") or (line.title == ns.L["Vendor"] and "vendor") or nil
+        local kind = (line.title == ns.L["Trainer"] and "trainer") or (line.title == ns.L["Vendor"] and "vendor")
+            or (line.title == ns.L["Quest"] and "quest") or nil
         if kind then
             for _, entry in ipairs(line.entries or {}) do
-                out[#out + 1] = { id = entry.id, name = entry.name, text = entry.text, distance = entry.distance, kind = kind, order = #out + 1 }
+                out[#out + 1] = {
+                    id = entry.id, name = entry.name or entry.text, text = entry.text, distance = entry.distance, kind = kind,
+                    questID = entry.questID, giver = entry.giver, order = #out + 1,
+                }
             end
         end
     end

@@ -17,6 +17,8 @@
 - New: the ranks that are not taught by a trainer say how to get them: the Expert rank (150-225) of Cooking, First Aid and Fishing is a
   book, so under the rank are the vendors that sell it; the Artisan rank (225-300) of the three is a quest, so it is whoever gives it.
   With Completao!! installed the quest has one more icon, Completao's own, that opens the quest there.
+- New: the recipes that come from a quest list the quest under the recipe (by its name, with who gives it under it) with the map and
+  waypoint icons of whoever gives it and, with Completao!! installed, its icon. The panel of such a recipe has the same buttons.
 - Change: the map and waypoint buttons of the trainers, vendors and creatures are small icons (a map, and a navigation arrow) instead of
   two wide text buttons.
 - New: a scroll bar only shows when there is something to scroll: with nothing to scroll the bar goes away and the rows take its room

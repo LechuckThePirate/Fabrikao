@@ -257,10 +257,23 @@ local function nearestFirst(list)
     return sorted, distances
 end
 
+-- A quest as an entry of a line: its name (the text) and its id, and, when the data knows who gives it, its nearest giver: `id`, `name`
+-- and `distance` are the giver's, for the map and waypoint buttons, and `giver` is "name (zones)".
+local function questEntry(quest)
+    local entry = { text = quest.n, questID = quest.id }
+    if quest.g and #quest.g > 0 then
+        local ordered, distances = nearestFirst(quest.g)
+        local giver = ordered[1]
+        entry.id, entry.name, entry.giver, entry.distance = giver.id, giver.n, named(giver, true), distances[giver]
+    end
+    return entry
+end
+
 -- How a rank is gained when trainers do not teach it, from the data's `ranks`: the Expert rank (up to skill 225) of Cooking, First Aid and
 -- Fishing is a book that a vendor sells, and the Artisan rank (up to 300) of the three is a quest. `cap` is the skill the rank goes up to.
--- Returns { { id =, name =, text = "name (zones) <book or quest>", distance =, kind = "vendor" | "quest", questID = (a quest's giver) }... },
--- those for the character's side, nearest first; nil when the data has no book or quest for that rank (a trainer teaches it).
+-- Returns { { id =, name =, text =, distance =, kind = "vendor" | "quest", questID =, giver = }... }, those for the character's side,
+-- nearest first; nil when the data has no book or quest for that rank (a trainer teaches it). A vendor's text is "name (zones) <book>"
+-- and its price; a quest is its name, with its giver in `giver` (`id`, `name` and `distance` are the giver's, for the buttons).
 function ns.RecipeDB_RankSources(skillLine, cap)
     local db = data()
     local rec = db and db.ranks and db.ranks[skillLine] and db.ranks[skillLine][cap]
@@ -282,13 +295,9 @@ function ns.RecipeDB_RankSources(skillLine, cap)
     end
     for _, quest in ipairs(rec.q or {}) do
         if forMySide(quest) then
-            local ordered, distances = nearestFirst(quest.g or {})
-            for _, giver in ipairs(ordered) do
-                entries[#entries + 1] = {
-                    id = giver.id, name = giver.n, kind = "quest", questID = quest.id, distance = distances[giver],
-                    text = named(giver, true) .. " <" .. quest.n .. ">",
-                }
-            end
+            local entry = questEntry(quest)
+            entry.kind = "quest"
+            entries[#entries + 1] = entry
         end
     end
     if #entries == 0 then return nil end
@@ -501,7 +510,7 @@ function ns.RecipeDB_Where(recipe, full)
             for _, quest in ipairs(item.qs) do
                 if forMySide(quest) and #quests < maxQuests then
                     quests[#quests + 1] = quest.n
-                    questEntries[#questEntries + 1] = { text = quest.n, questID = quest.id }
+                    questEntries[#questEntries + 1] = questEntry(quest)
                 end
             end
             if #quests > 0 then lines[#lines + 1] = { title = L["Quest"], text = table.concat(quests, "; "), entries = questEntries } end

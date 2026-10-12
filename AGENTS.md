@@ -80,7 +80,8 @@ databases", like Completao). Steps: `node tools/local/recipes_fetch.mjs` (a spel
 `node tools/local/recipes_items.mjs` (slow: one page per recipe item whose source isn't named yet; resumable; one request every 3 s,
 the source answers 403 beyond that), `node tools/local/ranks_fetch.mjs` (the books and quests of the ranks that are not a trainer's: Expert of Cooking, First Aid and
 Fishing, Artisan of the three, with the vendors of the books and the givers of the quests; it ends up as `ranks[skill][cap]`, read by
-`ns.RecipeDB_RankSources`), `node tools/local/reagents_fetch.mjs` (where each ingredient can be had: who sells it, which
+`ns.RecipeDB_RankSources`), `node tools/local/quests_fetch.mjs` (who gives each quest that teaches a recipe: about seventy pages; the givers go into
+the `qs` of the items, read by `RecipeDB_Where` and so by `ns.Recipes_Teachers`), `node tools/local/reagents_fetch.mjs` (where each ingredient can be had: who sells it, which
 creatures drop it or are skinned for it, the zones it is fished in, the nodes it is gathered from, what makes it; one page per ingredient,
 about 600, so the first run is long; it ends up as `reagents[itemID]` in the data, read by `ns.RecipeDB_ReagentWhere`, and the creatures and
 vendors it names are among the NPCs whose positions are fetched), then
