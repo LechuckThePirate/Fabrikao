@@ -176,6 +176,11 @@ describe("The start screen", function()
             assert.are.equal("skill 150", ranks[1].skillText._text)
         end)
 
+        it("keeps the ranks and the recipes apart, each under its own title", function()
+            assert.are.equal(1, #text("^Skill ranges$"))
+            assert.are.equal(1, #text("^Recipes$"))
+        end)
+
         it("has the groups folded at first, with how many each has", function()
             assert.are.same({}, learnNames())
             local h = headers()

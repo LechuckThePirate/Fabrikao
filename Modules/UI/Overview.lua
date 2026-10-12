@@ -516,7 +516,17 @@ function layoutLearn()
                 teachers(list)
             end
         end
-        y = y + 6
+        y = y + 10 -- (room between the two parts)
+    end
+
+    -- the recipes have their own title, as the ranks do
+    if #groups > 0 then
+        local s = q.sections.next()
+        s:ClearAllPoints()
+        s:SetPoint("TOPLEFT", q.content, "TOPLEFT", 6, -y - 2)
+        s:SetText(L["Recipes"])
+        s:SetShownWithLine(true)
+        y = y + 24
     end
 
     for _, group in ipairs(groups) do
