@@ -50,7 +50,9 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   button of the recipes page; it takes the place of a recipe's panel); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window (a click on an ingredient opens, under it, where to
   get it: `ns.RecipeDB_ReagentWhere`, with the map and waypoint buttons of the vendors and creatures)
   on a click (`ns.RecipeDetail_Build` makes its content as data, `_Show`/`_Hide` the frame); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
-- `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing; `Professions_NextRank` says which rank a trainer can teach it now: skill at the
+- `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing; `Professions_Notice` is what is said beside a profession (the rank to train, or, for Poisons, how many can be learned);
+  `Professions_Mine` adds Poisons (skill line 40, the rogue's spell 2842, skill five a level) for a rogue, listed with the primary
+  professions; `Professions_NextRank` says which rank a trainer can teach it now: skill at the
   rank's cap, the level the rank asks for and a higher rank in the data's recipes; `Professions_Mine` is the
   playing character's, `Professions_List` the one of the character the window shows; `Professions_Missing` the ones with recipes in the data
   that it lacks) and `Recipes.lua`

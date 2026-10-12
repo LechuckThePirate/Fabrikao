@@ -241,7 +241,8 @@ function ns.UI_ShowRecipes(profession)
         page.rank:SetText(L["Not learned"])
     else
         local text = L["Skill: %d / %d"]:format(profession.rank, profession.maxRank)
-        if state.nextRank then text = text .. "  |cff40ff40" .. L["Can train: %s"]:format(state.nextRank) .. "|r" end
+        local notice = ns.Professions_Notice(profession)
+        if notice then text = text .. "  |cff40ff40" .. notice .. "|r" end
         page.rank:SetText(text)
     end
     page.search:SetText("")

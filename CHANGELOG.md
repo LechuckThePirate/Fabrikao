@@ -19,6 +19,9 @@
   With Completao!! installed the quest has one more icon, Completao's own, that opens the quest there.
 - New: the recipes that come from a quest list the quest under the recipe (by its name, with who gives it under it) with the map and
   waypoint icons of whoever gives it and, with Completao!! installed, its icon. The panel of such a recipe has the same buttons.
+- New: rogues have Poisons among their professions (once the spell is learned, at level 20), right after the primary professions: its
+  skill goes up five a level, its poisons are listed by the level that learns them, and, as with the ranks, the profession says "Can
+  learn: 3" when new poisons can be learned from the rogue trainers. They also show among what you can learn, with their trainers.
 - Change: the map and waypoint buttons of the trainers, vendors and creatures are small icons (a map, and a navigation arrow) instead of
   two wide text buttons.
 - New: a scroll bar only shows when there is something to scroll: with nothing to scroll the bar goes away and the rows take its room
