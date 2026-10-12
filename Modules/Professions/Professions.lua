@@ -46,8 +46,8 @@ local function hasRecipes(spellOffset)
     return C_TradeSkillUI.CanTradeSkillShowCraftingUI(info.spellID) and true or false
 end
 
--- { { name =, icon =, rank =, maxRank =, skillLine =, primary =, hasRecipes = }, ... }
-function ns.Professions_List()
+-- The professions the playing character has: { { name =, icon =, rank =, maxRank =, skillLine =, primary =, hasRecipes = }, ... }
+function ns.Professions_Mine()
     local list = {}
     if not (GetProfessions and GetProfessionInfo) then return list end
     local indexes, count = pack(GetProfessions())
@@ -72,6 +72,37 @@ function ns.Professions_List()
         end
         return a.order < b.order
     end)
+    return list
+end
+
+-- The professions of the character the window shows: the playing one's, or another character's saved copy (Roster.lua).
+function ns.Professions_List()
+    return ns.Roster_ViewedProfessions and ns.Roster_ViewedProfessions() or ns.Professions_Mine()
+end
+
+-- icons of the professions the character may not have (the game's own when any character saved one, else these)
+local ICONS = {
+    [171] = "Interface\\Icons\\Trade_Alchemy", [164] = "Interface\\Icons\\Trade_BlackSmithing", [333] = "Interface\\Icons\\Trade_Engraving",
+    [202] = "Interface\\Icons\\Trade_Engineering", [165] = "Interface\\Icons\\INV_Misc_ArmorKit_17", [197] = "Interface\\Icons\\Trade_Tailoring",
+    [186] = "Interface\\Icons\\Trade_Mining", [185] = "Interface\\Icons\\INV_Misc_Food_15", [129] = "Interface\\Icons\\Spell_Holy_SealOfSalvation",
+}
+local QUESTION_MARK = 134400
+
+-- The professions with recipes in the data that `have` (a list as ns.Professions_List returns) lacks, in the data's order:
+-- { { name =, icon =, skillLine =, primary =, hasRecipes = true, learned = false }, ... } (no rank: it isn't learned).
+function ns.Professions_Missing(have)
+    local owned = {}
+    for _, p in ipairs(have) do owned[p.skillLine] = true end
+    local list = {}
+    for _, skill in ipairs(ns.RecipeDB_Skills and ns.RecipeDB_Skills() or {}) do
+        if not owned[skill] then
+            list[#list + 1] = {
+                name = ns.RecipeDB_SkillName(skill), skillLine = skill, hasRecipes = true, learned = false,
+                icon = (ns.Roster_Icon and ns.Roster_Icon(skill)) or ICONS[skill] or QUESTION_MARK,
+                primary = not SECONDARY[skill],
+            }
+        end
+    end
     return list
 end
 

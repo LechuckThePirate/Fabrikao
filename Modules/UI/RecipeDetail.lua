@@ -76,6 +76,8 @@ function ns.RecipeDetail_Build(recipe, opts)
     opts = opts or {}
     local db = recipe.db
     local rank = recipe.rank or opts.rank
+    local viewed = ns.Roster_Viewed and ns.Roster_Viewed() -- another character's professions are shown: read only, in the third person
+    local who = viewed and ns.Roster_ColoredName(viewed)
     local out = { name = recipe.name, icon = recipe.icon }
     out.color = recipe.learned and ns.DIFFICULTY_COLORS[recipe.difficulty or ns.DIFFICULTY_LAST] or { 0.85, 0.85, 0.85 }
 
@@ -85,11 +87,11 @@ function ns.RecipeDetail_Build(recipe, opts)
     out.subtitle = table.concat(subtitle, "  -  ")
 
     if recipe.learned then
-        out.status = GREEN .. CHECK .. " " .. L["You know this recipe"] .. "|r"
+        out.status = GREEN .. CHECK .. " " .. (who and L["%s knows this recipe"]:format(who) or L["You know this recipe"]) .. "|r"
     elseif rank then
-        out.status = CROSS .. " " .. L["You don't know this recipe yet"]
+        out.status = CROSS .. " " .. (who and L["%s doesn't know this recipe yet"]:format(who) or L["You don't know this recipe yet"])
     else
-        out.status = DIM .. CROSS .. " " .. L["You don't have this profession"] .. "|r"
+        out.status = DIM .. CROSS .. " " .. (who and L["%s doesn't have this profession"]:format(who) or L["You don't have this profession"]) .. "|r"
     end
 
     local facts = {}
@@ -99,7 +101,8 @@ function ns.RecipeDetail_Build(recipe, opts)
     if required then
         local text = tostring(required)
         if rank then
-            text = text .. ("   (%s)"):format((rank >= required and GREEN or RED) .. L["you have %d"]:format(rank) .. "|r")
+            local have = who and L["%s has %d"]:format(viewed.label, rank) or L["you have %d"]:format(rank)
+            text = text .. ("   (%s)"):format((rank >= required and GREEN or RED) .. have .. "|r")
         end
         fact(L["Skill needed:"], text)
     end
@@ -110,7 +113,7 @@ function ns.RecipeDetail_Build(recipe, opts)
         if db and rank and required and rank >= required then
             local d = ns.RecipeDB_Difficulty(db, rank)
             local names = { [0] = L["orange"], L["yellow"], L["green"], L["grey"] }
-            fact(L["For your skill:"], ("%s%s|r"):format(colorCode(ns.DIFFICULTY_COLORS[d]), names[d]))
+            fact(who and L["For their skill:"] or L["For your skill:"], ("%s%s|r"):format(colorCode(ns.DIFFICULTY_COLORS[d]), names[d]))
         end
     end
 
@@ -371,7 +374,8 @@ end
 local function updateCraftBar()
     if not (panel and current) then return end
     local recipe = current.recipe
-    local known = recipe.learned and true or false
+    -- no crafting for another character's recipes: the game's window is the playing character's
+    local known = recipe.learned and not (ns.Roster_ViewKey and ns.Roster_ViewKey()) and true or false
     panel.craftBar:SetShown(known)
     if not known then return end
     local craftable = ns.Recipes_Craftable and ns.Recipes_Craftable(recipe, false) or 0
@@ -384,6 +388,12 @@ local function render()
     local data = ns.RecipeDetail_Build(current.recipe, current.opts)
     releaseAll()
     updateCraftBar()
+    -- tinted blue with the window when it is another character's recipes
+    if ns.Roster_ViewKey and ns.Roster_ViewKey() then
+        panel:SetBackdropColor(0.05, 0.1, 0.25, 1)
+    else
+        panel:SetBackdropColor(0.05, 0.05, 0.07, 1)
+    end
 
     panel.name:SetText(data.name)
     panel.name:SetTextColor(data.color[1], data.color[2], data.color[3])

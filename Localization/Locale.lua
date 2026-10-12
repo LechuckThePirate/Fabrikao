@@ -20,6 +20,13 @@ local es = {
     ["Click to see its recipes"] = "Clic para ver sus recetas",
     ["This profession has no recipes"] = "Esta profesión no tiene recetas",
     ["No professions learned yet."] = "Todavía no has aprendido ninguna profesión.",
+    ["Not learned"] = "Sin aprender",
+    ["My professions"] = "Mis profesiones",
+    ["Show professions not learned"] = "Mostrar profesiones no aprendidas",
+    ["Hide professions not learned"] = "Ocultar profesiones no aprendidas",
+    ["Professions of %s (read only)"] = "Profesiones de %s (solo lectura)",
+    ["Log in with your other characters to see their professions here."] =
+        "Entra con tus otros personajes para ver aquí sus profesiones.",
     ["< Professions"] = "< Profesiones",
 
     -- recipes
@@ -149,6 +156,11 @@ local es = {
     ["you have %d"] = "tienes %d",
     ["Difficulty:"] = "Dificultad:",
     ["For your skill:"] = "Para tu habilidad:",
+    ["%s knows this recipe"] = "%s conoce esta receta",
+    ["%s doesn't know this recipe yet"] = "%s todavía no conoce esta receta",
+    ["%s doesn't have this profession"] = "%s no tiene esta profesión",
+    ["%s has %d"] = "%s tiene %d",
+    ["For their skill:"] = "Para su habilidad:",
     ["orange"] = "naranja",
     ["yellow"] = "amarilla",
     ["green"] = "verde",

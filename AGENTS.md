@@ -39,9 +39,16 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   the templates are missing; each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`; the category of a recipe comes from
   its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window
   on a click (`ns.RecipeDetail_Build` makes its content as data, `_Show`/`_Hide` the frame); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
-- `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing) and `Recipes.lua`
+- `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing; `Professions_Mine` is the
+  playing character's, `Professions_List` the one of the character the window shows; `Professions_Missing` the ones with recipes in the data
+  that it lacks) and `Recipes.lua`
   (a profession's recipes for the lists: from the data, with "known" from the spell book; the live answer of the game's window
   instead when that profession's tab is open; filtering, search and the "how many can I make" count from the bags)
+- `Modules/Professions/Roster.lua` — the alt viewer's data: each character saves its professions and the recipes of the data it knows in
+  `FabrikaoDB.characters[key]` (at login, when the skills or recipes change and at logout); `ns.Roster_SetView(key)` makes the window show
+  another character (read only: no live trade skill read, no Craft button, ingredient counts from Embolsao's copies of that character; the
+  window is tinted blue and the title and a line on the recipes page name it; closing the window puts the playing character back).
+  Everything that asks "does the character know it?" goes through `ns.Roster_Knows`, and the professions through `ns.Professions_List`
 - `Modules/UI/` — `MainWindow.lua` (professions page, recipes page), `SearchPage.lua` (search of every recipe in the data, with a detail
   panel) and `MinimapButton.lua`; `Bindings.xml` has the key binding (the game loads it itself: **never list it in the TOC**)
 - `Data/Generated/Recipes.lua` (**generated, never edit by hand**) — every recipe of the crafting professions (skill levels where each

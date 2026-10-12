@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- New: look at your other characters' professions. A picker above the professions ("My professions" and each alt) shows an alt's professions and
+  the recipes it knows as if it were the one playing, with its skill levels and how many it could make with its own bags (from Embolsao!!'s
+  copies, when installed). The window turns blue and says whose they are, as Embolsao!! does with another character's bags, and there is no
+  crafting. An alt appears once you have logged in with it with this version.
+- New: a button above the professions lists the professions you have not learned too, so you can browse their recipes.
+
 ## 0.2.0
 
 - New: with Completao!! installed, the recipes that come from a quest have a "View Quest" button in their panel that opens the quest there.

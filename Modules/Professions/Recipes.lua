@@ -131,6 +131,7 @@ end
 
 -- The last copy read of a profession (this session), whether its window is open or not.
 function ns.Recipes_Cached(skillLine)
+    if ns.Roster_ViewKey and ns.Roster_ViewKey() then return nil end -- the copies are the playing character's
     return cache[skillLine]
 end
 
@@ -291,7 +292,8 @@ function ns.Recipes_FromData(skillLine, rank)
     local copy = { skillLine = skillLine, rank = rank, known = {}, unknown = {}, sources = {}, categories = {} }
     for id, db in ns.RecipeDB_Each() do
         if db.s == skillLine then
-            local learned = ns.RecipeDB_Known(id)
+            local learned
+            if ns.Roster_Knows then learned = ns.Roster_Knows(id) else learned = ns.RecipeDB_Known(id) end
             local recipe = fromData(id, db, learned, rank, true)
             if recipe.sourceType then copy.sources[recipe.sourceType] = true end
             copy.categories[recipe.category] = true
@@ -305,11 +307,13 @@ function ns.Recipes_FromData(skillLine, rank)
 end
 
 -- A profession's recipes: callback(copy) at once. The live answer of the game's window if that profession's is open,
--- else the data's. opts: { name = the profession's name, rank = the character's skill }
+-- else the data's (always the data's for another character: the window is the playing one's).
+-- opts: { name = the profession's name, rank = the character's skill }
 function ns.Recipes_Request(skillLine, callback, opts)
     opts = opts or {}
-    local copy = ns.Recipes_Read(skillLine, opts.name) or ns.Recipes_FromData(skillLine, opts.rank)
+    local other = ns.Roster_ViewKey and ns.Roster_ViewKey() ~= nil
+    local copy = (not other and ns.Recipes_Read(skillLine, opts.name)) or ns.Recipes_FromData(skillLine, opts.rank)
     copy.rank = opts.rank
-    cache[skillLine] = copy
+    if not other then cache[skillLine] = copy end
     callback(copy)
 end

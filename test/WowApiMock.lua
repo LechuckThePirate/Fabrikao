@@ -183,7 +183,7 @@ local function methodFor(self, k)
 end
 
 -- The game's dropdown (WowStyle1DropdownTemplate, a DropdownButton with menus), when WowMock.menuDropdowns is on: SetupMenu runs
--- the generator on a root that records its entries in dropdown.menu = { { kind = "radio" | "checkbox" | "divider", text =,
+-- the generator on a root that records its entries in dropdown.menu = { { kind = "radio" | "checkbox" | "divider" | "title", text =,
 -- selected =, choose = function() }... }; dropdown.shownText is what the button says (the translator's text for the selected
 -- radio, else the default text).
 local function addDropdownMethods(f)
@@ -200,6 +200,7 @@ local function addDropdownMethods(f)
             menu[#menu + 1] = { kind = "checkbox", text = text, selected = isSelected(data), choose = function() setSelected(data) end }
         end
         function root.CreateDivider() menu[#menu + 1] = { kind = "divider" } end
+        function root.CreateTitle(_, text) menu[#menu + 1] = { kind = "title", text = text } end
         self._generator(self, root)
         self.menu = menu
         self.shownText = self._defaultText
@@ -216,6 +217,10 @@ function WowMock.NewFrame(kind, name, parent, template)
     table.insert(WowMock.frames, f)
     if name then _G[name] = f end
     if template == "WowStyle1DropdownTemplate" and WowMock.menuDropdowns then addDropdownMethods(f) end
+    -- the title of the game's framed windows: frame.TitleContainer.TitleText (a font string)
+    if template == "PortraitFrameFlatTemplate" then
+        f.TitleContainer = { TitleText = WowMock.NewFrame("FontString", nil, f) }
+    end
     return f
 end
 

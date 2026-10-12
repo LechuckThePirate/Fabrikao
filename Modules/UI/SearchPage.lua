@@ -12,7 +12,10 @@ local page, window
 local state = { skill = nil, results = {}, truncated = 0, total = 0, sources = {}, categories = {} }
 local filters = {} -- the filters of the page (FilterBar.lua), kept for the next time in ns.char.searchFilters
 
-local knows = ns.RecipeDB_Known
+local function knows(spellID)
+    if ns.Roster_Knows then return ns.Roster_Knows(spellID) end
+    return ns.RecipeDB_Known(spellID)
+end
 
 -- skill line -> { rank, maxRank } of the character's professions
 local function myProfessions()
