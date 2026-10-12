@@ -257,6 +257,50 @@ local function nearestFirst(list)
     return sorted, distances
 end
 
+-- How a rank is gained when trainers do not teach it, from the data's `ranks`: the Expert rank (up to skill 225) of Cooking, First Aid and
+-- Fishing is a book that a vendor sells, and the Artisan rank (up to 300) of the three is a quest. `cap` is the skill the rank goes up to.
+-- Returns { { id =, name =, text = "name (zones) <book or quest>", distance =, kind = "vendor" | "quest", questID = (a quest's giver) }... },
+-- those for the character's side, nearest first; nil when the data has no book or quest for that rank (a trainer teaches it).
+function ns.RecipeDB_RankSources(skillLine, cap)
+    local db = data()
+    local rec = db and db.ranks and db.ranks[skillLine] and db.ranks[skillLine][cap]
+    if not rec then return nil end
+    local entries = {}
+    for _, book in ipairs(rec.b or {}) do
+        local vendors = {}
+        for _, vendor in ipairs(book.v or {}) do
+            if forMySide(vendor) then vendors[#vendors + 1] = vendor end
+        end
+        local ordered, distances = nearestFirst(vendors)
+        for _, vendor in ipairs(ordered) do
+            local price = money(vendor.g)
+            entries[#entries + 1] = {
+                id = vendor.id, name = vendor.n, kind = "vendor", distance = distances[vendor],
+                text = named(vendor, true) .. (price and (" -- " .. price) or "") .. " <" .. book.n .. ">",
+            }
+        end
+    end
+    for _, quest in ipairs(rec.q or {}) do
+        if forMySide(quest) then
+            local ordered, distances = nearestFirst(quest.g or {})
+            for _, giver in ipairs(ordered) do
+                entries[#entries + 1] = {
+                    id = giver.id, name = giver.n, kind = "quest", questID = quest.id, distance = distances[giver],
+                    text = named(giver, true) .. " <" .. quest.n .. ">",
+                }
+            end
+        end
+    end
+    if #entries == 0 then return nil end
+    for index, entry in ipairs(entries) do entry.order = index end
+    table.sort(entries, function(a, b)
+        local da, db2 = a.distance or math.huge, b.distance or math.huge
+        if da ~= db2 then return da < db2 end
+        return a.order < b.order
+    end)
+    return entries
+end
+
 -- How near the closest trainer of a profession (a skill line) that is for the character's side is, as a number to sort by (the
 -- same as nearestFirst's; a profession with none is after everyone). Compute it once per profession and give it to
 -- ns.RecipeDB_TeacherKey for each recipe.

@@ -14,6 +14,9 @@
   a rank or a recipe opens under it the trainers and vendors that teach it, nearest first, with a map icon and, with TomTom installed, a
   waypoint icon (a right click on a recipe opens its panel). The groups start folded, and what you open stays open. The search box, the
   character picker and the button of the professions not learned are above, under a welcome line.
+- New: the ranks that are not taught by a trainer say how to get them: the Expert rank (150-225) of Cooking, First Aid and Fishing is a
+  book, so under the rank are the vendors that sell it; the Artisan rank (225-300) of the three is a quest, so it is whoever gives it.
+  With Completao!! installed the quest has one more icon, Completao's own, that opens the quest there.
 - Change: the map and waypoint buttons of the trainers, vendors and creatures are small icons (a map, and a navigation arrow) instead of
   two wide text buttons.
 - New: a scroll bar only shows when there is something to scroll: with nothing to scroll the bar goes away and the rows take its room

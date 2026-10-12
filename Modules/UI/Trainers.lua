@@ -54,8 +54,11 @@ local function render()
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 0, -y)
         row:SetWidth(TEXT_W)
-        local taken = ns.IconButton_Place(row.mapButton, row.tomButton, withTomTom, 0, 0)
-        row.text:SetWidth(TEXT_W - (spot and taken or 0))
+        row.tomButton.npc, row.mapButton.npc = trainer, trainer
+        row.tomButton:SetShown(spot ~= nil and withTomTom and true or false)
+        row.mapButton:SetShown(spot ~= nil)
+        local taken = ns.IconButton_Row(0, 0, row.tomButton, row.mapButton)
+        row.text:SetWidth(TEXT_W - taken)
         local lines = { GOLD .. trainer.name .. "|r" }
         if trainer.title and trainer.title ~= "" then lines[1] = lines[1] .. " " .. DIM .. "<" .. trainer.title .. ">|r" end
         local where = {}
@@ -64,9 +67,6 @@ local function render()
         if distance and distance ~= "" then where[#where + 1] = distance end
         if #where > 0 then lines[#lines + 1] = DIM .. table.concat(where, "  -  ") .. "|r" end
         row.text:SetText(table.concat(lines, "\n"))
-        row.tomButton.npc, row.mapButton.npc = trainer, trainer
-        row.tomButton:SetShown(spot ~= nil and withTomTom and true or false)
-        row.mapButton:SetShown(spot ~= nil)
         local height = math.max(row.text:GetStringHeight(), spot and 22 or 0)
         row:SetHeight(height)
         row:Show()

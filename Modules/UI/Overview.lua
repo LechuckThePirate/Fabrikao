@@ -257,7 +257,7 @@ local function newRankRow(content, toggle)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(self.ofProfession.name, 1, 1, 1)
         GameTooltip:AddLine(L["You can train %s at a trainer"]:format(self.rank), 0.25, 1, 0.25)
-        GameTooltip:AddLine(L["Click to see who can train it"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Click to see how to get it"], 1, 0.82, 0)
         GameTooltip:AddLine(L["Right-click for its page"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
@@ -278,6 +278,8 @@ local function newTrainerRow(content)
     row.where:SetWordWrap(false)
     row.tomButton = ns.IconButton_Create(row, "pointer", L["Set a TomTom waypoint"], function(npc) return ns.RecipeDetail_Waypoint(npc) end)
     row.mapButton = ns.IconButton_Create(row, "map", L["View on map"], function(npc) return ns.RecipeDetail_ViewOnMap(npc) end)
+    -- with Completao!! (the icon is its own): the quest, there
+    row.questButton = ns.IconButton_Create(row, "quest", L["View Quest"], function(npc) return ns.Quests_Show(npc.questID) end)
     return row
 end
 
@@ -458,16 +460,18 @@ function layoutLearn()
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", q.content, "TOPLEFT", 24, -y)
         row:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
-        local where = { entry.kind == "trainer" and L["Trainer"] or L["Vendor"] }
+        local where = { (entry.kind == "trainer" and L["Trainer"]) or (entry.kind == "quest" and L["Quest"]) or L["Vendor"] }
         local distance = entry.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(entry.distance)
         if distance and distance ~= "" then where[#where + 1] = distance end
         row.name:SetText(entry.text or entry.name)
         row.where:SetText(table.concat(where, "  -  "))
-        row.tomButton.npc, row.mapButton.npc = entry, entry
+        local quest = entry.questID and ns.Quests_Known(entry.questID)
+        row.tomButton.npc, row.mapButton.npc, row.questButton.npc = entry, entry, entry
         row.tomButton:SetShown(spot ~= nil and withTomTom and true or false)
         row.mapButton:SetShown(spot ~= nil)
-        local taken = ns.IconButton_Place(row.mapButton, row.tomButton, withTomTom, 4, 7)
-        local reserved = spot and taken or 8 -- (the texts stop short of the icons)
+        row.questButton:SetShown(quest and true or false)
+        local taken = ns.IconButton_Row(4, 7, row.tomButton, row.mapButton, row.questButton)
+        local reserved = math.max(taken, 8) -- (the texts stop short of the icons)
         row.name:SetPoint("RIGHT", row, "RIGHT", -reserved, 0)
         row.where:SetPoint("RIGHT", row, "RIGHT", -reserved, 0)
         y = y + TRAINER_H
@@ -507,11 +511,15 @@ function layoutLearn()
             b.skillText:SetText(L["skill %d"]:format(entry.cap))
             y = y + ROW_H
             if open then
-                -- the profession's trainers, nearest first
-                local list = {}
-                for _, t in ipairs((ns.RecipeDB_Trainers(p.skillLine))) do
-                    local title = t.title and t.title ~= "" and (" " .. DIM .. "<" .. t.title .. ">|r") or ""
-                    list[#list + 1] = { id = t.id, name = t.name, text = t.text .. title, distance = t.distance, kind = "trainer" }
+                -- the vendor of the book or the giver of the quest when that is how the rank is gained (the Expert rank of Cooking,
+                -- First Aid and Fishing, and the Artisan of the three); else the profession's trainers, nearest first
+                local list = ns.RecipeDB_RankSources(p.skillLine, entry.cap)
+                if not list then
+                    list = {}
+                    for _, t in ipairs((ns.RecipeDB_Trainers(p.skillLine))) do
+                        local title = t.title and t.title ~= "" and (" " .. DIM .. "<" .. t.title .. ">|r") or ""
+                        list[#list + 1] = { id = t.id, name = t.name, text = t.text .. title, distance = t.distance, kind = "trainer" }
+                    end
                 end
                 teachers(list)
             end

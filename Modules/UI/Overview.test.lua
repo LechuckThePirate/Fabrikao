@@ -458,3 +458,156 @@ describe("The bar of the list of recipes", function()
         assert.is_true(scroll.ScrollBar:IsShown())
     end)
 end)
+
+-- The ranks that are a book (Expert) or a quest (Artisan) show who sells the book or gives the quest, and the quest in Completao!!
+describe("Ranks of a book or a quest", function()
+    local ns, mapped, shown
+
+    local DATA = {
+        recipes = {
+            [1] = { s = 185, n = "Spiced Wolf Meat", c = { 1, 20, 40, 60 }, m = { { 10, 1 } }, k = { 6 } },
+            [2] = { s = 185, n = "Expert Stew", c = { 250, 260, 270, 280 }, m = { { 10, 1 } }, k = { 6 } }, -- the game goes past 225
+        },
+        items = {},
+        trainers = { [185] = { { id = 30, n = "Cook Cora", z = { 1519 } } } },
+        ranks = {
+            [185] = { [225] = { b = { { i = 16072, n = "Expert Cookbook", v = {
+                { id = 20, n = "Shandrina", z = { 1519 }, g = 10526, f = "A" },
+                { id = 21, n = "Wulan", z = { 1637 }, g = 10526, f = "H" },
+            } } } } },
+            [356] = { [300] = { q = {
+                { id = 6607, n = "Nat Pagle, Angler Extreme", lv = 35, g = { { id = 22, n = "Nat Pagle", z = { 46 } } } },
+                { id = 6700, n = "Horde Version", lv = 35, f = "H", g = { { id = 23, n = "Horde Giver", z = { 1637 } } } },
+            } } },
+        },
+        npcs = { [20] = { 1453, 10, 10 }, [21] = { 1454, 10, 10 }, [22] = { 1453, 50, 50 }, [30] = { 1453, 90, 90 } },
+    }
+
+    local function framesWith(field)
+        local found = {}
+        for _, f in ipairs(WowMock.frames) do
+            if f[field] ~= nil and f:IsVisible() then found[#found + 1] = f end
+        end
+        return found
+    end
+
+    local function click(f) f._scripts.OnClick(f, "LeftButton") end
+
+    local function rankRow(professionName)
+        for _, f in ipairs(framesWith("ofProfession")) do
+            if f.ofProfession.name == professionName then return f end
+        end
+    end
+
+    local function teachers()
+        local out = {}
+        for _, f in ipairs(framesWith("teacher")) do out[#out + 1] = f.teacher end
+        return out
+    end
+
+    before_each(function()
+        WowMock.Reset()
+        WowMock.faction = "Alliance"
+        WowMock.level = 40
+        mapped = {}
+        shown = {}
+        _G.GetProfessions = function() return 1, 2 end
+        _G.GetProfessionInfo = function(index)
+            if index == 1 then return "Cooking", 111, 150, 150, 1, 10, 185, 0 end -- the cap of its rank: the Expert one can be had
+            return "Fishing", 222, 225, 225, 1, 20, 356, 0 -- and the Artisan one
+        end
+        _G.Enum = { SpellBookSpellBank = { Player = 0 }, CraftingReagentType = { Basic = 1 } }
+        _G.C_SpellBook = { GetSpellBookItemInfo = function(slot) return { spellID = slot } end, IsSpellKnown = function() return false end }
+        _G.C_TradeSkillUI = { CanTradeSkillShowCraftingUI = function() return true end }
+        _G.C_Item = { GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end }
+        _G.C_Map = { GetAreaInfo = function(id) return ({ [1519] = "Stormwind City", [1637] = "Orgrimmar", [46] = "Burning Steppes" })[id] end,
+            GetBestMapForUnit = function() return 1453 end }
+        _G.UnitName = function() return "Tester" end
+        _G.GetRealmName = function() return "Realm" end
+        _G.EmbolsaoAPI, _G.EmbolsaoDB, _G.TomTom, _G.CompletaoAPI = nil, nil, nil, nil
+        ns = LoadAddon()
+        ns.RECIPE_DATA = DATA
+        ns.Map_Distance = function(spot) return spot.x == 10 and 100 or 400 end
+        ns.Map_Show = function(spot) mapped[#mapped + 1] = spot return true end
+        StartAddon(ns)
+        ns.UI_Show()
+    end)
+
+    describe("the data", function()
+        it("has the vendors of the book for the character's side, nearest first, with the book and its price", function()
+            local list = ns.RecipeDB_RankSources(185, 225)
+            assert.are.equal(1, #list) -- Wulan is the Horde's
+            assert.are.equal("Shandrina", list[1].name)
+            assert.are.equal("vendor", list[1].kind)
+            assert.matches("Stormwind City", list[1].text)
+            assert.matches("<Expert Cookbook>", list[1].text)
+        end)
+
+        it("has the givers of the quest, the id of the quest and the sides", function()
+            local list = ns.RecipeDB_RankSources(356, 300)
+            assert.are.equal(1, #list) -- the Horde's version is not for an Alliance character
+            assert.are.equal("Nat Pagle", list[1].name)
+            assert.are.equal("quest", list[1].kind)
+            assert.are.equal(6607, list[1].questID)
+        end)
+
+        it("has nothing for a rank a trainer teaches", function()
+            assert.is_nil(ns.RecipeDB_RankSources(185, 150))
+            assert.is_nil(ns.RecipeDB_RankSources(164, 225))
+        end)
+    end)
+
+    describe("in the list of what can be learned", function()
+        it("an Expert rank of a book shows who sells the book, not the trainers", function()
+            click(rankRow("Cooking"))
+            local list = teachers()
+            assert.are.equal(1, #list)
+            assert.are.equal("Shandrina", list[1].name)
+            assert.are.equal("vendor", list[1].kind)
+        end)
+
+        it("an Artisan rank of a quest shows who gives it", function()
+            click(rankRow("Fishing"))
+            local list = teachers()
+            assert.are.equal(1, #list)
+            assert.are.equal("Nat Pagle", list[1].name)
+            assert.are.equal(6607, list[1].questID)
+            local row = framesWith("teacher")[1]
+            assert.matches("^Quest", row.where._text)
+        end)
+
+        it("the giver has the map icon, which shows it on the map", function()
+            click(rankRow("Fishing"))
+            local row = framesWith("teacher")[1]
+            click(row.mapButton)
+            assert.are.same({ { map = 1453, x = 50, y = 50 } }, mapped)
+        end)
+
+        it("has no Completao button without Completao, or when it does not know the quest", function()
+            click(rankRow("Fishing"))
+            assert.is_false(framesWith("teacher")[1].questButton:IsShown())
+            _G.CompletaoAPI = { HasQuest = function() return false end, ShowQuest = function() return false end }
+            ns.UI_ShowOverview()
+            assert.is_false(framesWith("teacher")[1].questButton:IsShown())
+        end)
+
+        it("has one with Completao's icon when it knows the quest, and it opens the quest there", function()
+            _G.CompletaoAPI = { HasQuest = function(id) return id == 6607 end, ShowQuest = function(id) shown[#shown + 1] = id return true end }
+            ns.UI_ShowOverview()
+            click(rankRow("Fishing"))
+            local row = framesWith("teacher")[1]
+            assert.is_true(row.questButton:IsShown())
+            assert.are.equal("quest", row.questButton.iconKind)
+            assert.matches("Completao", row.questButton.icon._set.SetTexture[1])
+            click(row.questButton)
+            assert.are.same({ 6607 }, shown)
+        end)
+
+        it("the vendor of a book has no Completao button", function()
+            _G.CompletaoAPI = { HasQuest = function() return true end, ShowQuest = function() return true end }
+            ns.UI_ShowOverview()
+            click(rankRow("Cooking"))
+            assert.is_false(framesWith("teacher")[1].questButton:IsShown())
+        end)
+    end)
+end)

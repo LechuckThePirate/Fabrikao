@@ -44,7 +44,7 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   under it the trainers and vendors that teach it (`ns.Recipes_Teachers`, from `RecipeDB_Where`; a rank's are the profession's
   `ns.RecipeDB_Trainers`) with the map and waypoint icons, and a right click opens the recipe's panel; what is under the groups, the ranks
   and the recipes is folded until opened (`ns.char.folded[kind][key] == false` means opened);
-  `Modules/UI/IconButton.lua` — the small map / waypoint icon buttons of an NPC (`Icons/Map.png`, `Icons/Pointer.png`, drawn by
+  `Modules/UI/IconButton.lua` — the small map / waypoint / quest icon buttons of an NPC (`Icons/Map.png`, `Icons/Pointer.png`, drawn by
   `tools/make_icons.mjs`); `Modules/UI/AutoScroll.lua` — a scroll frame whose bar is only there when the content is taller than it
   (`ns.AutoScroll_Create` / `_SetHeight`; the recipe list and the side panels do the same); `Modules/UI/Trainers.lua` — the panel of a profession's trainers, nearest first, with map and TomTom buttons (`ns.RecipeDB_Trainers`; the "Trainers"
   button of the recipes page; it takes the place of a recipe's panel); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window (a click on an ingredient opens, under it, where to
@@ -78,7 +78,9 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
 never written in anything tracked**: README, CHANGELOG, CurseForge text, commit messages, code comments — credit it only as "public
 databases", like Completao). Steps: `node tools/local/recipes_fetch.mjs` (a spell listing and a skill page per profession),
 `node tools/local/recipes_items.mjs` (slow: one page per recipe item whose source isn't named yet; resumable; one request every 3 s,
-the source answers 403 beyond that), `node tools/local/reagents_fetch.mjs` (where each ingredient can be had: who sells it, which
+the source answers 403 beyond that), `node tools/local/ranks_fetch.mjs` (the books and quests of the ranks that are not a trainer's: Expert of Cooking, First Aid and
+Fishing, Artisan of the three, with the vendors of the books and the givers of the quests; it ends up as `ranks[skill][cap]`, read by
+`ns.RecipeDB_RankSources`), `node tools/local/reagents_fetch.mjs` (where each ingredient can be had: who sells it, which
 creatures drop it or are skinned for it, the zones it is fished in, the nodes it is gathered from, what makes it; one page per ingredient,
 about 600, so the first run is long; it ends up as `reagents[itemID]` in the data, read by `ns.RecipeDB_ReagentWhere`, and the creatures and
 vendors it names are among the NPCs whose positions are fetched), then
