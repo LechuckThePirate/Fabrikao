@@ -7,9 +7,14 @@
   copies, when installed). The window turns blue and says whose they are, as Embolsao!! does with another character's bags, and there is no
   crafting. An alt appears once you have logged in with it with this version.
 - New: a button above the professions lists the professions you have not learned too, so you can browse their recipes.
-- New: at the top of the main screen, "You can craft now" lists what your bags allow you to make with the recipes you know, in any of your
-  professions (orange first, with how many). A click opens the game's profession window on that recipe, as the Craft button does;
-  a click on its title folds the list.
+- New: the start screen is in four quadrants under a welcome line, the search box, the picker of the character and the button of the
+  professions not learned: your professions (top left); what you can learn (top right: the ranks a trainer can teach and the recipes your
+  skill reaches that you don't know, by profession and by level, with a click to open the recipe's panel); what you can craft now (bottom
+  left: what your bags allow, orange first, with how many; a click opens the game's profession window on that recipe, as the Craft button
+  does); and the trainers close by that have something to teach you (bottom right: by profession, nearest first, with the map and
+  waypoint buttons). The groups of the right quadrants fold, and it is remembered.
+- New: a scroll bar only shows when there is something to scroll: with nothing to scroll the bar goes away and the rows take its room
+  (the quadrants, the lists of recipes and the side panels).
 - New: a "Trainers" button on a profession's page opens a panel with that profession's trainers, nearest first (with their zone and how far
   they are), each with a "Map" button and, with TomTom installed, a waypoint button. It works for professions you have not learned too.
 - New: when a profession's skill is at the cap of its rank and your level lets a trainer teach the next one (Journeyman, Expert,

@@ -27,6 +27,7 @@ Modules\Professions\Professions.lua
 Modules\Professions\Roster.lua
 Modules\Professions\Recipes.lua
 Modules\Professions\Craft.lua
+Modules\UI\AutoScroll.lua
 Modules\UI\RecipeList.lua
 Modules\UI\FilterBar.lua
 Modules\UI\SearchPage.lua
@@ -34,6 +35,7 @@ Modules\UI\RecipeDetail.lua
 Modules\UI\Trainers.lua
 Modules\UI\Welcome.lua
 Modules\UI\Preferences.lua
+Modules\UI\Overview.lua
 Modules\UI\MainWindow.lua
 Modules\UI\MinimapButton.lua
 Modules\Debug\Probe.lua

@@ -37,7 +37,11 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search
   of every recipe (dropdowns of the game's menus, `WowStyle1DropdownTemplate` + `SetupMenu` with radios, falling back to cycling buttons when
   the templates are missing; each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`; the category of a recipe comes from
-  its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/Trainers.lua` — the panel of a profession's trainers, nearest first, with map and TomTom buttons (`ns.RecipeDB_Trainers`; the "Trainers"
+  its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/Overview.lua` — the start screen in four quadrants (professions; what can be learned, from `ns.Recipes_LearnableNow`;
+  what can be crafted now, from `ns.Recipes_CraftableNow`; the trainers close by that teach something, from `ns.Recipes_TrainersNearby`)
+  under the welcome line, the search, the character picker and the button of the professions not learned; the groups of the two right
+  ones fold (`ns.char.folded`); `Modules/UI/AutoScroll.lua` — a scroll frame whose bar is only there when the content is taller than it
+  (`ns.AutoScroll_Create` / `_SetHeight`; the recipe list and the side panels do the same); `Modules/UI/Trainers.lua` — the panel of a profession's trainers, nearest first, with map and TomTom buttons (`ns.RecipeDB_Trainers`; the "Trainers"
   button of the recipes page; it takes the place of a recipe's panel); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window (a click on an ingredient opens, under it, where to
   get it: `ns.RecipeDB_ReagentWhere`, with the map and waypoint buttons of the vendors and creatures)
   on a click (`ns.RecipeDetail_Build` makes its content as data, `_Show`/`_Hide` the frame); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
@@ -52,7 +56,7 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   another character (read only: no live trade skill read, no Craft button, ingredient counts from Embolsao's copies of that character; the
   window is tinted blue and the title and a line on the recipes page name it; closing the window puts the playing character back).
   Everything that asks "does the character know it?" goes through `ns.Roster_Knows`, and the professions through `ns.Professions_List`
-- `Modules/UI/` — `MainWindow.lua` (professions page with a foldable "You can craft now" above it, from `ns.Recipes_CraftableNow`; recipes page), `SearchPage.lua` (search of every recipe in the data, with a detail
+- `Modules/UI/` — `MainWindow.lua` (the frame and the recipes page; the start screen is `Overview.lua`), `SearchPage.lua` (search of every recipe in the data, with a detail
   panel) and `MinimapButton.lua`; `Bindings.xml` has the key binding (the game loads it itself: **never list it in the TOC**)
 - `Data/Generated/Recipes.lua` (**generated, never edit by hand**) — every recipe of the crafting professions (skill levels where each
   turns orange / yellow / green / grey, ingredients, product, how it is learned), the items that teach them (vendors, drops, quests)

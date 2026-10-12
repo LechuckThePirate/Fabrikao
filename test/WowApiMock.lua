@@ -218,6 +218,9 @@ function WowMock.NewFrame(kind, name, parent, template)
     if name then _G[name] = f end
     if template == "WowStyle1DropdownTemplate" and WowMock.menuDropdowns then addDropdownMethods(f) end
     -- the title of the game's framed windows: frame.TitleContainer.TitleText (a font string)
+    if template == "UIPanelScrollFrameTemplate" then
+        f.ScrollBar = WowMock.NewFrame("Slider", nil, f)
+    end
     if template == "PortraitFrameFlatTemplate" then
         f.TitleContainer = { TitleText = WowMock.NewFrame("FontString", nil, f) }
     end

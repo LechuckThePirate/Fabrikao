@@ -339,6 +339,93 @@ function ns.Recipes_CraftableNow(professions, limit)
     return found, total
 end
 
+-- Does the character the window shows know the recipe? (the spell book of the playing one, the saved copy of another)
+local function knownByView(id)
+    if ns.Roster_Knows then return ns.Roster_Knows(id) end
+    return ns.RecipeDB_Known(id)
+end
+
+-- What the character could learn right now in its professions: for each profession with recipes, the recipes it doesn't know whose
+-- required skill its skill reaches, in order of that level. `professions` is a list as ns.Professions_List returns it.
+-- Returns { { profession =, recipes = { recipe... }, total = n }, ... } in the professions' order, only the ones that have something;
+-- `limit` cuts each group's recipes (`total` is how many there were).
+function ns.Recipes_LearnableNow(professions, limit)
+    local have = {}
+    for _, p in ipairs(professions) do
+        if p.hasRecipes and p.rank and p.learned ~= false then have[p.skillLine] = p end
+    end
+    local found = {}
+    for id, db in ns.RecipeDB_Each() do
+        local p = have[db.s]
+        if p then
+            local required = ns.RecipeDB_Required(db)
+            if required and required <= p.rank and not knownByView(id) then
+                local list = found[db.s] or {}
+                found[db.s] = list
+                list[#list + 1] = { id = id, db = db, required = required }
+            end
+        end
+    end
+    local groups = {}
+    for _, p in ipairs(professions) do
+        local list = found[p.skillLine]
+        if list and #list > 0 then
+            table.sort(list, function(a, b)
+                if a.required ~= b.required then return a.required < b.required end
+                if a.db.n ~= b.db.n then return a.db.n < b.db.n end
+                return a.id < b.id
+            end)
+            local recipes = {}
+            for i, entry in ipairs(list) do
+                if limit and i > limit then break end
+                recipes[#recipes + 1] = fromData(entry.id, entry.db, false, p.rank, false)
+            end
+            groups[#groups + 1] = { profession = p, recipes = recipes, total = #list }
+        end
+    end
+    return groups
+end
+
+-- The trainers close to the character that have something to teach it: for each profession it has, when the next rank can be trained
+-- or some recipe of the profession that a trainer teaches is one it doesn't know and its skill allows, that profession's trainers
+-- (for the character's side), nearest first. Returns { { profession =, nextRank = name or nil, trainers = { ... as
+-- ns.RecipeDB_Trainers ... }, total = n }, ... }, the professions with the nearest trainer first; `limit` cuts each group's trainers.
+function ns.Recipes_TrainersNearby(professions, limit)
+    local have = {}
+    for _, p in ipairs(professions) do
+        if p.learned ~= false and p.skillLine then have[p.skillLine] = p end
+    end
+    -- a recipe of its profession that trainers teach (source code 6), not known and within its skill
+    local teaches = {}
+    for id, db in ns.RecipeDB_Each() do
+        local p = have[db.s]
+        if p and p.rank and not teaches[db.s] then
+            local byTrainer = false
+            for _, code in ipairs(db.k or {}) do if code == 6 then byTrainer = true end end
+            local required = byTrainer and ns.RecipeDB_Required(db)
+            if required and required <= p.rank and not knownByView(id) then teaches[db.s] = true end
+        end
+    end
+    local groups = {}
+    for index, p in ipairs(professions) do
+        if have[p.skillLine] then
+            local nextRank = ns.Professions_NextRank and ns.Professions_NextRank(p) or nil
+            if nextRank or teaches[p.skillLine] then
+                local trainers, total = ns.RecipeDB_Trainers(p.skillLine, limit)
+                if #trainers > 0 then
+                    groups[#groups + 1] = { profession = p, nextRank = nextRank, trainers = trainers, total = total, order = index }
+                end
+            end
+        end
+    end
+    table.sort(groups, function(a, b)
+        local da, db = a.trainers[1].distance or math.huge, b.trainers[1].distance or math.huge
+        if da ~= db then return da < db end
+        return a.order < b.order
+    end)
+    return groups
+end
+
 -- A profession's recipes: callback(copy) at once. The live answer of the game's window if that profession's is open,
 -- else the data's (always the data's for another character: the window is the playing one's).
 -- opts: { name = the profession's name, rank = the character's skill }

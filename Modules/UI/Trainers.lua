@@ -97,7 +97,7 @@ local function render()
     else
         panel.more:Hide()
     end
-    panel.child:SetHeight(math.max(1, y + 8))
+    ns.AutoScroll_SetHeight(panel.scroll, y + 8)
     panel.scroll:SetVerticalScroll(0)
 end
 
@@ -135,12 +135,12 @@ local function create(parent)
     separator:SetHeight(1)
     separator:SetColorTexture(1, 0.82, 0, 0.5)
 
-    panel.scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
-    panel.scroll:SetPoint("TOPLEFT", MARGIN, -(MARGIN + 62))
-    panel.scroll:SetPoint("BOTTOMRIGHT", -SCROLL_W, MARGIN)
-    panel.child = CreateFrame("Frame", nil, panel.scroll)
-    panel.child:SetSize(TEXT_W, 1)
-    panel.scroll:SetScrollChild(panel.child)
+    -- (the bar is only there when the content is taller than the frame)
+    panel.scroll, panel.child = ns.AutoScroll_Create(panel, function(withBar, scroll)
+        scroll:ClearAllPoints()
+        scroll:SetPoint("TOPLEFT", MARGIN, -(MARGIN + 62))
+        scroll:SetPoint("BOTTOMRIGHT", withBar and -SCROLL_W or -MARGIN, MARGIN)
+    end)
 
     panel.empty = panel.child:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     panel.empty:SetPoint("TOPLEFT", 0, -8)

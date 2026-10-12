@@ -82,6 +82,7 @@ function ns.ResetSettings()
     FabrikaoCharDB.collapsed = nil
     FabrikaoCharDB.showMissing = nil
     FabrikaoCharDB.craftCollapsed = nil
+    FabrikaoCharDB.folded = nil
     if ns.UI_ResetWindow then ns.UI_ResetWindow() else FabrikaoCharDB.window = nil end
     if ns.Minimap_Init then ns.Minimap_Init() end
     if ns.UI_ApplySettings then ns.UI_ApplySettings() end

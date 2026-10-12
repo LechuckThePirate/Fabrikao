@@ -177,12 +177,15 @@ end
 -- The list of recipes is shared with the profession's pages: this page takes it whenever it shows.
 local function takeList()
     local list = ns.RecipeList_Attach(page, sortBy, nil, selectRecipe)
-    list.header:ClearAllPoints()
-    list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
-    list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
-    list.scroll:ClearAllPoints()
-    list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
-    list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
+    ns.RecipeList_Place(function(withBar)
+        local right = withBar and -24 or -4 -- (the room of the bar goes to the rows when it is not there)
+        list.header:ClearAllPoints()
+        list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
+        list.header:SetPoint("RIGHT", page, "RIGHT", right, 0)
+        list.scroll:ClearAllPoints()
+        list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
+        list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", right, 18)
+    end)
 end
 
 function ns.SearchPage_Create(parent, top)

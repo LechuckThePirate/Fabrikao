@@ -385,6 +385,18 @@ local function heightOf(data)
     return VIEWS[view].height
 end
 
+-- The bar of the scroll is there only when the rows are taller than it; the page that has the list places it (and the column titles)
+-- as a function of that. The width that changes redraws the rows, as any other change of width.
+local function updateBar()
+    if not list then return end
+    local need = total > (list.scroll:GetHeight() or 0) + 1
+    if list.withBar == need then return end
+    list.withBar = need
+    if list.scroll.ScrollBar and list.scroll.ScrollBar.SetShown then list.scroll.ScrollBar:SetShown(need) end
+    if list.place then list.place(need) end
+    if not need then list.scroll:SetVerticalScroll(0) end
+end
+
 -- Where each row starts and how tall they all are: the scroll's content is that tall, but only the rows in view exist as frames.
 local function computeTops()
     tops, total = {}, 0
@@ -393,6 +405,7 @@ local function computeTops()
         total = total + heightOf(data)
     end
     list.content:SetHeight(math.max(1, total))
+    updateBar()
 end
 
 -- The first row that ends below `offset` (binary search over the tops).
@@ -483,6 +496,7 @@ end
 -- the table's columns, the icons that fit -- happens once, when the width has stopped changing.
 local REDRAW_DELAY = 0.1
 local function followWidth()
+    updateBar() -- (the height may have changed with the window)
     list.content:SetWidth(math.max(100, list.scroll:GetWidth()))
     list.widthChanges = (list.widthChanges or 0) + 1
     if list.redrawWaiting then return end
@@ -556,6 +570,15 @@ function ns.RecipeList_Set(newRows, newView, currentSort, rank)
     local beyond = (list.scroll:GetVerticalScroll() or 0) - math.max(0, total - (list.scroll:GetHeight() or 0))
     if beyond > 0 then list.scroll:SetVerticalScroll(math.max(0, total - (list.scroll:GetHeight() or 0))) end
     draw()
+end
+
+-- Where the page puts the list: place(withBar) anchors the column titles and the scroll, with room for the bar or without it. It is
+-- called now and again whenever the bar comes or goes.
+function ns.RecipeList_Place(place)
+    if not list then return end
+    list.place = place
+    list.withBar = list.withBar == nil and true or list.withBar
+    place(list.withBar)
 end
 
 -- Marks the recipe (by id) whose panel is open; nil for none.

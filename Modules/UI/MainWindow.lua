@@ -1,26 +1,20 @@
 local ADDON, ns = ...
 local L = ns.L
 
--- The addon's window. First page: the character's professions (the ones it has, primary first, then First Aid,
--- Cooking and Fishing), with the game's own icons. Click one for its recipes: the ones the character knows
--- (colored by difficulty, with how many it can make from the bags) and, below, the ones it doesn't know, with
--- a search box, filters, sorting and three views to choose from (RecipeList.lua). The gear opens the preferences.
--- Above the professions, a picker of the character to look at (the playing one, or an alt that has logged in with the addon: its
--- professions and known recipes as it saved them, Roster.lua) and a button that lists the professions that are not learned too.
+-- The addon's window. First page: the start screen in four quadrants (Overview.lua): the character's professions, what it can learn,
+-- what it can craft now and the trainers close by, under a search box, the picker of the character to look at (the playing one, or an
+-- alt that has logged in with the addon: its professions and known recipes as it saved them, Roster.lua) and a button that lists the
+-- professions that are not learned too. Click a profession for its recipes: the ones the character knows (colored by difficulty, with
+-- how many it can make from the bags) and, below, the ones it doesn't know, with a search box, filters, sorting and two views to choose
+-- from (RecipeList.lua). The gear opens the preferences.
 -- Another character's professions are read only (no crafting) and the window shows it: tinted blue, with the name in the title.
--- Above the professions, "You can craft now" (it folds): what the playing character's bags allow to make with the recipes it knows, in
--- any of its professions; a click opens the game's profession window on that recipe, as the Craft button does. The two scroll together.
 
 local WIDTH, HEIGHT = 760, 620
 local MIN_WIDTH, MIN_HEIGHT = 640, 420
 local MAX_WIDTH, MAX_HEIGHT = 1600, 1200
-local PROFESSION_H = 56
-local LIST_TOP = 66 -- where the professions start: below the search box and the picker's row
-local CRAFT_H, MAX_CRAFT = 30, 100 -- height of a row of the "can craft now" list, and how many are listed at most
 local VIEW_TINT = { 0.15, 0.35, 0.9, 0.3 } -- as Embolsao!!'s window when it shows another character's bags
 
 local frame, overview, page
-local professionButtons, headerTexts, craftRows = {}, {}, {}
 local state = { skillLine = nil, copy = nil, professionName = nil }
 
 -- what the page filters by: kept for the next time (ns.char.filters)
@@ -28,256 +22,6 @@ local filters = {}
 local collapsed = {} -- the groups of the list folded: { known = bool, unknown = bool }
 
 local VIEW_NAMES = { "table", "detailed" }
-
----------------------------------------------------------------------------------------------------
--- Overview: the professions
----------------------------------------------------------------------------------------------------
-local function openProfession(profession)
-    if ns.UI_ShowRecipes then ns.UI_ShowRecipes(profession) end
-end
-
-local function showProfessionTooltip(button)
-    local p = button.profession
-    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
-    GameTooltip:SetText(p.name, 1, 1, 1)
-    if p.learned == false then
-        GameTooltip:AddLine(L["Not learned"], 1, 0.82, 0)
-    else
-        GameTooltip:AddLine(L["Skill: %d / %d"]:format(p.rank, p.maxRank), 1, 0.82, 0)
-    end
-    local nextRank = ns.Professions_NextRank(p)
-    if nextRank then GameTooltip:AddLine(L["You can train %s at a trainer"]:format(nextRank), 0.25, 1, 0.25) end
-    if p.hasRecipes then
-        GameTooltip:AddLine(L["Click to see its recipes"], 0.7, 0.7, 0.7)
-    else
-        GameTooltip:AddLine(L["This profession has no recipes"], 0.7, 0.7, 0.7)
-        GameTooltip:AddLine(L["Click to see its trainers"], 0.7, 0.7, 0.7)
-    end
-    GameTooltip:Show()
-end
-
-local function newProfessionButton()
-    local b = CreateFrame("Button", nil, overview.content)
-    b:SetHeight(PROFESSION_H)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(44, 44)
-    b.icon:SetPoint("LEFT", 6, 0)
-    b.name = b:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    b.name:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 10, -2)
-    b.bar = CreateFrame("StatusBar", nil, b)
-    b.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    b.bar:SetHeight(14)
-    b.bar:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 10, 2)
-    b.bar:SetPoint("RIGHT", -12, 0)
-    local back = b.bar:CreateTexture(nil, "BACKGROUND")
-    back:SetAllPoints()
-    back:SetColorTexture(0, 0, 0, 0.5)
-    b.barText = b.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    b.barText:SetPoint("CENTER")
-    -- "Can train: Journeyman": the skill is at the cap of its rank and a trainer can teach the next one
-    b.train = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    b.train:SetPoint("TOPRIGHT", -12, -6)
-    b.train:SetTextColor(0.25, 1, 0.25)
-    b.train:Hide()
-    b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    b:SetScript("OnClick", function(self) openProfession(self.profession) end)
-    b:SetScript("OnEnter", showProfessionTooltip)
-    b:SetScript("OnLeave", GameTooltip_Hide)
-    return b
-end
-
-local function newHeader()
-    local text = overview.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    text:SetJustifyH("LEFT")
-    local line = overview.content:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(1, 0.82, 0, 0.35)
-    line:SetHeight(1)
-    line:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -2)
-    line:SetPoint("RIGHT", overview.content, "RIGHT", -8, 0)
-    text.line = line
-    return text
-end
-
--- a row of "You can craft now": a click does what the Craft button of the recipe's panel does
-local function newCraftRow()
-    local b = CreateFrame("Button", nil, overview.content)
-    b:SetHeight(CRAFT_H)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(24, 24)
-    b.icon:SetPoint("LEFT", 6, 0)
-    b.skillText = b:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    b.skillText:SetPoint("RIGHT", -10, 0)
-    b.skillText:SetJustifyH("RIGHT")
-    b.name = b:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    b.name:SetPoint("LEFT", b.icon, "RIGHT", 8, 0)
-    b.name:SetPoint("RIGHT", b.skillText, "LEFT", -8, 0)
-    b.name:SetJustifyH("LEFT")
-    b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    b:SetScript("OnClick", function(self)
-        local craft = self.craft
-        if craft and not ns.Roster_ViewKey() then ns.Craft_Open(craft.recipe.id, craft.skillLine) end
-    end)
-    b:SetScript("OnEnter", function(self)
-        local craft = self.craft
-        if not craft then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        if not (craft.recipe.db and ns.RecipeDB_ShowProductTooltip(self, craft.recipe.id, craft.recipe.db)) then
-            GameTooltip:SetText(craft.recipe.name, 1, 1, 1)
-        end
-        GameTooltip:AddLine(L["%d possible with your bags"]:format(craft.craftable), 0.7, 0.7, 0.7)
-        GameTooltip:AddLine(L["Click to open it in the profession window"], 1, 0.82, 0)
-        GameTooltip:Show()
-    end)
-    b:SetScript("OnLeave", GameTooltip_Hide)
-    return b
-end
-
--- The title of "You can craft now": a click folds or unfolds the list, and it is kept for the next time.
-local layoutOverview
-local function newCraftHeader()
-    local b = CreateFrame("Button", nil, overview.content)
-    b:SetHeight(24)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(14, 14)
-    b.icon:SetPoint("LEFT", 8, 0)
-    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    b.text:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
-    local line = b:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(1, 0.82, 0, 0.35)
-    line:SetHeight(1)
-    line:SetPoint("BOTTOMLEFT", 8, 0)
-    line:SetPoint("BOTTOMRIGHT", 0, 0)
-    b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    b:SetScript("OnClick", function()
-        ns.char.craftCollapsed = not ns.char.craftCollapsed
-        layoutOverview()
-    end)
-    return b
-end
-
--- The overview, top to bottom: "You can craft now" (what the playing character's bags allow with the recipes it knows; not another
--- character's, there is no crafting for them), as many rows as the data gives up to MAX_CRAFT, and then the professions.
--- Returns the number of professions listed.
-function layoutOverview()
-    if not overview then return 0 end
-    for _, b in ipairs(professionButtons) do b:Hide() end
-    for _, b in ipairs(craftRows) do b:Hide() end
-    for _, h in ipairs(headerTexts) do h:Hide(); h.line:Hide() end
-    overview.craftNone:Hide()
-    overview.craftMore:Hide()
-    local header = overview.craftHeader or newCraftHeader()
-    overview.craftHeader = header
-    header:Hide()
-    local content = overview.content
-    local y = 0
-
-    local mine = ns.Professions_Mine()
-    if not ns.Roster_ViewKey() and #mine > 0 then
-        local crafts, total = ns.Recipes_CraftableNow(mine, MAX_CRAFT)
-        local folded = ns.char.craftCollapsed and true or false
-        header:ClearAllPoints()
-        header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-        header:SetPoint("RIGHT", content, "RIGHT", -8, 0)
-        header.icon:SetTexture(folded and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
-        header.text:SetText(("%s (%d)"):format(L["You can craft now"], total))
-        header:Show()
-        y = y + 28
-        if not folded then
-            for n, craft in ipairs(crafts) do
-                local b = craftRows[n] or newCraftRow()
-                craftRows[n] = b
-                b.craft = craft
-                b:ClearAllPoints()
-                b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-                b:SetPoint("RIGHT", content, "RIGHT", 0, 0)
-                b.icon:SetTexture(craft.recipe.icon)
-                local color = ns.DIFFICULTY_COLORS[craft.recipe.difficulty or ns.DIFFICULTY_LAST]
-                b.name:SetText(("%s (%d)"):format(craft.recipe.name, craft.craftable))
-                b.name:SetTextColor(color[1], color[2], color[3])
-                b.skillText:SetText(craft.profession)
-                b:Show()
-                y = y + CRAFT_H
-            end
-            if #crafts == 0 then
-                overview.craftNone:ClearAllPoints()
-                overview.craftNone:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -y)
-                overview.craftNone:Show()
-                y = y + 24
-            elseif total > #crafts then
-                overview.craftMore:SetText(L["and %d more"]:format(total - #crafts))
-                overview.craftMore:ClearAllPoints()
-                overview.craftMore:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -y - 4)
-                overview.craftMore:Show()
-                y = y + 24
-            end
-        end
-        y = y + 12
-    end
-
-    -- the ones the character has, and, when asked, the ones with recipes in the data that it hasn't learned
-    local list = ns.Professions_List()
-    local missing = ns.char.showMissing and ns.Professions_Missing(list) or {}
-    local shown = {}
-    for _, profession in ipairs(list) do shown[#shown + 1] = profession end
-    for _, profession in ipairs(missing) do shown[#shown + 1] = profession end
-
-    local nButton, nHeader, lastGroup = 0, 0, nil
-    for _, profession in ipairs(shown) do
-        local learned = profession.learned ~= false
-        local group = not learned and "missing" or (profession.primary and "primary" or "secondary")
-        if group ~= lastGroup then
-            lastGroup = group
-            nHeader = nHeader + 1
-            local h = headerTexts[nHeader] or newHeader()
-            headerTexts[nHeader] = h
-            h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -y - 2)
-            h:SetText(({ primary = L["Professions"], secondary = L["Secondary professions"], missing = L["Not learned"] })[group])
-            h:Show()
-            h.line:Show()
-            y = y + 24
-        end
-        nButton = nButton + 1
-        local b = professionButtons[nButton] or newProfessionButton()
-        professionButtons[nButton] = b
-        b.profession = profession
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-        b:SetPoint("RIGHT", content, "RIGHT", 0, 0)
-        b.icon:SetTexture(profession.icon)
-        b.icon:SetDesaturated(not (profession.hasRecipes and learned))
-        b.name:SetText(profession.name)
-        if learned then
-            b.bar:SetMinMaxValues(0, math.max(1, profession.maxRank))
-            b.bar:SetValue(profession.rank)
-            local full = profession.maxRank > 0 and profession.rank >= profession.maxRank
-            b.bar:SetStatusBarColor(full and 0.2 or 0.1, full and 0.7 or 0.4, full and 0.2 or 0.9)
-            b.barText:SetText(profession.rank .. " / " .. profession.maxRank)
-        else
-            b.bar:SetMinMaxValues(0, 1)
-            b.bar:SetValue(0)
-            b.barText:SetText(L["Not learned"])
-        end
-        b:SetAlpha((profession.hasRecipes and learned) and 1 or 0.6)
-        local nextRank = ns.Professions_NextRank(profession)
-        b.train:SetText(nextRank and L["Can train: %s"]:format(nextRank) or "")
-        b.train:SetShown(nextRank ~= nil)
-        b:Show()
-        y = y + PROFESSION_H + 4
-    end
-    overview.empty:SetShown(#shown == 0)
-    overview.empty:ClearAllPoints()
-    overview.empty:SetPoint("TOP", overview.content, "TOP", 0, -(y + 40))
-    content:SetHeight(math.max(1, y + 8))
-    return #shown
-end
-
-local function refreshOverview()
-    if not overview then return end
-    layoutOverview()
-    overview.picker.Update()
-    overview.toggle:SetText(ns.char.showMissing and L["Hide professions not learned"] or L["Show professions not learned"])
-end
 
 ---------------------------------------------------------------------------------------------------
 -- Recipes of one profession
@@ -371,12 +115,15 @@ end
 -- The list of recipes is shared with the search page: this page takes it back (at creation, and whenever it shows).
 function ns.MainWindow_TakeList()
     local list = ns.RecipeList_Attach(page, sortBy, toggleGroup, selectRecipe)
-    list.header:ClearAllPoints()
-    list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
-    list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
-    list.scroll:ClearAllPoints()
-    list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
-    list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
+    ns.RecipeList_Place(function(withBar)
+        local right = withBar and -24 or -4 -- (the room of the bar goes to the rows when it is not there)
+        list.header:ClearAllPoints()
+        list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
+        list.header:SetPoint("RIGHT", page, "RIGHT", right, 0)
+        list.scroll:ClearAllPoints()
+        list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
+        list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", right, 18)
+    end)
 end
 
 local function createPage(parent, top)
@@ -473,7 +220,7 @@ function ns.UI_ShowOverview()
     page:Hide()
     ns.SearchPage_Hide()
     overview:Show()
-    refreshOverview()
+    ns.Overview_Refresh()
 end
 
 function ns.UI_ShowRecipes(profession)
@@ -552,7 +299,7 @@ end
 function ns.UI_ViewCharacter(key)
     ns.Roster_SetView(key)
     applyViewLook()
-    if frame and state.skillLine then ns.UI_ShowOverview() elseif frame then refreshOverview() end
+    if frame and state.skillLine then ns.UI_ShowOverview() elseif frame then ns.Overview_Refresh() end
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -659,89 +406,13 @@ local function createFrame()
     gear:SetScript("OnLeave", GameTooltip_Hide)
     frame.gear = gear
 
-    overview = CreateFrame("Frame", nil, frame)
-    overview:SetPoint("TOPLEFT", 12, -top)
-    overview:SetPoint("BOTTOMRIGHT", -12, 12)
-    overview.empty = overview:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    overview.empty:SetPoint("TOP", 0, -40)
-    overview.empty:SetText(L["No professions learned yet."])
-    overview.empty:Hide()
-
-    -- the professions and "You can craft now" scroll together, under the search box and the picker's row
-    overview.scroll = CreateFrame("ScrollFrame", nil, overview, "UIPanelScrollFrameTemplate")
-    overview.scroll:SetPoint("TOPLEFT", 0, -LIST_TOP)
-    overview.scroll:SetPoint("BOTTOMRIGHT", -26, 0)
-    overview.content = CreateFrame("Frame", nil, overview.scroll)
-    overview.content:SetSize(600, 1)
-    overview.scroll:SetScrollChild(overview.content)
-    overview.scroll:SetScript("OnSizeChanged", function(self) overview.content:SetWidth(math.max(100, self:GetWidth())) end)
-    overview.craftNone = overview.content:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-    overview.craftNone:SetText(L["Nothing to craft with what your bags hold."])
-    overview.craftNone:Hide()
-    overview.craftMore = overview.content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    overview.craftMore:Hide()
+    overview = ns.Overview_Create(frame, top)
 
     createPage(frame, top)
     ns.SearchPage_Create(frame, top)
 
-    -- under the search box: whose professions to look at, and whether the ones not learned are listed too
-    overview.picker = ns.FilterBar_CreatePicker(overview, {
-        width = 230,
-        options = function()
-            local options = { { value = nil, text = L["My professions"] } }
-            for _, info in ipairs(ns.Roster_Others()) do options[#options + 1] = { value = info.key, text = info.label } end
-            return options
-        end,
-        get = function() return ns.Roster_ViewKey() end,
-        set = function(key) ns.UI_ViewCharacter(key) end,
-        text = function()
-            local viewed = ns.Roster_Viewed()
-            return viewed and viewed.label or L["My professions"]
-        end,
-        extra = function(rootDescription)
-            if #ns.Roster_Others() == 0 and rootDescription.CreateTitle then
-                rootDescription:CreateTitle(L["Log in with your other characters to see their professions here."])
-            end
-        end,
-    })
-    overview.picker.frame:SetPoint("TOPLEFT", 0, -30)
-    overview.toggle = CreateFrame("Button", nil, overview, "UIPanelButtonTemplate")
-    overview.toggle:SetSize(230, 22)
-    overview.toggle:SetPoint("TOPRIGHT", -6, -30)
-    overview.toggle:SetScript("OnClick", function()
-        ns.char.showMissing = not ns.char.showMissing
-        refreshOverview()
-    end)
-
-    -- typing in the box above the professions goes to the search of every recipe
-    local search = CreateFrame("EditBox", nil, overview, "InputBoxTemplate")
-    search:SetHeight(20)
-    search:SetPoint("TOPLEFT", 6, -4)
-    search:SetPoint("RIGHT", overview, "RIGHT", -6, 0)
-    search:SetAutoFocus(false)
-    search:SetMaxLetters(60)
-    local hint = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("LEFT", 2, 0)
-    hint:SetText(L["Search any recipe in the game..."])
-    local function startSearch(self)
-        local text = self:GetText()
-        if text == "" then return end
-        self:SetText("")
-        self:ClearFocus()
-        ns.UI_ShowSearch(text)
-    end
-    search:SetScript("OnTextChanged", function(self, userInput)
-        hint:SetShown(self:GetText() == "" and not self:HasFocus())
-        if userInput then startSearch(self) end
-    end)
-    search:SetScript("OnEditFocusGained", function() hint:Hide() end)
-    search:SetScript("OnEditFocusLost", function(self) hint:SetShown(self:GetText() == "") end)
-    search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
-    search:SetScript("OnEnterPressed", startSearch)
-    overview.search = search
-
     frame:HookScript("OnShow", function()
-        if state.skillLine then refreshRecipes() else refreshOverview() end
+        if state.skillLine then refreshRecipes() else ns.Overview_Refresh() end
     end)
     -- closing the window puts the playing character's professions back, as Embolsao!! does with the bags
     frame:HookScript("OnHide", function()
@@ -757,9 +428,9 @@ local function createFrame()
     events:SetScript("OnEvent", function(_, event)
         if not frame:IsShown() then return end
         if event == "BAG_UPDATE_DELAYED" then
-            if state.skillLine then refreshRecipes() elseif overview:IsShown() then layoutOverview() end
+            if state.skillLine then refreshRecipes() elseif overview:IsShown() then ns.Overview_LayoutCraft() end
         elseif not state.skillLine then
-            refreshOverview()
+            ns.Overview_Refresh()
         end
     end)
 end
@@ -798,7 +469,7 @@ function ns.UI_ApplySettings()
         updateControls()
         refreshRecipes()
     else
-        refreshOverview() -- what it shows depends on settings too (the fold of "You can craft now", the professions not learned)
+        ns.Overview_Refresh() -- what it shows depends on settings too (the groups folded, the professions not learned)
     end
 end
 
