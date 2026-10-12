@@ -306,6 +306,39 @@ function ns.Recipes_FromData(skillLine, rank)
     return copy
 end
 
+-- What the playing character can make right now across its professions: the recipes of the data it knows (the spell book) whose
+-- ingredients its bags hold. `professions` is a list as ns.Professions_Mine returns it. Returns
+-- { { recipe =, craftable =, skillLine =, profession = the profession's name }, ... }, orange first and then by name, cut to `limit`
+-- when given, and how many there were in all.
+function ns.Recipes_CraftableNow(professions, limit)
+    local have = {}
+    for _, p in ipairs(professions) do
+        if p.hasRecipes then have[p.skillLine] = p end
+    end
+    local found = {}
+    for id, db in ns.RecipeDB_Each() do
+        local p = have[db.s]
+        if p and db.m and #db.m > 0 and ns.RecipeDB_Known(id) then
+            -- the bags first: only what can be made is worth building
+            local craftable = ns.Recipes_Craftable({ reagents = reagentsOfData(db) }, false)
+            if craftable > 0 then
+                found[#found + 1] = { recipe = fromData(id, db, true, p.rank, false), craftable = craftable, skillLine = p.skillLine, profession = p.name }
+            end
+        end
+    end
+    table.sort(found, function(a, b)
+        local da, db = a.recipe.difficulty or ns.DIFFICULTY_LAST, b.recipe.difficulty or ns.DIFFICULTY_LAST
+        if da ~= db then return da < db end
+        if a.recipe.name ~= b.recipe.name then return a.recipe.name < b.recipe.name end
+        return a.recipe.id < b.recipe.id
+    end)
+    local total = #found
+    if limit then
+        for i = total, limit + 1, -1 do found[i] = nil end
+    end
+    return found, total
+end
+
 -- A profession's recipes: callback(copy) at once. The live answer of the game's window if that profession's is open,
 -- else the data's (always the data's for another character: the window is the playing one's).
 -- opts: { name = the profession's name, rank = the character's skill }
