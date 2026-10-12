@@ -246,6 +246,27 @@ local function nearestFirst(list)
     return sorted, distances
 end
 
+-- The trainers of a profession (a skill line) that are for the character's side, nearest first (see nearestFirst):
+-- { { id =, name =, title =, zones = text, text = "name (zones)", distance = yards or nil }, ... }, cut to `limit` when given, and how
+-- many there are in all.
+function ns.RecipeDB_Trainers(skillLine, limit)
+    local db = data()
+    local mine = {}
+    for _, trainer in ipairs(db and db.trainers and db.trainers[skillLine] or {}) do
+        if forMySide(trainer) then mine[#mine + 1] = trainer end
+    end
+    local ordered, distances = nearestFirst(mine)
+    local list = {}
+    for i, trainer in ipairs(ordered) do
+        if limit and i > limit then break end
+        list[#list + 1] = {
+            id = trainer.id, name = trainer.n, title = trainer.t, zones = zoneList(trainer.z), text = named(trainer, true),
+            distance = distances[trainer],
+        }
+    end
+    return list, #ordered
+end
+
 -- where the recipe is learned, as lines { title =, text =, entries = { { text =, id =, name = }... }, more = how many are left out }
 -- for a tooltip or detail panel (`text` is the entries in one line; the panel puts each entry on its own line; id and name are
 -- there for the trainers and vendors, who can be shown on the map); `full` lists far more of each (the recipe's own panel has the room)

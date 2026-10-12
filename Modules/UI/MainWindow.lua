@@ -21,7 +21,7 @@ local VIEW_TINT = { 0.15, 0.35, 0.9, 0.3 } -- as Embolsao!!'s window when it sho
 
 local frame, overview, page
 local professionButtons, headerTexts, craftRows = {}, {}, {}
-local state = { skillLine = nil, copy = nil }
+local state = { skillLine = nil, copy = nil, professionName = nil }
 
 -- what the page filters by: kept for the next time (ns.char.filters)
 local filters = {}
@@ -391,6 +391,22 @@ local function createPage(parent, top)
     page.viewBanner:SetPoint("TOPRIGHT", page.rank, "BOTTOMRIGHT", 0, -2)
     page.viewBanner:Hide()
 
+    -- the profession's trainers, nearest first, in a panel next to the window (Trainers.lua)
+    page.trainersButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    page.trainersButton:SetSize(96, 22)
+    page.trainersButton:SetPoint("RIGHT", page.rank, "LEFT", -14, 0)
+    page.trainersButton:SetText(L["Trainers"])
+    page.trainersButton:SetScript("OnClick", function()
+        if state.skillLine then ns.Trainers_Toggle(state.skillLine, state.professionName) end
+    end)
+    page.trainersButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(L["Trainers"], 1, 1, 1)
+        GameTooltip:AddLine(L["The trainers of this profession, nearest first, with the map and a waypoint."], 1, 0.82, 0, true)
+        GameTooltip:Show()
+    end)
+    page.trainersButton:SetScript("OnLeave", GameTooltip_Hide)
+
     local search = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
     search:SetHeight(20)
     search:SetPoint("TOPLEFT", back, "BOTTOMLEFT", 6, -10)
@@ -440,7 +456,8 @@ end
 function ns.UI_ShowOverview()
     if not frame then return end
     ns.RecipeDetail_Hide()
-    state.skillLine, state.copy = nil, nil
+    ns.Trainers_Hide()
+    state.skillLine, state.copy, state.professionName = nil, nil, nil
     page:Hide()
     ns.SearchPage_Hide()
     overview:Show()
@@ -451,7 +468,8 @@ function ns.UI_ShowRecipes(profession)
     if not frame then return end
     local skillLine = profession.skillLine
     ns.RecipeDetail_Hide()
-    state.skillLine, filters.source, filters.category = skillLine, nil, nil
+    if ns.Trainers_Current() ~= skillLine then ns.Trainers_Hide() end -- (its panel is of the profession before)
+    state.skillLine, state.professionName, filters.source, filters.category = skillLine, profession.name, nil, nil
     state.copy = ns.Recipes_Cached(skillLine)
     overview:Hide()
     ns.SearchPage_Hide()
@@ -735,7 +753,8 @@ end
 function ns.UI_ShowSearch(text, ingredient)
     ns.UI_Show()
     ns.RecipeDetail_Hide()
-    state.skillLine, state.copy = nil, nil
+    ns.Trainers_Hide()
+    state.skillLine, state.copy, state.professionName = nil, nil, nil
     overview:Hide()
     page:Hide()
     ns.SearchPage_Show(text, ingredient)

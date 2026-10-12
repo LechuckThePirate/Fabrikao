@@ -37,7 +37,8 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search
   of every recipe (dropdowns of the game's menus, `WowStyle1DropdownTemplate` + `SetupMenu` with radios, falling back to cycling buttons when
   the templates are missing; each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`; the category of a recipe comes from
-  its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window
+  its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/Trainers.lua` — the panel of a profession's trainers, nearest first, with map and TomTom buttons (`ns.RecipeDB_Trainers`; the "Trainers"
+  button of the recipes page; it takes the place of a recipe's panel); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window
   on a click (`ns.RecipeDetail_Build` makes its content as data, `_Show`/`_Hide` the frame); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
 - `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing; `Professions_Mine` is the
   playing character's, `Professions_List` the one of the character the window shows; `Professions_Missing` the ones with recipes in the data

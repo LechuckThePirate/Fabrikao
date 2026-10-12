@@ -583,6 +583,7 @@ function ns.RecipeDetail_Show(recipe, opts)
     opts = opts or {}
     local window = opts.parent or _G.FabrikaoFrame
     if not window then return end
+    if ns.Trainers_Hide then ns.Trainers_Hide() end -- the same place
     if not panel then create(window) end
     panel:SetScale(window:GetScale())
     dock(window)

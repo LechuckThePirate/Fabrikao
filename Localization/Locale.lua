@@ -22,6 +22,12 @@ local es = {
     ["No professions learned yet."] = "Todavía no has aprendido ninguna profesión.",
     ["Not learned"] = "Sin aprender",
     ["You can craft now"] = "Puedes fabricar ahora",
+    ["Trainers"] = "Entrenadores",
+    ["%s trainers"] = "Entrenadores de %s",
+    ["Nearest first"] = "Los más cercanos primero",
+    ["No trainers known for this profession."] = "No se conocen entrenadores de esta profesión.",
+    ["The trainers of this profession, nearest first, with the map and a waypoint."] =
+        "Los entrenadores de esta profesión, los más cercanos primero, con el mapa y un punto de ruta.",
     ["Click to open it in the profession window"] = "Clic para abrirla en la ventana de profesiones",
     ["Nothing to craft with what your bags hold."] = "No hay nada que fabricar con lo que llevas en las bolsas.",
     ["My professions"] = "Mis profesiones",

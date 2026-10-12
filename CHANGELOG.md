@@ -10,6 +10,8 @@
 - New: at the top of the main screen, "You can craft now" lists what your bags allow you to make with the recipes you know, in any of your
   professions (orange first, with how many). A click opens the game's profession window on that recipe, as the Craft button does;
   a click on its title folds the list.
+- New: a "Trainers" button on a profession's page opens a panel with that profession's trainers, nearest first (with their zone and how far
+  they are), each with a "Map" button and, with TomTom installed, a waypoint button. It works for professions you have not learned too.
 
 ## 0.2.0
 
