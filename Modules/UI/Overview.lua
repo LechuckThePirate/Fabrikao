@@ -5,7 +5,7 @@ local L = ns.L
 --   top left      the professions (icon, skill bar and name; "Can train: ..." when a trainer can teach the next rank)
 --   bottom left   what the bags allow to craft now (a click opens the game's profession window on the recipe)
 --   right         what can be learned, the whole height of the screen: the ranks a trainer can teach and the recipes the skill reaches
---                 that are not known, by profession and by level. A click on a rank or a recipe opens under it the trainers and vendors
+--                 that are not known, by profession, the one with the nearest trainer or vendor first. A click on a rank or a recipe opens under it the trainers and vendors
 --                 that teach it, nearest first, with the map and waypoint buttons; a right click opens the recipe's panel
 -- A quadrant scrolls when its content is taller than it; with nothing to scroll the bar is not there and the space goes to the content
 -- (AutoScroll.lua). What is under the groups, the ranks and the recipes is folded until it is opened, and it is kept (ns.char.folded).

@@ -39,7 +39,8 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   the templates are missing; each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`; the category of a recipe comes from
   its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/Overview.lua` — the start screen under the welcome line, the search, the character picker and the button of the professions
   not learned: the professions (top left), what can be crafted now (bottom left, `ns.Recipes_CraftableNow`) and, the whole right side,
-  what can be learned (`ns.Recipes_LearnableNow`: the ranks and the recipes by profession), where a click on a rank or a recipe opens
+  what can be learned (`ns.Recipes_LearnableNow`: the ranks and the recipes by profession, the recipe with the nearest
+  trainer or vendor first: `ns.RecipeDB_TrainerKey` / `_TeacherKey`), where a click on a rank or a recipe opens
   under it the trainers and vendors that teach it (`ns.Recipes_Teachers`, from `RecipeDB_Where`; a rank's are the profession's
   `ns.RecipeDB_Trainers`) with the map and waypoint icons, and a right click opens the recipe's panel; what is under the groups, the ranks
   and the recipes is folded until opened (`ns.char.folded[kind][key] == false` means opened);

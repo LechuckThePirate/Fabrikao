@@ -346,7 +346,8 @@ local function knownByView(id)
 end
 
 -- What the character could learn right now in its professions: for each profession with recipes, the recipes it doesn't know whose
--- required skill its skill reaches, in order of that level. `professions` is a list as ns.Professions_List returns it.
+-- required skill its skill reaches, the one with the nearest trainer or vendor first (and by its level among equals: the trainers
+-- of a profession are the same for all its recipes). `professions` is a list as ns.Professions_List returns it.
 -- Returns { { profession =, recipes = { recipe... }, total = n }, ... } in the professions' order, only the ones that have something;
 -- `limit` cuts each group's recipes (`total` is how many there were).
 function ns.Recipes_LearnableNow(professions, limit)
@@ -354,7 +355,7 @@ function ns.Recipes_LearnableNow(professions, limit)
     for _, p in ipairs(professions) do
         if p.hasRecipes and p.rank and p.learned ~= false then have[p.skillLine] = p end
     end
-    local found = {}
+    local found, trainerKeys = {}, {}
     for id, db in ns.RecipeDB_Each() do
         local p = have[db.s]
         if p then
@@ -362,7 +363,8 @@ function ns.Recipes_LearnableNow(professions, limit)
             if required and required <= p.rank and not knownByView(id) then
                 local list = found[db.s] or {}
                 found[db.s] = list
-                list[#list + 1] = { id = id, db = db, required = required }
+                trainerKeys[db.s] = trainerKeys[db.s] or ns.RecipeDB_TrainerKey(db.s)
+                list[#list + 1] = { id = id, db = db, required = required, key = ns.RecipeDB_TeacherKey(db, trainerKeys[db.s]) }
             end
         end
     end
@@ -371,6 +373,7 @@ function ns.Recipes_LearnableNow(professions, limit)
         local list = found[p.skillLine]
         if list and #list > 0 then
             table.sort(list, function(a, b)
+                if a.key ~= b.key then return a.key < b.key end
                 if a.required ~= b.required then return a.required < b.required end
                 if a.db.n ~= b.db.n then return a.db.n < b.db.n end
                 return a.id < b.id

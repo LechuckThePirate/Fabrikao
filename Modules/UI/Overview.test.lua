@@ -189,9 +189,23 @@ describe("The start screen", function()
             assert.matches("^Blacksmithing %(3%)", h[2].text)
         end)
 
-        it("lists the recipes the skill reaches that are not known, by profession and by level, once opened", function()
-            -- Alchemy (skill 150): Mana Potion needs 30, Healing Potion 100; the Elixir is known, the Flask asks for 250.
-            -- Blacksmithing (skill 75): the Dagger needs 40, the Sword 50 and the Orphan Plans 60
+        it("lists the recipes the skill reaches that are not known, by profession, the one with the nearest teacher first", function()
+            -- Alchemy (skill 150): Mana Potion needs 30, Healing Potion 100; the Elixir is known, the Flask asks for 250. Their
+            -- trainers are the same, 400 yards away, so the level decides.
+            -- Blacksmithing (skill 75): the Sword is taught by the smith, 100 yards away; the Dagger is sold by a vendor 400 yards
+            -- away; nobody is known to teach the Orphan Plans, which goes last
+            openGroups()
+            assert.are.same({ "Mana Potion", "Healing Potion", "Iron Sword", "Dropped Dagger", "Orphan Plans" }, learnNames())
+        end)
+
+        it("the nearer vendor or trainer wins, whichever it is", function()
+            -- the vendor of the dagger is 50 yards away now: nearer than the smith, who is 100
+            ns.Map_Distance = function(spot)
+                if spot.x == 60 then return 50 end -- Vendor Vic
+                if spot.x == 20 then return 100 end -- Smith Sam
+                return distances[spot.map]
+            end
+            ns.UI_ShowOverview()
             openGroups()
             assert.are.same({ "Mana Potion", "Healing Potion", "Dropped Dagger", "Iron Sword", "Orphan Plans" }, learnNames())
         end)

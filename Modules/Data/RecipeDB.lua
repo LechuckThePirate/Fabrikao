@@ -223,17 +223,28 @@ end
 -- The NPCs by how far they are from the character (a trainer next door beats one in another continent): by distance when the game
 -- tells it, then the ones on the character's map, then the ones elsewhere, then the ones whose position isn't known. The order they
 -- came in is kept among equals. Returns a new list, and a table of the distances there are, by NPC.
+local NOBODY = 4e7 -- the key of what nobody teaches: after every NPC
+
+-- How near an NPC is, as a number to sort by (and its distance in yards when the game tells it): the distance itself, then 1e7 for the
+-- ones on the character's map (`here`), 2e7 for the ones elsewhere, 3e7 for the ones whose position isn't known.
+local function nearKey(npc, here)
+    local spot = npc.id and ns.RecipeDB_NpcLocation(npc.id)
+    local distance = spot and ns.Map_Distance and ns.Map_Distance(spot)
+    if distance then return distance, distance end
+    if spot and here and spot.map == here then return 1e7 end
+    if spot then return 2e7 end
+    return 3e7
+end
+
+local function playerMap()
+    return C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+end
+
 local function nearestFirst(list)
-    local here = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    local here = playerMap()
     local keyed, distances = {}, {}
     for index, npc in ipairs(list) do
-        local spot = npc.id and ns.RecipeDB_NpcLocation(npc.id)
-        local distance = spot and ns.Map_Distance and ns.Map_Distance(spot)
-        local key
-        if distance then key = distance
-        elseif spot and here and spot.map == here then key = 1e7
-        elseif spot then key = 2e7
-        else key = 3e7 end
+        local key, distance = nearKey(npc, here)
         distances[npc] = distance
         keyed[index] = { npc = npc, key = key, index = index }
     end
@@ -244,6 +255,41 @@ local function nearestFirst(list)
     local sorted = {}
     for i, item in ipairs(keyed) do sorted[i] = item.npc end
     return sorted, distances
+end
+
+-- How near the closest trainer of a profession (a skill line) that is for the character's side is, as a number to sort by (the
+-- same as nearestFirst's; a profession with none is after everyone). Compute it once per profession and give it to
+-- ns.RecipeDB_TeacherKey for each recipe.
+function ns.RecipeDB_TrainerKey(skillLine)
+    local db = data()
+    local here, best = playerMap(), NOBODY
+    for _, trainer in ipairs(db and db.trainers and db.trainers[skillLine] or {}) do
+        if forMySide(trainer) then
+            local key = nearKey(trainer, here)
+            if key < best then best = key end
+        end
+    end
+    return best
+end
+
+-- How near the closest trainer or vendor that teaches a recipe (its record) is: the trainer key of its profession when trainers teach
+-- it, and the vendors of the item that teaches it for the character's side; NOBODY (after everyone) when no one is known to.
+function ns.RecipeDB_TeacherKey(recipe, trainerKey)
+    local best = NOBODY
+    for _, code in ipairs(recipe.k or {}) do
+        if code == 6 and trainerKey and trainerKey < best then best = trainerKey end
+    end
+    local item = ns.RecipeDB_Item(recipe)
+    if item and item.v then
+        local here = playerMap()
+        for _, vendor in ipairs(item.v) do
+            if forMySide(vendor) then
+                local key = nearKey(vendor, here)
+                if key < best then best = key end
+            end
+        end
+    end
+    return best
 end
 
 -- Where an ingredient (an item id) can be had, from the data's `reagents`: lines { title =, entries = { { text =, id =, name =,

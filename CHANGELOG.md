@@ -9,7 +9,8 @@
 - New: a button above the professions lists the professions you have not learned too, so you can browse their recipes.
 - New: the start screen has your professions (top left), what you can craft now (bottom left: what your bags allow, orange first, with
   how many; a click opens the game's profession window on that recipe, as the Craft button does) and, on the whole right side, what you
-  can learn: the ranks a trainer can teach and the recipes your skill reaches that you don't know, by profession and by level. A click on
+  can learn: the ranks a trainer can teach and the recipes your skill reaches that you don't know, by profession, the ones with the
+  nearest trainer or vendor first. A click on
   a rank or a recipe opens under it the trainers and vendors that teach it, nearest first, with a map icon and, with TomTom installed, a
   waypoint icon (a right click on a recipe opens its panel). The groups start folded, and what you open stays open. The search box, the
   character picker and the button of the professions not learned are above, under a welcome line.
