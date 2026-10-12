@@ -76,6 +76,17 @@ describe("Recipe data", function()
                 for _, entry in ipairs(reagent[key] or {}) do listed[entry.id] = true end
             end
         end
+        -- and the vendors of the books and the givers of the quests of the ranks
+        for _, caps in pairs(db.ranks or {}) do
+            for _, rank in pairs(caps) do
+                for _, book in ipairs(rank.b or {}) do
+                    for _, vendor in ipairs(book.v or {}) do listed[vendor.id] = true end
+                end
+                for _, quest in ipairs(rank.q or {}) do
+                    for _, giver in ipairs(quest.g or {}) do listed[giver.id] = true end
+                end
+            end
+        end
         local located = 0
         for id, spot in pairs(db.npcs) do
             located = located + 1
@@ -114,6 +125,25 @@ describe("Recipe data", function()
             end
         end
         assert.is_true(count > 300)
+    end)
+
+    it("the ranks of a book or a quest have the book with its vendors, or the quest with its givers", function()
+        local count = 0
+        for skill, caps in pairs(db.ranks) do
+            assert.is_not_nil(db.trainers[skill], "profession " .. skill)
+            for cap, rank in pairs(caps) do
+                count = count + 1
+                assert.is_true(cap == 225 or cap == 300, "the skill " .. cap .. " of profession " .. skill)
+                assert.is_truthy(rank.b or rank.q, "profession " .. skill .. " rank " .. cap .. " has neither")
+                for _, book in ipairs(rank.b or {}) do
+                    assert.is_truthy(type(book.i) == "number" and type(book.n) == "string" and #(book.v or {}) > 0, "book of " .. skill)
+                end
+                for _, quest in ipairs(rank.q or {}) do
+                    assert.is_truthy(type(quest.id) == "number" and type(quest.n) == "string" and #(quest.g or {}) > 0, "quest of " .. skill)
+                end
+            end
+        end
+        assert.is_true(count >= 4) -- Expert and Artisan of at least two professions
     end)
 
     it("vendors, drops and quests are named", function()

@@ -8,6 +8,8 @@ local _, ns = ...
 --   v vendors, d drops, dn number of droppers, qs quests, o containers, zone }
 -- reagents[itemID] = { v vendors { id, n, z zones, g price, f side }, d creatures that drop it and k those skinned for it { id, n, z, lo, hi,
 --   pm chance in 1/100 of a percent }, f zones it is fished in { z area, pm }, g nodes { n, z zones }, c what makes it { s skill, n, i spell } }
+-- ranks[skill][skill it goes up to] = { b books { i item, n, v vendors as in reagents }, q quests { id, n, lv level, f A|H,
+--   g givers { id, n, z zones } } } (Expert Cooking, First Aid and Fishing is a book; Artisan of the three, a quest)
 -- trainers[skill] = { { id, n name, t title, z zones, lv level, f A|H }... }
 -- npcs[npcID] = { map id, x, y } where a vendor or trainer stands (x and y in percent of the map), for waypoints
 -- source codes: 1 crafted, 2 drop, 3 PvP, 4 quest, 5 vendor, 6 trainer, 16 gathered, 21 salvaged
@@ -4780,6 +4782,11 @@ ns.RECIPE_DATA = {
         [260823] = {c={{s=202,n="Dimensional Transporter - Mt. Hyjal",i=1266936}}},
         [272941] = {v={{id=1650,n="Terry Palin",z={12},g=210526,f="A"},{id=2381,n="Micha Yance",z={267},g=180000,f="A"},{id=2397,n="Derak Nightfall",z={267},g=180000,f="H"},{id=2664,n="Kelsey Yance",z={33},g=180000}}},
     },
+    ranks = {
+        [129] = {[225]={b={{i=16084,n="Expert First Aid - Under Wraps",v={{id=2805,n="Deneb Walker",z={45},g=10526,f="A"},{id=13476,n="Balai Lok'Wein",z={15},g=10526,f="H"}}}}},[300]={q={{id=6622,n="Triage",lv=35,f="H",g={{id=12920,n="Doctor Gregory Victor",z={45}}}},{id=6624,n="Triage",lv=35,f="A",g={{id=12939,n="Doctor Gustaf VanHowzen",z={15}}}}}}},
+        [185] = {[225]={b={{i=16072,n="Expert Cookbook",v={{id=3955,n="Shandrina",z={331},g=10526,f="A"},{id=12033,n="Wulan",z={405},g=10526,f="H"}}}}},[300]={q={{id=6610,n="Clamlette Surprise",lv=35,g={{id=8125,n="Dirge Quikcleave",z={440}}}}}}},
+        [356] = {[225]={b={{i=16083,n="Expert Fishing - The Bass and You",v={{id=2626,n="Old Man Heming",z={33},g=9000}}}}},[300]={q={{id=6607,n="Nat Pagle, Angler Extreme",lv=35,g={{id=12919,n="Nat Pagle",z={15}}}}}}},
+    },
     trainers = {
         [129] = {{id=2326,n="Thamner Pol",t="Physician",z={1},lv=8,f="A"},{id=257007,n="Melasa Fairmend",t="Medic",z={16593},lv=10},{id=257018,n="Naleeia Tattermend",t="Medic",z={16593},lv=10},{id=5759,n="Nurse Neela",t="First Aid Trainer",z={85},lv=10,f="H"},{id=2329,n="Michelle Belle",t="Physician",z={12},lv=11,f="A"},{id=5939,n="Vira Younghoof",t="First Aid Trainer",z={215},lv=13,f="H"},{id=5943,n="Rawrk",t="First Aid Trainer",z={14},lv=15,f="H"},{id=6094,n="Byancie",t="First Aid Trainer",z={141},lv=22,f="A"},{id=251977,n="Angelique Butler",t="First Aid Trainer",z={36},lv=28,f="A"},{id=3181,n="Fremal Doohickey",t="First Aid Trainer",z={11},lv=30,f="A"},{id=3373,n="Arnok",t="First Aid Trainer",z={1637},lv=35,f="H"},{id=4211,n="Dannelor",t="First Aid Trainer",z={1657},lv=35,f="A"},{id=4591,n="Mary Edras",t="First Aid Trainer",z={1497},lv=35,f="H"},{id=5150,n="Nissa Firestone",t="First Aid Trainer",z={1537},lv=35,f="A"},{id=2798,n="Pand Stonebinder",t="First Aid Trainer",z={1638},lv=35,f="H"},{id=2327,n="Shaina Fuller",t="First Aid Trainer",z={1519},lv=35,f="A"}},
         [164] = {{id=252479,n="Daeann Steelwind",t="Blacksmith",z={16593},lv=10},{id=276067,n="Angus Hammerhand",t="Blacksmith",z={85},lv=12,f="H"},{id=251913,n="Aedi Thriceforged",t="Blacksmith",z={16593},lv=20},{id=514,n="Smith Argus",t="Journeyman Blacksmith",z={12},lv=24,f="A"},{id=10278,n="Thrag Stonehoof",t="Journeyman Blacksmith",z={1638},lv=24,f="H"},{id=259250,n="Alphonse Dumas",t="Journeyman Blacksmith",z={16591},lv=25},{id=6299,n="Delfrum Flintbeard",t="Journeyman Blacksmith",z={148},lv=25,f="A"},{id=10277,n="Groum Stonebeard",t="Journeyman Blacksmith",z={1537},lv=25,f="A"},{id=256658,n="Gur'dok",t="Journeyman Blacksmith",z={16591},lv=25,f="H"},{id=10266,n="Ug'thok",t="Journeyman Blacksmith",z={1637},lv=25,f="H"},{id=4605,n="Basil Frye",t="Journeyman Blacksmith",z={1497},lv=26,f="H"},{id=3174,n="Dwukk",t="Journeyman Blacksmith",z={14},lv=27,f="H"},{id=28694,n="Alard Schmied",t="Blacksmith",z={36},lv=28,f="A"},{id=3557,n="Guillaume Sorouy",t="Journeyman Blacksmith",z={130},lv=28,f="H"},{id=957,n="Dane Lindgren",t="Journeyman Blacksmith",z={1519},lv=30,f="A"},{id=1241,n="Tognus Flintfire",t="Journeyman Blacksmith",z={1},lv=30,f="A"},{id=3136,n="Clarise Gnarltree",t="Expert Blacksmith",z={10},lv=31,f="A"},{id=10276,n="Rotgath Stonebeard",t="Expert Blacksmith",z={1537},lv=31,f="A"},{id=1383,n="Snarl",t="Expert Blacksmith",z={1637},lv=31,f="H"},{id=3478,n="Traugh",t="Expert Blacksmith",z={17},lv=31,f="H"},{id=5511,n="Therum Deepforge",t="Expert Blacksmith",z={1519},lv=33,f="A"},{id=5513,n="Gelman Stonehand",t="Mining Trainer",z={1519},lv=35,f="A"},{id=4596,n="James Van Brunt",t="Expert Blacksmith",z={1497},lv=35,f="H"},{id=2998,n="Karn Stonehoof",t="Expert Blacksmith",z={1638},lv=35,f="H"},{id=4258,n="Bengus Deepforge",t="Artisan Blacksmith",z={1537},lv=45,f="A"},{id=3355,n="Saru Steelfury",t="Artisan Blacksmith",z={1637},lv=45,f="H"},{id=2836,n="Brikk Keencraft",t="Master Blacksmith",z={33},lv=54}},
@@ -5128,6 +5135,7 @@ ns.RECIPE_DATA = {
         [2605] = {1417,66,82},
         [2606] = {1417,59,74.6},
         [2618] = {1417,60.2,55.2},
+        [2626] = {1434,27.4,77},
         [2627] = {1434,28.6,76.8},
         [2628] = {1416,10.2,74.4},
         [2636] = {1417,31.4,81},
@@ -5828,6 +5836,9 @@ ns.RECIPE_DATA = {
         [12496] = {1425,60.2,29},
         [12498] = {1440,93.2,38.2},
         [12676] = {1440,71.2,68.4},
+        [12919] = {1445,58.4,60},
+        [12920] = {1417,73.4,36.4},
+        [12939] = {1445,67.6,48.8},
         [12941] = {1423,80.4,57.6},
         [12942] = {1422,43,84.2},
         [12943] = {1420,83.2,69.6},
