@@ -54,7 +54,9 @@ describe("Poisons", function()
             IsSpellKnown = function(id) return known[id] == true end,
         }
         _G.C_TradeSkillUI = { CanTradeSkillShowCraftingUI = function() return true end }
-        _G.C_Item = { GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end }
+        _G.C_Item = {
+            GetItemCount = function() return 0 end, GetItemNameByID = function(id) return "Item" .. id end, GetItemIconByID = function() return 1 end,
+        }
         _G.C_Map = { GetAreaInfo = function() return "Stormwind City" end, GetBestMapForUnit = function() return 1453 end }
         _G.C_Spell, _G.GetSpellInfo, _G.GetNumSkillLines, _G.GetSkillLineInfo = nil, nil, nil, nil
         _G.UnitName = function() return "Tester" end
