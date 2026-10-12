@@ -330,20 +330,6 @@ function ns.RecipeDB_ReagentWhere(itemID)
     return lines
 end
 
--- A list of NPCs as { id =, n =, z = zones, f = side } for the character's side only, nearest first (see nearestFirst); the second
--- result is the table of the distances there are, by entry. The zones as text: ns.RecipeDB_Zones.
-function ns.RecipeDB_NearestFor(list)
-    local mine = {}
-    for _, entry in ipairs(list) do
-        if forMySide(entry) then mine[#mine + 1] = entry end
-    end
-    return nearestFirst(mine)
-end
-
-function ns.RecipeDB_Zones(ids)
-    return zoneList(ids)
-end
-
 -- The trainers of a profession (a skill line) that are for the character's side, nearest first (see nearestFirst):
 -- { { id =, name =, title =, zones = text, text = "name (zones)", distance = yards or nil }, ... }, cut to `limit` when given, and how
 -- many there are in all.

@@ -1,22 +1,21 @@
 local _, ns = ...
 local L = ns.L
 
--- The start screen of the window, in four quadrants under a welcome line, the search box and the picker of the character:
+-- The start screen of the window, under a welcome line, the search box and the picker of the character:
 --   top left      the professions (icon, skill bar and name; "Can train: ..." when a trainer can teach the next rank)
---   top right     what can be learned: the ranks a trainer can teach, and the recipes the skill reaches that are not known, by
---                 profession and by level
 --   bottom left   what the bags allow to craft now (a click opens the game's profession window on the recipe)
---   bottom right  the trainers close by that have something to teach and the vendors that sell a recipe of the profession that is
---                 not known, by profession, nearest first, with map and waypoint buttons
+--   right         what can be learned, the whole height of the screen: the ranks a trainer can teach and the recipes the skill reaches
+--                 that are not known, by profession and by level. A click on a rank or a recipe opens under it the trainers and vendors
+--                 that teach it, nearest first, with the map and waypoint buttons; a right click opens the recipe's panel
 -- A quadrant scrolls when its content is taller than it; with nothing to scroll the bar is not there and the space goes to the content
--- (AutoScroll.lua). The groups of the two right quadrants are folded until they are opened, and it is kept (ns.char.folded).
+-- (AutoScroll.lua). What is under the groups, the ranks and the recipes is folded until it is opened, and it is kept (ns.char.folded).
 --   ns.Overview_Create(parent, top) -> the frame      ns.Overview_Refresh()   all of it
 --   ns.Overview_LayoutCraft()                         only "can craft now" (the bags changed)
 
 local GAP, TITLE_H = 8, 26
 local TOP_H = 84 -- the welcome line, the search box and the row of the picker
 local PROFESSION_H, ROW_H, TRAINER_H, HEADER_H = 48, 28, 36, 26
-local MAX_CRAFT, LEARN_PER_GROUP, TRAINERS_PER_GROUP = 100, 12, 6
+local MAX_CRAFT, LEARN_PER_GROUP, TEACHERS_MAX = 100, 25, 8
 local PLUS, MINUS = "Interface\\Buttons\\UI-PlusButton-Up", "Interface\\Buttons\\UI-MinusButton-Up"
 local DIM = "|cff9a9a9a"
 
@@ -206,13 +205,29 @@ local function newCraftRow(content)
     return b
 end
 
--- a recipe that can be learned: a click opens its panel next to the window
-local function newLearnRow(content)
+-- A row that opens and closes what is under it: a + or - in front of the icon (the ranks and the recipes). A right click is for its
+-- own page or panel.
+local function newExpandRow(content)
     local b = newLine(content)
-    b:SetScript("OnClick", function(self)
+    b.mark = b:CreateTexture(nil, "ARTWORK")
+    b.mark:SetSize(12, 12)
+    b.mark:SetPoint("LEFT", 4, 0)
+    b.icon:ClearAllPoints()
+    b.icon:SetPoint("LEFT", 20, 0)
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    return b
+end
+
+-- a recipe that can be learned: a click opens under it who teaches it, a right click its panel next to the window
+local function newLearnRow(content, toggle)
+    local b = newExpandRow(content)
+    b:SetScript("OnClick", function(self, button)
         local learn = self.learn
-        if learn and learn.recipe and _G.FabrikaoFrame then
-            ns.RecipeDetail_Show(learn.recipe, { parent = _G.FabrikaoFrame, rank = learn.rank })
+        if not (learn and learn.recipe) then return end
+        if button == "RightButton" then
+            if _G.FabrikaoFrame then ns.RecipeDetail_Show(learn.recipe, { parent = _G.FabrikaoFrame, rank = learn.rank }) end
+        else
+            toggle("teach", learn.recipe.id)
         end
     end)
     b:SetScript("OnEnter", function(self)
@@ -222,22 +237,28 @@ local function newLearnRow(content)
         if not (learn.recipe.db and ns.RecipeDB_ShowProductTooltip(self, learn.recipe.id, learn.recipe.db)) then
             GameTooltip:SetText(learn.recipe.name, 1, 1, 1)
         end
-        GameTooltip:AddLine(L["Click to see where to learn it"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Click to see who teaches it"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Right-click for its details"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     return b
 end
 
--- a rank a trainer can teach (a click opens the profession's page, with its trainers)
-local function newRankRow(content)
-    local b = newLine(content)
+-- a rank a trainer can teach: a click opens under it the trainers of the profession, a right click its page
+local function newRankRow(content, toggle)
+    local b = newExpandRow(content)
     b.name:SetFontObject("GameFontNormal")
-    b:SetScript("OnClick", function(self) if self.ofProfession then openProfession(self.ofProfession) end end)
+    b:SetScript("OnClick", function(self, button)
+        if not self.ofProfession then return end
+        if button == "RightButton" then openProfession(self.ofProfession) else toggle("rank", self.ofProfession.skillLine) end
+    end)
     b:SetScript("OnEnter", function(self)
         if not self.ofProfession then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(self.ofProfession.name, 1, 1, 1)
         GameTooltip:AddLine(L["You can train %s at a trainer"]:format(self.rank), 0.25, 1, 0.25)
+        GameTooltip:AddLine(L["Click to see who can train it"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Right-click for its page"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     return b
@@ -391,11 +412,19 @@ local function layoutProfessions()
     finishLayout(q, y, #shown == 0 and L["No professions learned yet."] or nil)
 end
 
--- what can be learned: the ranks a trainer can teach, then the recipes the skill reaches that are not known, by profession
-local function layoutLearn()
+-- what can be learned: the ranks a trainer can teach, then the recipes the skill reaches that are not known, by profession; under a
+-- rank and under a recipe, once it is opened, the trainers and vendors that teach it
+local layoutLearn
+local function toggleLearn(kind, key)
+    setFolded(kind, key, not isFolded(kind, key))
+    layoutLearn()
+end
+
+function layoutLearn()
     local q = quadrants.learn
     q.ranks.reset()
     q.recipes.reset()
+    q.teachers.reset()
     local y = startLayout(q)
     local professions = ns.Professions_List()
 
@@ -408,6 +437,54 @@ local function layoutLearn()
     local total = #ranks
     for _, group in ipairs(groups) do total = total + group.total end
     q.title:SetText(("%s (%d)"):format(L["You can learn"], total))
+    local withTomTom = ns.Map_HasTomTom and ns.Map_HasTomTom()
+
+    -- a dim line (what is left out, or that nobody is known)
+    local function dim(text, x)
+        local line = q.sections.next()
+        line:ClearAllPoints()
+        line:SetPoint("TOPLEFT", q.content, "TOPLEFT", x, -y - 2)
+        line:SetText(DIM .. text .. "|r")
+        line:SetShownWithLine(true)
+        line.line:Hide()
+        y = y + 22
+    end
+
+    -- a trainer or a vendor under what it teaches: its name, under it what it is and how far, and the map and waypoint icons
+    local function teacher(entry)
+        local row = q.teachers.next()
+        local spot = entry.id and ns.RecipeDB_NpcLocation(entry.id)
+        row.teacher = entry
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", q.content, "TOPLEFT", 24, -y)
+        row:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
+        local where = { entry.kind == "trainer" and L["Trainer"] or L["Vendor"] }
+        local distance = entry.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(entry.distance)
+        if distance and distance ~= "" then where[#where + 1] = distance end
+        row.name:SetText(entry.text or entry.name)
+        row.where:SetText(table.concat(where, "  -  "))
+        row.tomButton.npc, row.mapButton.npc = entry, entry
+        row.tomButton:SetShown(spot ~= nil and withTomTom and true or false)
+        row.mapButton:SetShown(spot ~= nil)
+        local taken = ns.IconButton_Place(row.mapButton, row.tomButton, withTomTom, 4, 7)
+        local reserved = spot and taken or 8 -- (the texts stop short of the icons)
+        row.name:SetPoint("RIGHT", row, "RIGHT", -reserved, 0)
+        row.where:SetPoint("RIGHT", row, "RIGHT", -reserved, 0)
+        y = y + TRAINER_H
+    end
+
+    local function teachers(list)
+        if #list == 0 then
+            dim(L["No trainer or vendor is known for it."], 24)
+            return
+        end
+        for i, entry in ipairs(list) do
+            if i > TEACHERS_MAX then break end
+            teacher(entry)
+        end
+        if #list > TEACHERS_MAX then dim(L["and %d more"]:format(#list - TEACHERS_MAX), 24) end
+        y = y + 2
+    end
 
     if #ranks > 0 then
         local s = q.sections.next()
@@ -417,15 +494,27 @@ local function layoutLearn()
         s:SetShownWithLine(true)
         y = y + 24
         for _, entry in ipairs(ranks) do
+            local p = entry.profession
+            local open = not isFolded("rank", p.skillLine)
             local b = q.ranks.next()
-            b.ofProfession, b.rank = entry.profession, entry.name
+            b.ofProfession, b.rank = p, entry.name
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
             b:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
-            b.icon:SetTexture(entry.profession.icon)
-            b.name:SetText(("%s: |cff40ff40%s|r"):format(entry.profession.name, entry.name))
+            b.mark:SetTexture(open and MINUS or PLUS)
+            b.icon:SetTexture(p.icon)
+            b.name:SetText(("%s: |cff40ff40%s|r"):format(p.name, entry.name))
             b.skillText:SetText(L["skill %d"]:format(entry.cap))
             y = y + ROW_H
+            if open then
+                -- the profession's trainers, nearest first
+                local list = {}
+                for _, t in ipairs((ns.RecipeDB_Trainers(p.skillLine))) do
+                    local title = t.title and t.title ~= "" and (" " .. DIM .. "<" .. t.title .. ">|r") or ""
+                    list[#list + 1] = { id = t.id, name = t.name, text = t.text .. title, distance = t.distance, kind = "trainer" }
+                end
+                teachers(list)
+            end
         end
         y = y + 6
     end
@@ -436,11 +525,13 @@ local function layoutLearn()
         folded, y = groupHeader(q, "learn", p, y, ("%s (%d)"):format(p.name, group.total))
         if not folded then
             for _, recipe in ipairs(group.recipes) do
+                local open = not isFolded("teach", recipe.id)
                 local b = q.recipes.next()
                 b.learn = { recipe = recipe, rank = p.rank }
                 b:ClearAllPoints()
                 b:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
                 b:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
+                b.mark:SetTexture(open and MINUS or PLUS)
                 b.icon:SetTexture(recipe.icon)
                 local color = difficultyColor(ns.RecipeDB_Difficulty(recipe.db, p.rank))
                 b.name:SetText(recipe.name)
@@ -448,16 +539,9 @@ local function layoutLearn()
                 local source = ns.RecipeDB_ShortSource(recipe.db)
                 b.skillText:SetText(source and ("%d  %s"):format(recipe.required or 0, source) or tostring(recipe.required or ""))
                 y = y + ROW_H
+                if open then teachers(ns.Recipes_Teachers(recipe.db)) end
             end
-            if group.total > #group.recipes then
-                local more = q.sections.next()
-                more:ClearAllPoints()
-                more:SetPoint("TOPLEFT", q.content, "TOPLEFT", 28, -y - 2)
-                more:SetText(DIM .. L["and %d more"]:format(group.total - #group.recipes) .. "|r")
-                more:SetShownWithLine(true)
-                more.line:Hide()
-                y = y + 22
-            end
+            if group.total > #group.recipes then dim(L["and %d more"]:format(group.total - #group.recipes), 28) end
             y = y + 4
         end
     end
@@ -501,72 +585,6 @@ local function layoutCraft()
     finishLayout(q, y, #crafts == 0 and L["Nothing to craft with what your bags hold."] or nil)
 end
 
--- the trainers and vendors close by that have something for the character, by profession (the one with the nearest first)
-local function layoutTrainers()
-    local q = quadrants.trainers
-    q.rows.reset()
-    local y = startLayout(q)
-    local groups = ns.Recipes_TrainersNearby(ns.Professions_List(), TRAINERS_PER_GROUP)
-    local withTomTom = ns.Map_HasTomTom and ns.Map_HasTomTom()
-
-    -- one line of a trainer or a vendor: the name (and title, or what the vendor sells) and under it the kind, the zone and how far
-    local function addRow(entry, kind)
-        local row = q.rows.next()
-        local spot = entry.id and ns.RecipeDB_NpcLocation(entry.id)
-        row.trainer, row.vendor = nil, nil
-        row[kind] = entry
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
-        row:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
-        local name = entry.name
-        if kind == "trainer" and entry.title and entry.title ~= "" then
-            name = name .. " " .. DIM .. "<" .. entry.title .. ">|r"
-        elseif kind == "vendor" and entry.recipes and #entry.recipes > 0 then
-            local sold = entry.recipes[1] .. (#entry.recipes > 1 and (" +" .. (#entry.recipes - 1)) or "")
-            name = name .. " " .. DIM .. "<" .. sold .. ">|r"
-        end
-        local where = { kind == "trainer" and L["Trainer"] or L["Vendor"] }
-        if entry.zones and entry.zones ~= "" then where[#where + 1] = entry.zones end
-        local distance = entry.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(entry.distance)
-        if distance and distance ~= "" then where[#where + 1] = distance end
-        row.name:SetText(name)
-        row.where:SetText(table.concat(where, "  -  "))
-        row.tomButton.npc, row.mapButton.npc = entry, entry
-        row.tomButton:SetShown(spot ~= nil and withTomTom and true or false)
-        row.mapButton:SetShown(spot ~= nil)
-        local taken = ns.IconButton_Place(row.mapButton, row.tomButton, withTomTom, 4, 7)
-        local reserved = spot and taken or 8 -- (the texts stop short of the icons)
-        row.name:SetPoint("RIGHT", row, "RIGHT", -reserved, 0)
-        row.where:SetPoint("RIGHT", row, "RIGHT", -reserved, 0)
-        y = y + TRAINER_H
-    end
-
-    local function moreLine(text)
-        local more = q.sections.next()
-        more:ClearAllPoints()
-        more:SetPoint("TOPLEFT", q.content, "TOPLEFT", 28, -y - 2)
-        more:SetText(DIM .. text .. "|r")
-        more:SetShownWithLine(true)
-        more.line:Hide()
-        y = y + 22
-    end
-
-    for _, group in ipairs(groups) do
-        local p = group.profession
-        local note = group.nextRank and L["Can train: %s"]:format(group.nextRank) or nil
-        local folded
-        folded, y = groupHeader(q, "trainers", p, y, ("%s (%d)"):format(p.name, group.total + group.vendorTotal), note)
-        if not folded then
-            for _, trainer in ipairs(group.trainers) do addRow(trainer, "trainer") end
-            if group.total > #group.trainers then moreLine(L["and %d more"]:format(group.total - #group.trainers)) end
-            for _, vendor in ipairs(group.vendors) do addRow(vendor, "vendor") end
-            if group.vendorTotal > #group.vendors then moreLine(L["and %d more"]:format(group.vendorTotal - #group.vendors)) end
-            y = y + 4
-        end
-    end
-    finishLayout(q, y, #groups == 0 and L["No trainer or vendor has anything new for you."] or nil)
-end
-
 ---------------------------------------------------------------------------------------------------
 -- The whole screen
 ---------------------------------------------------------------------------------------------------
@@ -579,7 +597,6 @@ function ns.Overview_Layout()
     layoutProfessions()
     layoutLearn()
     layoutCraft()
-    layoutTrainers()
 end
 
 function ns.Overview_Refresh()
@@ -667,13 +684,15 @@ function ns.Overview_Create(parent, top)
     professions.title:SetText(L["Professions"])
     professions.rows = newPool(function() return newProfessionRow(professions.content) end)
 
+    -- what can be learned has the whole right side
     local learn = newQuadrant("learn", function(f)
         f:SetPoint("TOPLEFT", grid, "TOP", half, 0)
-        f:SetPoint("BOTTOMRIGHT", grid, "RIGHT", 0, half)
+        f:SetPoint("BOTTOMRIGHT", grid, "BOTTOMRIGHT", 0, 0)
     end)
     learn.title:SetText(L["You can learn"])
-    learn.ranks = newPool(function() return newRankRow(learn.content) end)
-    learn.recipes = newPool(function() return newLearnRow(learn.content) end)
+    learn.ranks = newPool(function() return newRankRow(learn.content, toggleLearn) end)
+    learn.recipes = newPool(function() return newLearnRow(learn.content, toggleLearn) end)
+    learn.teachers = newPool(function() return newTrainerRow(learn.content) end)
     learn.relayout = layoutLearn
 
     local craft = newQuadrant("craft", function(f)
@@ -682,14 +701,6 @@ function ns.Overview_Create(parent, top)
     end)
     craft.title:SetText(L["You can craft now"])
     craft.rows = newPool(function() return newCraftRow(craft.content) end)
-
-    local trainers = newQuadrant("trainers", function(f)
-        f:SetPoint("TOPLEFT", grid, "CENTER", half, -half)
-        f:SetPoint("BOTTOMRIGHT", grid, "BOTTOMRIGHT", 0, 0)
-    end)
-    trainers.title:SetText(L["Trainers and vendors nearby"])
-    trainers.rows = newPool(function() return newTrainerRow(trainers.content) end)
-    trainers.relayout = layoutTrainers
 
     return overview
 end

@@ -7,13 +7,12 @@
   copies, when installed). The window turns blue and says whose they are, as Embolsao!! does with another character's bags, and there is no
   crafting. An alt appears once you have logged in with it with this version.
 - New: a button above the professions lists the professions you have not learned too, so you can browse their recipes.
-- New: the start screen is in four quadrants under a welcome line, the search box, the picker of the character and the button of the
-  professions not learned: your professions (top left); what you can learn (top right: the ranks a trainer can teach and the recipes your
-  skill reaches that you don't know, by profession and by level, with a click to open the recipe's panel); what you can craft now (bottom
-  left: what your bags allow, orange first, with how many; a click opens the game's profession window on that recipe, as the Craft button
-  does); and the trainers and vendors close by (bottom right: by profession, nearest first: the trainers that have something to teach
-  you and the vendors that sell the plans of a recipe of the profession that you don't know and your skill reaches). The groups of the
-  right quadrants start folded, and what you open stays open.
+- New: the start screen has your professions (top left), what you can craft now (bottom left: what your bags allow, orange first, with
+  how many; a click opens the game's profession window on that recipe, as the Craft button does) and, on the whole right side, what you
+  can learn: the ranks a trainer can teach and the recipes your skill reaches that you don't know, by profession and by level. A click on
+  a rank or a recipe opens under it the trainers and vendors that teach it, nearest first, with a map icon and, with TomTom installed, a
+  waypoint icon (a right click on a recipe opens its panel). The groups start folded, and what you open stays open. The search box, the
+  character picker and the button of the professions not learned are above, under a welcome line.
 - Change: the map and waypoint buttons of the trainers, vendors and creatures are small icons (a map, and a navigation arrow) instead of
   two wide text buttons.
 - New: a scroll bar only shows when there is something to scroll: with nothing to scroll the bar goes away and the rows take its room
