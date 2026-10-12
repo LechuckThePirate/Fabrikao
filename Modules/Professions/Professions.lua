@@ -75,6 +75,30 @@ function ns.Professions_Mine()
     return list
 end
 
+-- The ranks of a profession: each one caps the skill at a multiple of 75 (the rank that ends at 150 is Journeyman...), and a character
+-- trains the next one at a trainer once its skill has reached the cap and it is the level the rank asks for.
+local RANK_NAMES = { [75] = "Apprentice", [150] = "Journeyman", [225] = "Expert", [300] = "Artisan", [375] = "Master", [450] = "Grand Master" }
+local RANK_LEVEL = { [150] = 10, [225] = 20, [300] = 35, [375] = 50, [450] = 65 } -- the level to train the rank that ends there
+local RANK_STEP = 75
+
+-- The rank a character can train now in the profession, or nil: its skill is at the cap of its rank, a higher rank exists in this
+-- game (the data has recipes that ask for more skill) and its level allows it. `profession` is an entry of ns.Professions_List
+-- (`charLevel` is the character's level when it is another one's: false when its copy has none; without it, the playing one's is used).
+-- Returns the rank's name (as the game calls it) and the skill it ends at.
+function ns.Professions_NextRank(profession)
+    if not (profession and profession.learned ~= false and profession.rank and profession.maxRank and profession.maxRank > 0) then return nil end
+    if profession.rank < profession.maxRank then return nil end
+    local cap = profession.maxRank + RANK_STEP
+    local name = RANK_NAMES[cap]
+    if not name then return nil end
+    if not (ns.RecipeDB_MaxSkill and ns.RecipeDB_MaxSkill() > profession.maxRank) then return nil end
+    local need = RANK_LEVEL[cap]
+    local level = profession.charLevel
+    if level == nil then level = UnitLevel and UnitLevel("player") end
+    if need and not (level and level >= need) then return nil end
+    return ns.L[name], cap
+end
+
 -- The professions of the character the window shows: the playing one's, or another character's saved copy (Roster.lua).
 function ns.Professions_List()
     return ns.Roster_ViewedProfessions and ns.Roster_ViewedProfessions() or ns.Professions_Mine()

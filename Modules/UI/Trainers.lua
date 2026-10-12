@@ -3,8 +3,9 @@ local L = ns.L
 
 -- The trainers of a profession, nearest first, in a panel next to the main window (the same place as a recipe's panel, which it
 -- replaces). Each one has the buttons that show it on the map and set a TomTom waypoint, as the trainers in a recipe's panel do.
---   ns.Trainers_Toggle(skillLine, professionName)   opens the panel for the profession, or closes it when it is that one's already
---   ns.Trainers_Show(skillLine, professionName)     opens it (or fills it again: the distances are read each time)
+--   ns.Trainers_Toggle(skillLine, professionName, nextRank)   opens the panel for the profession, or closes it when it is that one's
+--   ns.Trainers_Show(skillLine, professionName, nextRank)     opens it (or fills it again: the distances are read each time);
+--                                                             `nextRank` is the name of the rank the character can train now, if any
 --   ns.Trainers_Hide(), ns.Trainers_Current()       closes it; the skill line it shows, nil when closed
 
 local WIDTH = 440
@@ -53,7 +54,11 @@ local function render()
 
     local trainers, total = ns.RecipeDB_Trainers(current.skillLine, MAX_TRAINERS)
     panel.empty:SetShown(#trainers == 0)
-    panel.subtitle:SetText(#trainers > 0 and L["Nearest first"] or "")
+    local subtitle = #trainers > 0 and L["Nearest first"] or ""
+    if current.nextRank then
+        subtitle = (subtitle ~= "" and (subtitle .. "\n") or "") .. "|cff40ff40" .. L["You can train %s here"]:format(current.nextRank) .. "|r"
+    end
+    panel.subtitle:SetText(subtitle)
 
     local withTomTom = ns.Map_HasTomTom and ns.Map_HasTomTom()
     local y = 4
@@ -163,7 +168,7 @@ local function dock(window)
     end
 end
 
-function ns.Trainers_Show(skillLine, name)
+function ns.Trainers_Show(skillLine, name, nextRank)
     local window = _G.FabrikaoFrame
     if not (window and skillLine) then return end
     if not panel then create(window) end
@@ -172,7 +177,7 @@ function ns.Trainers_Show(skillLine, name)
     if ns.RecipeList_Select then ns.RecipeList_Select(nil) end
     panel:SetScale(window:GetScale())
     dock(window)
-    current = { skillLine = skillLine, name = name }
+    current = { skillLine = skillLine, name = name, nextRank = nextRank }
     render()
     panel:Show()
 end
@@ -186,10 +191,10 @@ function ns.Trainers_Current()
     return panel and panel:IsShown() and current and current.skillLine or nil
 end
 
-function ns.Trainers_Toggle(skillLine, name)
+function ns.Trainers_Toggle(skillLine, name, nextRank)
     if ns.Trainers_Current() == skillLine then
         ns.Trainers_Hide()
     else
-        ns.Trainers_Show(skillLine, name)
+        ns.Trainers_Show(skillLine, name, nextRank)
     end
 end

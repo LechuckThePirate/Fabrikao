@@ -64,7 +64,7 @@ function ns.Roster_Snapshot(allowEmpty)
     ns.db.characters = ns.db.characters or {}
     ns.db.characters[key] = {
         name = UnitName("player"), realm = GetRealmName and GetRealmName() or "", class = classOf(),
-        time = time and time() or 0, professions = professions,
+        level = UnitLevel and UnitLevel("player") or nil, time = time and time() or 0, professions = professions,
     }
     return true
 end
@@ -156,6 +156,7 @@ function ns.Roster_ViewedProfessions()
         list[#list + 1] = {
             name = p.name, icon = p.icon, rank = p.rank or 0, maxRank = p.maxRank or 0, skillLine = p.skillLine,
             primary = p.primary and true or false, hasRecipes = p.hasRecipes ~= false, order = i,
+            charLevel = viewRecord.level or false, -- (what it takes to train the next rank depends on it; false: not saved)
         }
     end
     return list

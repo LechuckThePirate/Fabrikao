@@ -45,6 +45,8 @@ local function showProfessionTooltip(button)
     else
         GameTooltip:AddLine(L["Skill: %d / %d"]:format(p.rank, p.maxRank), 1, 0.82, 0)
     end
+    local nextRank = ns.Professions_NextRank(p)
+    if nextRank then GameTooltip:AddLine(L["You can train %s at a trainer"]:format(nextRank), 0.25, 1, 0.25) end
     if p.hasRecipes then
         GameTooltip:AddLine(L["Click to see its recipes"], 0.7, 0.7, 0.7)
     else
@@ -71,6 +73,11 @@ local function newProfessionButton()
     back:SetColorTexture(0, 0, 0, 0.5)
     b.barText = b.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     b.barText:SetPoint("CENTER")
+    -- "Can train: Journeyman": the skill is at the cap of its rank and a trainer can teach the next one
+    b.train = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    b.train:SetPoint("TOPRIGHT", -12, -6)
+    b.train:SetTextColor(0.25, 1, 0.25)
+    b.train:Hide()
     b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
     b:SetScript("OnClick", function(self) if self.profession.hasRecipes then openProfession(self.profession) end end)
     b:SetScript("OnEnter", showProfessionTooltip)
@@ -251,6 +258,9 @@ function layoutOverview()
             b.barText:SetText(L["Not learned"])
         end
         b:SetAlpha((profession.hasRecipes and learned) and 1 or 0.6)
+        local nextRank = ns.Professions_NextRank(profession)
+        b.train:SetText(nextRank and L["Can train: %s"]:format(nextRank) or "")
+        b.train:SetShown(nextRank ~= nil)
         b:Show()
         y = y + PROFESSION_H + 4
     end
@@ -397,7 +407,7 @@ local function createPage(parent, top)
     page.trainersButton:SetPoint("RIGHT", page.rank, "LEFT", -14, 0)
     page.trainersButton:SetText(L["Trainers"])
     page.trainersButton:SetScript("OnClick", function()
-        if state.skillLine then ns.Trainers_Toggle(state.skillLine, state.professionName) end
+        if state.skillLine then ns.Trainers_Toggle(state.skillLine, state.professionName, state.nextRank) end
     end)
     page.trainersButton:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
@@ -457,7 +467,7 @@ function ns.UI_ShowOverview()
     if not frame then return end
     ns.RecipeDetail_Hide()
     ns.Trainers_Hide()
-    state.skillLine, state.copy, state.professionName = nil, nil, nil
+    state.skillLine, state.copy, state.professionName, state.nextRank = nil, nil, nil, nil
     page:Hide()
     ns.SearchPage_Hide()
     overview:Show()
@@ -477,10 +487,13 @@ function ns.UI_ShowRecipes(profession)
     page:Show()
     page.icon:SetTexture(profession.icon)
     page.title:SetText(profession.name)
+    state.nextRank = ns.Professions_NextRank(profession)
     if profession.learned == false then
         page.rank:SetText(L["Not learned"])
     else
-        page.rank:SetText(L["Skill: %d / %d"]:format(profession.rank, profession.maxRank))
+        local text = L["Skill: %d / %d"]:format(profession.rank, profession.maxRank)
+        if state.nextRank then text = text .. "  |cff40ff40" .. L["Can train: %s"]:format(state.nextRank) .. "|r" end
+        page.rank:SetText(text)
     end
     page.search:SetText("")
     page.updateHint()

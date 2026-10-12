@@ -12,6 +12,9 @@
   a click on its title folds the list.
 - New: a "Trainers" button on a profession's page opens a panel with that profession's trainers, nearest first (with their zone and how far
   they are), each with a "Map" button and, with TomTom installed, a waypoint button. It works for professions you have not learned too.
+- New: when a profession's skill is at the cap of its rank and your level lets a trainer teach the next one (Journeyman, Expert,
+  Artisan...), the profession says "Can train: Journeyman" on the main screen, next to its skill on its page and in the trainers' panel.
+  It follows an alt's own level when you look at an alt.
 
 ## 0.2.0
 

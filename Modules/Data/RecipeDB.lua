@@ -453,6 +453,20 @@ function ns.RecipeDB_Difficulty(recipe, skill)
     return 0
 end
 
+-- The highest skill any recipe of the data asks for: where this game's professions end (300 in a game with Artisan as the last rank).
+local maxSkill
+function ns.RecipeDB_MaxSkill()
+    if maxSkill == nil or maxSkill.data ~= data() then
+        local top = 0
+        for _, recipe in ns.RecipeDB_Each() do
+            local required = ns.RecipeDB_Required(recipe)
+            if required and required > top then top = required end
+        end
+        maxSkill = { data = data(), value = top }
+    end
+    return maxSkill.value
+end
+
 local SKILL_NAMES = {
     [171] = "Alchemy", [164] = "Blacksmithing", [333] = "Enchanting", [202] = "Engineering", [165] = "Leatherworking",
     [197] = "Tailoring", [186] = "Mining", [185] = "Cooking", [129] = "First Aid",
