@@ -95,9 +95,47 @@ function ns.Inventory_OthersTotal(itemID)
     return total
 end
 
+-- Who else has the item, other characters only: { { name =, bags =, bank = }, ... }. The copies are read whatever the
+-- "other characters" preference says: this is for looking at one of them.
+local function holdersOf(itemID)
+    local list = {}
+    local embolsao = api()
+    if embolsao then
+        for _, holder in ipairs(embolsao.GetItemHolders(itemID) or {}) do
+            list[#list + 1] = { name = holder.name, bags = holder.bags or 0, bank = holder.bank or 0 }
+        end
+        return list
+    end
+    for _, character in ipairs(othersFromSavedVariable()) do
+        local bags, bank = character.bags[itemID] or 0, character.bank[itemID] or 0
+        if bags > 0 or bank > 0 then list[#list + 1] = { name = character.name, bags = bags, bank = bank } end
+    end
+    return list
+end
+
+-- The count as seen by another character (the window shows its professions): its bags by default, or with `alts`, everything
+-- the account has: its bags and bank, the playing character's and the rest of the characters'. Zero where Embolsao has no
+-- copy of it.
+local function countAs(itemID, name, alts)
+    local id = identity(name)
+    local bags, bank, rest = 0, 0, 0
+    for _, holder in ipairs(holdersOf(itemID)) do
+        if identity(holder.name) == id then
+            bags, bank = holder.bags, holder.bank
+        else
+            rest = rest + holder.bags + holder.bank
+        end
+    end
+    if not alts then return bags end
+    local mineBags, mineBank = ns.Inventory_Mine(itemID)
+    return bags + bank + mineBags + mineBank + (enabled() and rest or 0)
+end
+
 -- How many of an item there are: only in the character's bags by default, or with `alts`, everything: its own bags and
--- bank and the bags and banks of the other characters.
+-- bank and the bags and banks of the other characters. While the window shows another character, that one's.
 function ns.Inventory_Count(itemID, alts)
+    local viewed = ns.Roster_Viewed and ns.Roster_Viewed()
+    if viewed then return countAs(itemID, viewed.name, alts) end
     local bags, bank = ns.Inventory_Mine(itemID)
     if not alts then return bags end
     return bags + bank + ns.Inventory_OthersTotal(itemID)

@@ -44,7 +44,7 @@ function ns.Probe()
     probe.openWindow = open and { id = open.professionID, name = open.professionName, parent = open.parentProfessionID } or false
     probe.ready = C_TradeSkillUI and C_TradeSkillUI.IsTradeSkillReady and C_TradeSkillUI.IsTradeSkillReady() or false
 
-    local list = ns.Professions_List()
+    local list = ns.Professions_Mine()
     ns.Print(("%d professions, %d recipes in the data"):format(#list, probe.recipesInData))
     for _, profession in ipairs(list) do
         local entry = { name = profession.name, skillLine = profession.skillLine, rank = profession.rank, total = 0,

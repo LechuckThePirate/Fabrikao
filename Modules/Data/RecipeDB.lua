@@ -223,17 +223,28 @@ end
 -- The NPCs by how far they are from the character (a trainer next door beats one in another continent): by distance when the game
 -- tells it, then the ones on the character's map, then the ones elsewhere, then the ones whose position isn't known. The order they
 -- came in is kept among equals. Returns a new list, and a table of the distances there are, by NPC.
+local NOBODY = 4e7 -- the key of what nobody teaches: after every NPC
+
+-- How near an NPC is, as a number to sort by (and its distance in yards when the game tells it): the distance itself, then 1e7 for the
+-- ones on the character's map (`here`), 2e7 for the ones elsewhere, 3e7 for the ones whose position isn't known.
+local function nearKey(npc, here)
+    local spot = npc.id and ns.RecipeDB_NpcLocation(npc.id)
+    local distance = spot and ns.Map_Distance and ns.Map_Distance(spot)
+    if distance then return distance, distance end
+    if spot and here and spot.map == here then return 1e7 end
+    if spot then return 2e7 end
+    return 3e7
+end
+
+local function playerMap()
+    return C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+end
+
 local function nearestFirst(list)
-    local here = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    local here = playerMap()
     local keyed, distances = {}, {}
     for index, npc in ipairs(list) do
-        local spot = npc.id and ns.RecipeDB_NpcLocation(npc.id)
-        local distance = spot and ns.Map_Distance and ns.Map_Distance(spot)
-        local key
-        if distance then key = distance
-        elseif spot and here and spot.map == here then key = 1e7
-        elseif spot then key = 2e7
-        else key = 3e7 end
+        local key, distance = nearKey(npc, here)
         distances[npc] = distance
         keyed[index] = { npc = npc, key = key, index = index }
     end
@@ -244,6 +255,199 @@ local function nearestFirst(list)
     local sorted = {}
     for i, item in ipairs(keyed) do sorted[i] = item.npc end
     return sorted, distances
+end
+
+-- A quest as an entry of a line: its name (the text) and its id, and, when the data knows who gives it, its nearest giver: `id`, `name`
+-- and `distance` are the giver's, for the map and waypoint buttons, and `giver` is "name (zones)".
+local function questEntry(quest)
+    local entry = { text = quest.n, questID = quest.id }
+    if quest.g and #quest.g > 0 then
+        local ordered, distances = nearestFirst(quest.g)
+        local giver = ordered[1]
+        entry.id, entry.name, entry.giver, entry.distance = giver.id, giver.n, named(giver, true), distances[giver]
+    end
+    return entry
+end
+
+-- How a rank is gained when trainers do not teach it, from the data's `ranks`: the Expert rank (up to skill 225) of Cooking, First Aid and
+-- Fishing is a book that a vendor sells, and the Artisan rank (up to 300) of the three is a quest. `cap` is the skill the rank goes up to.
+-- Returns { { id =, name =, text =, distance =, kind = "vendor" | "quest", questID =, giver = }... }, those for the character's side,
+-- nearest first; nil when the data has no book or quest for that rank (a trainer teaches it). A vendor's text is "name (zones) <book>"
+-- and its price; a quest is its name, with its giver in `giver` (`id`, `name` and `distance` are the giver's, for the buttons).
+function ns.RecipeDB_RankSources(skillLine, cap)
+    local db = data()
+    local rec = db and db.ranks and db.ranks[skillLine] and db.ranks[skillLine][cap]
+    if not rec then return nil end
+    local entries = {}
+    for _, book in ipairs(rec.b or {}) do
+        local vendors = {}
+        for _, vendor in ipairs(book.v or {}) do
+            if forMySide(vendor) then vendors[#vendors + 1] = vendor end
+        end
+        local ordered, distances = nearestFirst(vendors)
+        for _, vendor in ipairs(ordered) do
+            local price = money(vendor.g)
+            entries[#entries + 1] = {
+                id = vendor.id, name = vendor.n, kind = "vendor", distance = distances[vendor],
+                text = named(vendor, true) .. (price and (" -- " .. price) or "") .. " <" .. book.n .. ">",
+            }
+        end
+    end
+    for _, quest in ipairs(rec.q or {}) do
+        if forMySide(quest) then
+            local entry = questEntry(quest)
+            entry.kind = "quest"
+            entries[#entries + 1] = entry
+        end
+    end
+    if #entries == 0 then return nil end
+    for index, entry in ipairs(entries) do entry.order = index end
+    table.sort(entries, function(a, b)
+        local da, db2 = a.distance or math.huge, b.distance or math.huge
+        if da ~= db2 then return da < db2 end
+        return a.order < b.order
+    end)
+    return entries
+end
+
+-- How near the closest trainer of a profession (a skill line) that is for the character's side is, as a number to sort by (the
+-- same as nearestFirst's; a profession with none is after everyone). Compute it once per profession and give it to
+-- ns.RecipeDB_TeacherKey for each recipe.
+function ns.RecipeDB_TrainerKey(skillLine)
+    local db = data()
+    local here, best = playerMap(), NOBODY
+    for _, trainer in ipairs(db and db.trainers and db.trainers[skillLine] or {}) do
+        if forMySide(trainer) then
+            local key = nearKey(trainer, here)
+            if key < best then best = key end
+        end
+    end
+    return best
+end
+
+-- How near the closest trainer or vendor that teaches a recipe (its record) is: the trainer key of its profession when trainers teach
+-- it, and the vendors of the item that teaches it for the character's side; NOBODY (after everyone) when no one is known to.
+function ns.RecipeDB_TeacherKey(recipe, trainerKey)
+    local best = NOBODY
+    for _, code in ipairs(recipe.k or {}) do
+        if code == 6 and trainerKey and trainerKey < best then best = trainerKey end
+    end
+    local item = ns.RecipeDB_Item(recipe)
+    if item and item.v then
+        local here = playerMap()
+        for _, vendor in ipairs(item.v) do
+            if forMySide(vendor) then
+                local key = nearKey(vendor, here)
+                if key < best then best = key end
+            end
+        end
+    end
+    return best
+end
+
+-- Where an ingredient (an item id) can be had, from the data's `reagents`: lines { title =, entries = { { text =, id =, name =,
+-- distance = }... } } -- the vendors for the character's side (nearest first), the creatures that drop it and the ones skinned for it
+-- (likeliest first, with the chance and how far they are), the zones it is fished in, the nodes it is gathered from and what makes it.
+-- `id` and `name` are there for the creatures and vendors, who can be shown on the map. Empty when the data knows nothing of it.
+function ns.RecipeDB_ReagentWhere(itemID)
+    local db = data()
+    local rec = db and db.reagents and db.reagents[itemID]
+    local lines = {}
+    if not rec then return lines end
+
+    local function percent(pm)
+        if not pm then return nil end
+        return pm > 0 and pm < 10 and "<0.1%" or ("%.1f%%"):format(pm / 100)
+    end
+
+    local vendors = {}
+    for _, vendor in ipairs(rec.v or {}) do
+        if forMySide(vendor) then vendors[#vendors + 1] = vendor end
+    end
+    if #vendors > 0 then
+        local ordered, distances = nearestFirst(vendors)
+        local entries = {}
+        for _, vendor in ipairs(ordered) do
+            local price = money(vendor.g)
+            entries[#entries + 1] = {
+                id = vendor.id, name = vendor.n, text = named(vendor, true) .. (price and (" -- " .. price) or ""),
+                distance = distances[vendor],
+            }
+        end
+        lines[#lines + 1] = { title = L["Sold by"], entries = entries }
+    end
+
+    -- creatures keep the order of the data (the likeliest first); how far each is goes with it
+    local function creatures(list, title)
+        if not list or #list == 0 then return end
+        local _, distances = nearestFirst(list)
+        local entries = {}
+        for _, creature in ipairs(list) do
+            local extra = {}
+            if creature.lo then
+                extra[#extra + 1] = L["level %s"]:format(creature.lo == creature.hi and creature.lo or (creature.lo .. "-" .. (creature.hi or creature.lo)))
+            end
+            local chance = percent(creature.pm)
+            if chance then extra[#extra + 1] = chance end
+            local text = named(creature, true)
+            if #extra > 0 then text = text .. " -- " .. table.concat(extra, ", ") end
+            entries[#entries + 1] = { id = creature.id, name = creature.n, text = text, distance = distances[creature] }
+        end
+        lines[#lines + 1] = { title = title, entries = entries }
+    end
+    creatures(rec.d, L["Dropped by"])
+    creatures(rec.k, L["Skinned from"])
+
+    if rec.f and #rec.f > 0 then
+        local entries = {}
+        for _, zone in ipairs(rec.f) do
+            local name = zoneName(zone.z)
+            if name then
+                local chance = percent(zone.pm)
+                entries[#entries + 1] = { text = chance and (name .. " -- " .. chance) or name }
+            end
+        end
+        if #entries > 0 then lines[#lines + 1] = { title = L["Fished in"], entries = entries } end
+    end
+
+    if rec.g and #rec.g > 0 then
+        local entries = {}
+        for _, node in ipairs(rec.g) do
+            local zones = zoneList(node.z)
+            entries[#entries + 1] = { text = zones ~= "" and ("%s (%s)"):format(node.n, zones) or node.n }
+        end
+        lines[#lines + 1] = { title = L["Gathered from"], entries = entries }
+    end
+
+    if rec.c and #rec.c > 0 then
+        local entries = {}
+        for _, made in ipairs(rec.c) do
+            entries[#entries + 1] = { text = made.s and ("%s: %s"):format(ns.RecipeDB_SkillName(made.s), made.n) or made.n }
+        end
+        lines[#lines + 1] = { title = L["Made by"], entries = entries }
+    end
+    return lines
+end
+
+-- The trainers of a profession (a skill line) that are for the character's side, nearest first (see nearestFirst):
+-- { { id =, name =, title =, zones = text, text = "name (zones)", distance = yards or nil }, ... }, cut to `limit` when given, and how
+-- many there are in all.
+function ns.RecipeDB_Trainers(skillLine, limit)
+    local db = data()
+    local mine = {}
+    for _, trainer in ipairs(db and db.trainers and db.trainers[skillLine] or {}) do
+        if forMySide(trainer) then mine[#mine + 1] = trainer end
+    end
+    local ordered, distances = nearestFirst(mine)
+    local list = {}
+    for i, trainer in ipairs(ordered) do
+        if limit and i > limit then break end
+        list[#list + 1] = {
+            id = trainer.id, name = trainer.n, title = trainer.t, zones = zoneList(trainer.z), text = named(trainer, true),
+            distance = distances[trainer],
+        }
+    end
+    return list, #ordered
 end
 
 -- where the recipe is learned, as lines { title =, text =, entries = { { text =, id =, name = }... }, more = how many are left out }
@@ -306,7 +510,7 @@ function ns.RecipeDB_Where(recipe, full)
             for _, quest in ipairs(item.qs) do
                 if forMySide(quest) and #quests < maxQuests then
                     quests[#quests + 1] = quest.n
-                    questEntries[#questEntries + 1] = { text = quest.n, questID = quest.id }
+                    questEntries[#questEntries + 1] = questEntry(quest)
                 end
             end
             if #quests > 0 then lines[#lines + 1] = { title = L["Quest"], text = table.concat(quests, "; "), entries = questEntries } end
@@ -430,6 +634,20 @@ function ns.RecipeDB_Difficulty(recipe, skill)
     if c[3] > 0 and skill >= c[3] then return 2 end
     if c[2] > 0 and skill >= c[2] then return 1 end
     return 0
+end
+
+-- The highest skill any recipe of the data asks for: where this game's professions end (300 in a game with Artisan as the last rank).
+local maxSkill
+function ns.RecipeDB_MaxSkill()
+    if maxSkill == nil or maxSkill.data ~= data() then
+        local top = 0
+        for _, recipe in ns.RecipeDB_Each() do
+            local required = ns.RecipeDB_Required(recipe)
+            if required and required > top then top = required end
+        end
+        maxSkill = { data = data(), value = top }
+    end
+    return maxSkill.value
 end
 
 local SKILL_NAMES = {

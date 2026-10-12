@@ -107,6 +107,8 @@ local function createPicker(parent, config)
     return { frame = button, Update = function() button:SetText(config.text()) end }
 end
 
+ns.FilterBar_CreatePicker = createPicker -- (the professions page's character picker is one too)
+
 local function createButton(parent, width, onClick)
     local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     button:SetSize(width, 22)

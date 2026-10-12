@@ -1,124 +1,27 @@
 local ADDON, ns = ...
 local L = ns.L
 
--- The addon's window. First page: the character's professions (the ones it has, primary first, then First Aid,
--- Cooking and Fishing), with the game's own icons. Click one for its recipes: the ones the character knows
--- (colored by difficulty, with how many it can make from the bags) and, below, the ones it doesn't know, with
--- a search box, filters, sorting and three views to choose from (RecipeList.lua). The gear opens the preferences.
+-- The addon's window. First page: the start screen in four quadrants (Overview.lua): the character's professions, what it can learn,
+-- what it can craft now and the trainers close by, under a search box, the picker of the character to look at (the playing one, or an
+-- alt that has logged in with the addon: its professions and known recipes as it saved them, Roster.lua) and a button that lists the
+-- professions that are not learned too. Click a profession for its recipes: the ones the character knows (colored by difficulty, with
+-- how many it can make from the bags) and, below, the ones it doesn't know, with a search box, filters, sorting and two views to choose
+-- from (RecipeList.lua). The gear opens the preferences.
+-- Another character's professions are read only (no crafting) and the window shows it: tinted blue, with the name in the title.
 
 local WIDTH, HEIGHT = 760, 620
 local MIN_WIDTH, MIN_HEIGHT = 640, 420
 local MAX_WIDTH, MAX_HEIGHT = 1600, 1200
-local PROFESSION_H = 56
+local VIEW_TINT = { 0.15, 0.35, 0.9, 0.3 } -- as Embolsao!!'s window when it shows another character's bags
 
 local frame, overview, page
-local professionButtons, headerTexts = {}, {}
-local state = { skillLine = nil, copy = nil }
+local state = { skillLine = nil, copy = nil, professionName = nil }
 
 -- what the page filters by: kept for the next time (ns.char.filters)
 local filters = {}
 local collapsed = {} -- the groups of the list folded: { known = bool, unknown = bool }
 
 local VIEW_NAMES = { "table", "detailed" }
-
----------------------------------------------------------------------------------------------------
--- Overview: the professions
----------------------------------------------------------------------------------------------------
-local function openProfession(profession)
-    if ns.UI_ShowRecipes then ns.UI_ShowRecipes(profession) end
-end
-
-local function showProfessionTooltip(button)
-    local p = button.profession
-    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
-    GameTooltip:SetText(p.name, 1, 1, 1)
-    GameTooltip:AddLine(L["Skill: %d / %d"]:format(p.rank, p.maxRank), 1, 0.82, 0)
-    if p.hasRecipes then
-        GameTooltip:AddLine(L["Click to see its recipes"], 0.7, 0.7, 0.7)
-    else
-        GameTooltip:AddLine(L["This profession has no recipes"], 0.7, 0.7, 0.7)
-    end
-    GameTooltip:Show()
-end
-
-local function newProfessionButton()
-    local b = CreateFrame("Button", nil, overview)
-    b:SetHeight(PROFESSION_H)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(44, 44)
-    b.icon:SetPoint("LEFT", 6, 0)
-    b.name = b:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    b.name:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 10, -2)
-    b.bar = CreateFrame("StatusBar", nil, b)
-    b.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    b.bar:SetHeight(14)
-    b.bar:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 10, 2)
-    b.bar:SetPoint("RIGHT", -12, 0)
-    local back = b.bar:CreateTexture(nil, "BACKGROUND")
-    back:SetAllPoints()
-    back:SetColorTexture(0, 0, 0, 0.5)
-    b.barText = b.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    b.barText:SetPoint("CENTER")
-    b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    b:SetScript("OnClick", function(self) if self.profession.hasRecipes then openProfession(self.profession) end end)
-    b:SetScript("OnEnter", showProfessionTooltip)
-    b:SetScript("OnLeave", GameTooltip_Hide)
-    return b
-end
-
-local function newHeader()
-    local text = overview:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    text:SetJustifyH("LEFT")
-    local line = overview:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(1, 0.82, 0, 0.35)
-    line:SetHeight(1)
-    line:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -2)
-    line:SetPoint("RIGHT", overview, "RIGHT", -8, 0)
-    text.line = line
-    return text
-end
-
-local function refreshOverview()
-    if not overview then return end
-    for _, b in ipairs(professionButtons) do b:Hide() end
-    for _, h in ipairs(headerTexts) do h:Hide(); h.line:Hide() end
-
-    local list = ns.Professions_List()
-    local y, nButton, nHeader, lastPrimary = 34, 0, 0, nil -- below the search box
-    for _, profession in ipairs(list) do
-        if profession.primary ~= lastPrimary then
-            lastPrimary = profession.primary
-            nHeader = nHeader + 1
-            local h = headerTexts[nHeader] or newHeader()
-            headerTexts[nHeader] = h
-            h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", overview, "TOPLEFT", 8, -y - 2)
-            h:SetText(profession.primary and L["Professions"] or L["Secondary professions"])
-            h:Show()
-            h.line:Show()
-            y = y + 24
-        end
-        nButton = nButton + 1
-        local b = professionButtons[nButton] or newProfessionButton()
-        professionButtons[nButton] = b
-        b.profession = profession
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", overview, "TOPLEFT", 0, -y)
-        b:SetPoint("RIGHT", overview, "RIGHT", 0, 0)
-        b.icon:SetTexture(profession.icon)
-        b.icon:SetDesaturated(not profession.hasRecipes)
-        b.name:SetText(profession.name)
-        b.bar:SetMinMaxValues(0, math.max(1, profession.maxRank))
-        b.bar:SetValue(profession.rank)
-        local full = profession.maxRank > 0 and profession.rank >= profession.maxRank
-        b.bar:SetStatusBarColor(full and 0.2 or 0.1, full and 0.7 or 0.4, full and 0.2 or 0.9)
-        b.barText:SetText(profession.rank .. " / " .. profession.maxRank)
-        b:SetAlpha(profession.hasRecipes and 1 or 0.6)
-        b:Show()
-        y = y + PROFESSION_H + 4
-    end
-    overview.empty:SetShown(#list == 0)
-end
 
 ---------------------------------------------------------------------------------------------------
 -- Recipes of one profession
@@ -171,7 +74,8 @@ local function refreshRecipes()
     ns.RecipeList_Set(rows, viewName(), filters.sort, state.copy.rank)
     local shown = 0
     for _, row in ipairs(rows) do if row.kind == "recipe" then shown = shown + 1 end end
-    setStatus(shown == 0 and L["No recipes match"] or nil)
+    local none = #state.copy.known + #state.copy.unknown == 0
+    setStatus(shown == 0 and (none and L["This profession has no recipes"] or L["No recipes match"]) or nil)
     page.count:SetText(L["%d shown, %d known, %d not known"]:format(shown, #state.copy.known, #state.copy.unknown))
     updateControls()
 end
@@ -211,12 +115,15 @@ end
 -- The list of recipes is shared with the search page: this page takes it back (at creation, and whenever it shows).
 function ns.MainWindow_TakeList()
     local list = ns.RecipeList_Attach(page, sortBy, toggleGroup, selectRecipe)
-    list.header:ClearAllPoints()
-    list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
-    list.header:SetPoint("RIGHT", page, "RIGHT", -24, 0)
-    list.scroll:ClearAllPoints()
-    list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
-    list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -24, 18)
+    ns.RecipeList_Place(function(withBar)
+        local right = withBar and -24 or -4 -- (the room of the bar goes to the rows when it is not there)
+        list.header:ClearAllPoints()
+        list.header:SetPoint("TOPLEFT", page.filterBar.buttons, "BOTTOMLEFT", 0, -4)
+        list.header:SetPoint("RIGHT", page, "RIGHT", right, 0)
+        list.scroll:ClearAllPoints()
+        list.scroll:SetPoint("TOPLEFT", list.header, "BOTTOMLEFT", 0, -2)
+        list.scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", right, 18)
+    end)
 end
 
 local function createPage(parent, top)
@@ -238,6 +145,26 @@ local function createPage(parent, top)
     page.title:SetPoint("LEFT", page.icon, "RIGHT", 8, 0)
     page.rank = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     page.rank:SetPoint("TOPRIGHT", 0, -4)
+    -- said on the page itself when the recipes are another character's (the window is tinted too, see applyViewLook)
+    page.viewBanner = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    page.viewBanner:SetPoint("TOPRIGHT", page.rank, "BOTTOMRIGHT", 0, -2)
+    page.viewBanner:Hide()
+
+    -- the profession's trainers, nearest first, in a panel next to the window (Trainers.lua)
+    page.trainersButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    page.trainersButton:SetSize(96, 22)
+    page.trainersButton:SetPoint("RIGHT", page.rank, "LEFT", -14, 0)
+    page.trainersButton:SetText(L["Trainers"])
+    page.trainersButton:SetScript("OnClick", function()
+        if state.skillLine then ns.Trainers_Toggle(state.skillLine, state.professionName, state.nextRank) end
+    end)
+    page.trainersButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(L["Trainers"], 1, 1, 1)
+        GameTooltip:AddLine(L["The trainers of this profession, nearest first, with the map and a waypoint."], 1, 0.82, 0, true)
+        GameTooltip:Show()
+    end)
+    page.trainersButton:SetScript("OnLeave", GameTooltip_Hide)
 
     local search = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
     search:SetHeight(20)
@@ -288,18 +215,20 @@ end
 function ns.UI_ShowOverview()
     if not frame then return end
     ns.RecipeDetail_Hide()
-    state.skillLine, state.copy = nil, nil
+    ns.Trainers_Hide()
+    state.skillLine, state.copy, state.professionName, state.nextRank = nil, nil, nil, nil
     page:Hide()
     ns.SearchPage_Hide()
     overview:Show()
-    refreshOverview()
+    ns.Overview_Refresh()
 end
 
 function ns.UI_ShowRecipes(profession)
     if not frame then return end
     local skillLine = profession.skillLine
     ns.RecipeDetail_Hide()
-    state.skillLine, filters.source, filters.category = skillLine, nil, nil
+    if ns.Trainers_Current() ~= skillLine then ns.Trainers_Hide() end -- (its panel is of the profession before)
+    state.skillLine, state.professionName, filters.source, filters.category = skillLine, profession.name, nil, nil
     state.copy = ns.Recipes_Cached(skillLine)
     overview:Hide()
     ns.SearchPage_Hide()
@@ -307,7 +236,14 @@ function ns.UI_ShowRecipes(profession)
     page:Show()
     page.icon:SetTexture(profession.icon)
     page.title:SetText(profession.name)
-    page.rank:SetText(L["Skill: %d / %d"]:format(profession.rank, profession.maxRank))
+    state.nextRank = ns.Professions_NextRank(profession)
+    if profession.learned == false then
+        page.rank:SetText(L["Not learned"])
+    else
+        local text = L["Skill: %d / %d"]:format(profession.rank, profession.maxRank)
+        if state.nextRank then text = text .. "  |cff40ff40" .. L["Can train: %s"]:format(state.nextRank) .. "|r" end
+        page.rank:SetText(text)
+    end
     page.search:SetText("")
     page.updateHint()
     updateControls()
@@ -319,7 +255,51 @@ function ns.UI_ShowRecipes(profession)
         elseif not state.copy then
             setStatus(L["Could not read this profession's recipes."] .. (reason and ("\n(" .. reason .. ")") or ""))
         end
-    end, { rank = profession.rank, name = profession.name })
+    end, { rank = profession.learned ~= false and profession.rank or nil, name = profession.name })
+end
+
+---------------------------------------------------------------------------------------------------
+-- Another character's professions
+---------------------------------------------------------------------------------------------------
+-- The window says whose professions it shows, so they can't be taken for the character's own: the background tinted blue (as
+-- Embolsao!!'s when it shows another character's bags), the name in the title and a line on the recipes page.
+local function applyViewLook()
+    if not frame then return end
+    local viewed = ns.Roster_Viewed()
+
+    if not frame.viewTint then
+        local tint = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+        tint:SetPoint("TOPLEFT", 4, -22)
+        tint:SetPoint("BOTTOMRIGHT", -4, 4)
+        tint:SetColorTexture(VIEW_TINT[1], VIEW_TINT[2], VIEW_TINT[3], VIEW_TINT[4])
+        tint:Hide()
+        frame.viewTint = tint
+    end
+    frame.viewTint:SetShown(viewed ~= nil)
+    local bg = frame.Bg or (frame.NineSlice and frame.NineSlice.Bg)
+    if bg and bg.SetVertexColor then
+        if viewed then bg:SetVertexColor(0.55, 0.7, 1) else bg:SetVertexColor(1, 1, 1) end
+    end
+
+    local title = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText
+    if title then
+        local text = ("Fabrikao!! v%s"):format(ns.Version())
+        if viewed then text = text .. " - " .. ns.Roster_ColoredName(viewed) end
+        title:SetText(text)
+    end
+
+    if page then
+        page.viewBanner:SetShown(viewed ~= nil)
+        if viewed then page.viewBanner:SetText(L["Professions of %s (read only)"]:format(ns.Roster_ColoredName(viewed))) end
+    end
+end
+
+-- Shows the professions of another character (a key of ns.Roster_Others), or the playing character's again with nil. It always
+-- goes back to the list of professions, which is another one.
+function ns.UI_ViewCharacter(key)
+    ns.Roster_SetView(key)
+    applyViewLook()
+    if frame and state.skillLine then ns.UI_ShowOverview() elseif frame then ns.Overview_Refresh() end
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -426,56 +406,31 @@ local function createFrame()
     gear:SetScript("OnLeave", GameTooltip_Hide)
     frame.gear = gear
 
-    overview = CreateFrame("Frame", nil, frame)
-    overview:SetPoint("TOPLEFT", 12, -top)
-    overview:SetPoint("BOTTOMRIGHT", -12, 12)
-    overview.empty = overview:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    overview.empty:SetPoint("TOP", 0, -40)
-    overview.empty:SetText(L["No professions learned yet."])
-    overview.empty:Hide()
+    overview = ns.Overview_Create(frame, top)
 
     createPage(frame, top)
     ns.SearchPage_Create(frame, top)
 
-    -- typing in the box above the professions goes to the search of every recipe
-    local search = CreateFrame("EditBox", nil, overview, "InputBoxTemplate")
-    search:SetHeight(20)
-    search:SetPoint("TOPLEFT", 6, -4)
-    search:SetPoint("RIGHT", overview, "RIGHT", -6, 0)
-    search:SetAutoFocus(false)
-    search:SetMaxLetters(60)
-    local hint = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("LEFT", 2, 0)
-    hint:SetText(L["Search any recipe in the game..."])
-    local function startSearch(self)
-        local text = self:GetText()
-        if text == "" then return end
-        self:SetText("")
-        self:ClearFocus()
-        ns.UI_ShowSearch(text)
-    end
-    search:SetScript("OnTextChanged", function(self, userInput)
-        hint:SetShown(self:GetText() == "" and not self:HasFocus())
-        if userInput then startSearch(self) end
-    end)
-    search:SetScript("OnEditFocusGained", function() hint:Hide() end)
-    search:SetScript("OnEditFocusLost", function(self) hint:SetShown(self:GetText() == "") end)
-    search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
-    search:SetScript("OnEnterPressed", startSearch)
-    overview.search = search
-
     frame:HookScript("OnShow", function()
-        if state.skillLine then refreshRecipes() else refreshOverview() end
+        if state.skillLine then refreshRecipes() else ns.Overview_Refresh() end
     end)
+    -- closing the window puts the playing character's professions back, as Embolsao!! does with the bags
+    frame:HookScript("OnHide", function()
+        if ns.Roster_ViewKey() then
+            ns.Roster_SetView(nil)
+            applyViewLook()
+        end
+    end)
+    applyViewLook()
     local events = CreateFrame("Frame")
     events:RegisterEvent("SKILL_LINES_CHANGED")
     events:RegisterEvent("BAG_UPDATE_DELAYED")
     events:SetScript("OnEvent", function(_, event)
         if not frame:IsShown() then return end
         if event == "BAG_UPDATE_DELAYED" then
-            if state.skillLine then refreshRecipes() end
+            if state.skillLine then refreshRecipes() elseif overview:IsShown() then ns.Overview_LayoutCraft() end
         elseif not state.skillLine then
-            refreshOverview()
+            ns.Overview_Refresh()
         end
     end)
 end
@@ -484,7 +439,8 @@ end
 function ns.UI_ShowSearch(text, ingredient)
     ns.UI_Show()
     ns.RecipeDetail_Hide()
-    state.skillLine, state.copy = nil, nil
+    ns.Trainers_Hide()
+    state.skillLine, state.copy, state.professionName = nil, nil, nil
     overview:Hide()
     page:Hide()
     ns.SearchPage_Show(text, ingredient)
@@ -512,6 +468,8 @@ function ns.UI_ApplySettings()
     if state.skillLine then
         updateControls()
         refreshRecipes()
+    else
+        ns.Overview_Refresh() -- what it shows depends on settings too (the groups folded, the professions not learned)
     end
 end
 

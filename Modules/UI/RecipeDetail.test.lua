@@ -250,11 +250,11 @@ describe("Recipe detail", function()
             assert.are.equal(0, #waypoints)
         end)
 
-        -- the visible buttons of the NPC lines with that text ("TomTom" or "Map"): their NPC ids, and the buttons
-        local function buttons(text)
+        -- the visible icon buttons of the NPC lines of that kind ("pointer", the waypoint, or "map"): their NPC ids, and the buttons
+        local function buttons(kind)
             local found, ids = {}, {}
             for _, f in ipairs(WowMock.frames) do
-                if f.npc and f._text == text and f._scripts.OnClick and f:IsVisible() then found[#found + 1] = f end
+                if f.npc and f.iconKind == kind and f._scripts.OnClick and f:IsVisible() then found[#found + 1] = f end
             end
             for _, b in ipairs(found) do ids[#ids + 1] = b.npc.id end
             table.sort(ids)
@@ -264,7 +264,7 @@ describe("Recipe detail", function()
         it("a recipe not known shows a TomTom button at each trainer and vendor with a location, when TomTom is there", function()
             install()
             click(recipeRow("Flask of the Titans"))
-            local ids, found = buttons("TomTom")
+            local ids, found = buttons("pointer")
             assert.are.same({ 1, 9, 10, 20 }, ids) -- the other vendors, trainers and creatures have no known location
             click(found[1])
             assert.are.equal(1, #waypoints)
@@ -272,15 +272,15 @@ describe("Recipe detail", function()
 
         it("and a Map button too, with or without TomTom", function()
             click(recipeRow("Flask of the Titans"))
-            assert.are.same({ 1, 9, 10, 20 }, (buttons("Map")))
-            assert.are.same({}, (buttons("TomTom")))
+            assert.are.same({ 1, 9, 10, 20 }, (buttons("map")))
+            assert.are.same({}, (buttons("pointer")))
         end)
 
         it("the Map button opens the world map on the NPC", function()
             local opened
             _G.OpenWorldMap = function(map) opened = map end
             click(recipeRow("Flask of the Titans"))
-            local _, found = buttons("Map")
+            local _, found = buttons("map")
             click(found[1])
             assert.are.equal(1453, opened) -- the vendor, or the trainer: both stand in map 1453 or 36
         end)
@@ -288,8 +288,8 @@ describe("Recipe detail", function()
         it("a recipe the character knows has the buttons too", function()
             install()
             click(recipeRow("Elixir of Wisdom"))
-            assert.are.same({ 9, 10 }, (buttons("TomTom"))) -- its trainers
-            assert.are.same({ 9, 10 }, (buttons("Map")))
+            assert.are.same({ 9, 10 }, (buttons("pointer"))) -- its trainers
+            assert.are.same({ 9, 10 }, (buttons("map")))
         end)
 
         -- the character stands in map 1453 at (50, 50); map 36 lies 5000 yards away: a world made of yards = map fraction * 1000

@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased
+
+- New: look at your other characters' professions. A picker above the professions ("My professions" and each alt) shows an alt's professions and
+  the recipes it knows as if it were the one playing, with its skill levels and how many it could make with its own bags (from Embolsao!!'s
+  copies, when installed). The window turns blue and says whose they are, as Embolsao!! does with another character's bags, and there is no
+  crafting. An alt appears once you have logged in with it with this version.
+- New: a button above the professions lists the professions you have not learned too, so you can browse their recipes.
+- New: the start screen has your professions (top left), what you can craft now (bottom left: what your bags allow, orange first, with
+  how many; a click opens the game's profession window on that recipe, as the Craft button does) and, on the whole right side, what you
+  can learn: the ranks a trainer can teach and the recipes your skill reaches that you don't know, by profession, the ones with the
+  nearest trainer or vendor first. A click on
+  a rank or a recipe opens under it the trainers and vendors that teach it, nearest first, with a map icon and, with TomTom installed, a
+  waypoint icon (a right click on a recipe opens its panel). The groups start folded, and what you open stays open. The search box, the
+  character picker and the button of the professions not learned are above, under a welcome line.
+- New: the ranks that are not taught by a trainer say how to get them: the Expert rank (150-225) of Cooking, First Aid and Fishing is a
+  book, so under the rank are the vendors that sell it; the Artisan rank (225-300) of the three is a quest, so it is whoever gives it.
+  With Completao!! installed the quest has one more icon, Completao's own, that opens the quest there.
+- New: the recipes that come from a quest list the quest under the recipe (by its name, with who gives it under it) with the map and
+  waypoint icons of whoever gives it and, with Completao!! installed, its icon. The panel of such a recipe has the same buttons.
+- Change: the map and waypoint buttons of the trainers, vendors and creatures are small icons (a map, and a navigation arrow) instead of
+  two wide text buttons.
+- New: a scroll bar only shows when there is something to scroll: with nothing to scroll the bar goes away and the rows take its room
+  (the quadrants, the lists of recipes and the side panels).
+- New: a "Trainers" button on a profession's page opens a panel with that profession's trainers, nearest first (with their zone and how far
+  they are), each with a "Map" button and, with TomTom installed, a waypoint button. It works for professions you have not learned too.
+- New: when a profession's skill is at the cap of its rank and your level lets a trainer teach the next one (Journeyman, Expert,
+  Artisan...), the profession says "Can train: Journeyman" on the main screen, next to its skill on its page and in the trainers' panel.
+  It follows an alt's own level when you look at an alt.
+- Fix: the trainers of Herbalism, Skinning and Fishing are listed too (the data had none of them). Those professions have no recipes, but
+  their page opens from the main screen so you can reach its Trainers button.
+- New: a click on an ingredient in a recipe's panel opens, under it, where to get it: who sells it, which creatures drop it or are skinned for it
+  (with their level and the chance), the zones it is fished in, the nodes it is gathered from and what makes it. The vendors and creatures have a
+  "Map" button and, with TomTom installed, a waypoint button, and come nearest first.
+
 ## 0.2.0
 
 - New: with Completao!! installed, the recipes that come from a quest have a "View Quest" button in their panel that opens the quest there.

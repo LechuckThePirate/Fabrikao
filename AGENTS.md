@@ -37,12 +37,31 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search
   of every recipe (dropdowns of the game's menus, `WowStyle1DropdownTemplate` + `SetupMenu` with radios, falling back to cycling buttons when
   the templates are missing; each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`; the category of a recipe comes from
-  its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window
+  its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/Overview.lua` — the start screen under the welcome line, the search, the character picker and the button of the professions
+  not learned: the professions (top left), what can be crafted now (bottom left, `ns.Recipes_CraftableNow`) and, the whole right side,
+  what can be learned (`ns.Recipes_LearnableNow`: the ranks and the recipes by profession, the recipe with the nearest
+  trainer or vendor first: `ns.RecipeDB_TrainerKey` / `_TeacherKey`), where a click on a rank or a recipe opens
+  under it the trainers and vendors that teach it (`ns.Recipes_Teachers`, from `RecipeDB_Where`; a rank's are the profession's
+  `ns.RecipeDB_Trainers`) with the map and waypoint icons, and a right click opens the recipe's panel; what is under the groups, the ranks
+  and the recipes is folded until opened (`ns.char.folded[kind][key] == false` means opened);
+  `Modules/UI/IconButton.lua` — the small map / waypoint / quest icon buttons of an NPC (`Icons/Map.png`, `Icons/Pointer.png`, drawn by
+  `tools/make_icons.mjs`); `Modules/UI/AutoScroll.lua` — a scroll frame whose bar is only there when the content is taller than it
+  (`ns.AutoScroll_Create` / `_SetHeight`; the recipe list and the side panels do the same); `Modules/UI/Trainers.lua` — the panel of a profession's trainers, nearest first, with map and TomTom buttons (`ns.RecipeDB_Trainers`; the "Trainers"
+  button of the recipes page; it takes the place of a recipe's panel); `Modules/UI/RecipeDetail.lua` — the panel of a recipe that opens next to the window (a click on an ingredient opens, under it, where to
+  get it: `ns.RecipeDB_ReagentWhere`, with the map and waypoint buttons of the vendors and creatures)
   on a click (`ns.RecipeDetail_Build` makes its content as data, `_Show`/`_Hide` the frame); `Modules/UI/Preferences.lua` — the gear's window (view, scale, resets)
-- `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing) and `Recipes.lua`
+- `Modules/Professions/` — `Professions.lua` (the character's professions, ordered: primary, First Aid, Cooking, Fishing; `Professions_NextRank` says which rank a trainer can teach it now: skill at the
+  rank's cap, the level the rank asks for and a higher rank in the data's recipes; `Professions_Mine` is the
+  playing character's, `Professions_List` the one of the character the window shows; `Professions_Missing` the ones with recipes in the data
+  that it lacks) and `Recipes.lua`
   (a profession's recipes for the lists: from the data, with "known" from the spell book; the live answer of the game's window
   instead when that profession's tab is open; filtering, search and the "how many can I make" count from the bags)
-- `Modules/UI/` — `MainWindow.lua` (professions page, recipes page), `SearchPage.lua` (search of every recipe in the data, with a detail
+- `Modules/Professions/Roster.lua` — the alt viewer's data: each character saves its professions and the recipes of the data it knows in
+  `FabrikaoDB.characters[key]` (at login, when the skills or recipes change and at logout); `ns.Roster_SetView(key)` makes the window show
+  another character (read only: no live trade skill read, no Craft button, ingredient counts from Embolsao's copies of that character; the
+  window is tinted blue and the title and a line on the recipes page name it; closing the window puts the playing character back).
+  Everything that asks "does the character know it?" goes through `ns.Roster_Knows`, and the professions through `ns.Professions_List`
+- `Modules/UI/` — `MainWindow.lua` (the frame and the recipes page; the start screen is `Overview.lua`), `SearchPage.lua` (search of every recipe in the data, with a detail
   panel) and `MinimapButton.lua`; `Bindings.xml` has the key binding (the game loads it itself: **never list it in the TOC**)
 - `Data/Generated/Recipes.lua` (**generated, never edit by hand**) — every recipe of the crafting professions (skill levels where each
   turns orange / yellow / green / grey, ingredients, product, how it is learned), the items that teach them (vendors, drops, quests)
@@ -59,7 +78,14 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
 never written in anything tracked**: README, CHANGELOG, CurseForge text, commit messages, code comments — credit it only as "public
 databases", like Completao). Steps: `node tools/local/recipes_fetch.mjs` (a spell listing and a skill page per profession),
 `node tools/local/recipes_items.mjs` (slow: one page per recipe item whose source isn't named yet; resumable; one request every 3 s,
-the source answers 403 beyond that), then `node tools/local/recipes_write.mjs <worktree>/Data/Generated/Recipes.lua` (which also writes
+the source answers 403 beyond that), `node tools/local/ranks_fetch.mjs` (the books and quests of the ranks that are not a trainer's: Expert of Cooking, First Aid and
+Fishing, Artisan of the three, with the vendors of the books and the givers of the quests; it ends up as `ranks[skill][cap]`, read by
+`ns.RecipeDB_RankSources`), `node tools/local/quests_fetch.mjs` (who gives each quest that teaches a recipe: about seventy pages; the givers go into
+the `qs` of the items, read by `RecipeDB_Where` and so by `ns.Recipes_Teachers`), `node tools/local/reagents_fetch.mjs` (where each ingredient can be had: who sells it, which
+creatures drop it or are skinned for it, the zones it is fished in, the nodes it is gathered from, what makes it; one page per ingredient,
+about 600, so the first run is long; it ends up as `reagents[itemID]` in the data, read by `ns.RecipeDB_ReagentWhere`, and the creatures and
+vendors it names are among the NPCs whose positions are fetched), then
+`node tools/local/recipes_write.mjs <worktree>/Data/Generated/Recipes.lua` (which also writes
 `cache/npc_wanted.json`: the vendors, trainers and creatures of the data), `node tools/local/npc_coords.mjs` (where each stands: one page
 each, for the map and TomTom buttons) and `recipes_write.mjs` again to put the positions in. Pages are cached in `tools/local/cache/`
 (`CACHE_TTL_DAYS` and `REFRESH_BUDGET` make a run download the oldest ones again, a few at a time). Source codes in the data: 1 crafted, 2 drop, 3 PvP, 4 quest, 5 vendor, 6 trainer, 16 gathered, 21 salvaged.

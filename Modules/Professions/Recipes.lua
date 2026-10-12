@@ -131,6 +131,7 @@ end
 
 -- The last copy read of a profession (this session), whether its window is open or not.
 function ns.Recipes_Cached(skillLine)
+    if ns.Roster_ViewKey and ns.Roster_ViewKey() then return nil end -- the copies are the playing character's
     return cache[skillLine]
 end
 
@@ -291,7 +292,8 @@ function ns.Recipes_FromData(skillLine, rank)
     local copy = { skillLine = skillLine, rank = rank, known = {}, unknown = {}, sources = {}, categories = {} }
     for id, db in ns.RecipeDB_Each() do
         if db.s == skillLine then
-            local learned = ns.RecipeDB_Known(id)
+            local learned
+            if ns.Roster_Knows then learned = ns.Roster_Knows(id) else learned = ns.RecipeDB_Known(id) end
             local recipe = fromData(id, db, learned, rank, true)
             if recipe.sourceType then copy.sources[recipe.sourceType] = true end
             copy.categories[recipe.category] = true
@@ -304,12 +306,126 @@ function ns.Recipes_FromData(skillLine, rank)
     return copy
 end
 
+-- What the playing character can make right now across its professions: the recipes of the data it knows (the spell book) whose
+-- ingredients its bags hold. `professions` is a list as ns.Professions_Mine returns it. Returns
+-- { { recipe =, craftable =, skillLine =, profession = the profession's name }, ... }, orange first and then by name, cut to `limit`
+-- when given, and how many there were in all.
+function ns.Recipes_CraftableNow(professions, limit)
+    local have = {}
+    for _, p in ipairs(professions) do
+        if p.hasRecipes then have[p.skillLine] = p end
+    end
+    local found = {}
+    for id, db in ns.RecipeDB_Each() do
+        local p = have[db.s]
+        if p and db.m and #db.m > 0 and ns.RecipeDB_Known(id) then
+            -- the bags first: only what can be made is worth building
+            local craftable = ns.Recipes_Craftable({ reagents = reagentsOfData(db) }, false)
+            if craftable > 0 then
+                found[#found + 1] = { recipe = fromData(id, db, true, p.rank, false), craftable = craftable, skillLine = p.skillLine, profession = p.name }
+            end
+        end
+    end
+    table.sort(found, function(a, b)
+        local da, db = a.recipe.difficulty or ns.DIFFICULTY_LAST, b.recipe.difficulty or ns.DIFFICULTY_LAST
+        if da ~= db then return da < db end
+        if a.recipe.name ~= b.recipe.name then return a.recipe.name < b.recipe.name end
+        return a.recipe.id < b.recipe.id
+    end)
+    local total = #found
+    if limit then
+        for i = total, limit + 1, -1 do found[i] = nil end
+    end
+    return found, total
+end
+
+-- Does the character the window shows know the recipe? (the spell book of the playing one, the saved copy of another)
+local function knownByView(id)
+    if ns.Roster_Knows then return ns.Roster_Knows(id) end
+    return ns.RecipeDB_Known(id)
+end
+
+-- What the character could learn right now in its professions: for each profession with recipes, the recipes it doesn't know whose
+-- required skill its skill reaches, the one with the nearest trainer or vendor first (and by its level among equals: the trainers
+-- of a profession are the same for all its recipes). `professions` is a list as ns.Professions_List returns it.
+-- Returns { { profession =, recipes = { recipe... }, total = n }, ... } in the professions' order, only the ones that have something;
+-- `limit` cuts each group's recipes (`total` is how many there were).
+function ns.Recipes_LearnableNow(professions, limit)
+    local have = {}
+    for _, p in ipairs(professions) do
+        if p.hasRecipes and p.rank and p.learned ~= false then have[p.skillLine] = p end
+    end
+    local found, trainerKeys = {}, {}
+    for id, db in ns.RecipeDB_Each() do
+        local p = have[db.s]
+        if p then
+            local required = ns.RecipeDB_Required(db)
+            if required and required <= p.rank and not knownByView(id) then
+                local list = found[db.s] or {}
+                found[db.s] = list
+                trainerKeys[db.s] = trainerKeys[db.s] or ns.RecipeDB_TrainerKey(db.s)
+                list[#list + 1] = { id = id, db = db, required = required, key = ns.RecipeDB_TeacherKey(db, trainerKeys[db.s]) }
+            end
+        end
+    end
+    local groups = {}
+    for _, p in ipairs(professions) do
+        local list = found[p.skillLine]
+        if list and #list > 0 then
+            table.sort(list, function(a, b)
+                if a.key ~= b.key then return a.key < b.key end
+                if a.required ~= b.required then return a.required < b.required end
+                if a.db.n ~= b.db.n then return a.db.n < b.db.n end
+                return a.id < b.id
+            end)
+            local recipes = {}
+            for i, entry in ipairs(list) do
+                if limit and i > limit then break end
+                recipes[#recipes + 1] = fromData(entry.id, entry.db, false, p.rank, false)
+            end
+            groups[#groups + 1] = { profession = p, recipes = recipes, total = #list }
+        end
+    end
+    return groups
+end
+
+-- Who teaches a recipe of the data (`db` is its record), nearest first (those that are for the character's side): the trainers, the
+-- vendors of the item that teaches it, and the quests that give it:
+-- { { id =, name =, text =, distance = yards or nil, kind = "trainer" | "vendor" | "quest", questID =, giver = }, ... }.
+-- A trainer or a vendor is "name (zones)" and the price; a quest is its name, and the id, name and distance are those of the NPC that
+-- gives it (for the map and waypoint buttons) when the data has it. The trainers of a recipe are all those of its profession (the data
+-- does not say which of them teaches it).
+function ns.Recipes_Teachers(db)
+    local out = {}
+    for _, line in ipairs(ns.RecipeDB_Where(db, true)) do
+        local kind = (line.title == ns.L["Trainer"] and "trainer") or (line.title == ns.L["Vendor"] and "vendor")
+            or (line.title == ns.L["Quest"] and "quest") or nil
+        if kind then
+            for _, entry in ipairs(line.entries or {}) do
+                out[#out + 1] = {
+                    id = entry.id, name = entry.name or entry.text, text = entry.text, distance = entry.distance, kind = kind,
+                    questID = entry.questID, giver = entry.giver, order = #out + 1,
+                }
+            end
+        end
+    end
+    -- both kinds in one list by distance (those whose distance is not known after); a trainer before a vendor when equal
+    table.sort(out, function(a, b)
+        local da, db2 = a.distance or math.huge, b.distance or math.huge
+        if da ~= db2 then return da < db2 end
+        return a.order < b.order
+    end)
+    return out
+end
+
 -- A profession's recipes: callback(copy) at once. The live answer of the game's window if that profession's is open,
--- else the data's. opts: { name = the profession's name, rank = the character's skill }
+-- else the data's (always the data's for another character: the window is the playing one's).
+-- opts: { name = the profession's name, rank = the character's skill }
 function ns.Recipes_Request(skillLine, callback, opts)
     opts = opts or {}
-    local copy = ns.Recipes_Read(skillLine, opts.name) or ns.Recipes_FromData(skillLine, opts.rank)
+    local other = ns.Roster_ViewKey and ns.Roster_ViewKey() ~= nil
+    local copy = (not other and ns.Recipes_Read(skillLine, opts.name)) or ns.Recipes_FromData(skillLine, opts.rank)
     copy.rank = opts.rank
-    cache[skillLine] = copy
+    if not other then cache[skillLine] = copy end
     callback(copy)
 end

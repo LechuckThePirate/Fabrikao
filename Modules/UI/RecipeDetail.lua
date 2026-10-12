@@ -76,6 +76,8 @@ function ns.RecipeDetail_Build(recipe, opts)
     opts = opts or {}
     local db = recipe.db
     local rank = recipe.rank or opts.rank
+    local viewed = ns.Roster_Viewed and ns.Roster_Viewed() -- another character's professions are shown: read only, in the third person
+    local who = viewed and ns.Roster_ColoredName(viewed)
     local out = { name = recipe.name, icon = recipe.icon }
     out.color = recipe.learned and ns.DIFFICULTY_COLORS[recipe.difficulty or ns.DIFFICULTY_LAST] or { 0.85, 0.85, 0.85 }
 
@@ -85,11 +87,11 @@ function ns.RecipeDetail_Build(recipe, opts)
     out.subtitle = table.concat(subtitle, "  -  ")
 
     if recipe.learned then
-        out.status = GREEN .. CHECK .. " " .. L["You know this recipe"] .. "|r"
+        out.status = GREEN .. CHECK .. " " .. (who and L["%s knows this recipe"]:format(who) or L["You know this recipe"]) .. "|r"
     elseif rank then
-        out.status = CROSS .. " " .. L["You don't know this recipe yet"]
+        out.status = CROSS .. " " .. (who and L["%s doesn't know this recipe yet"]:format(who) or L["You don't know this recipe yet"])
     else
-        out.status = DIM .. CROSS .. " " .. L["You don't have this profession"] .. "|r"
+        out.status = DIM .. CROSS .. " " .. (who and L["%s doesn't have this profession"]:format(who) or L["You don't have this profession"]) .. "|r"
     end
 
     local facts = {}
@@ -99,7 +101,8 @@ function ns.RecipeDetail_Build(recipe, opts)
     if required then
         local text = tostring(required)
         if rank then
-            text = text .. ("   (%s)"):format((rank >= required and GREEN or RED) .. L["you have %d"]:format(rank) .. "|r")
+            local have = who and L["%s has %d"]:format(viewed.label, rank) or L["you have %d"]:format(rank)
+            text = text .. ("   (%s)"):format((rank >= required and GREEN or RED) .. have .. "|r")
         end
         fact(L["Skill needed:"], text)
     end
@@ -110,7 +113,7 @@ function ns.RecipeDetail_Build(recipe, opts)
         if db and rank and required and rank >= required then
             local d = ns.RecipeDB_Difficulty(db, rank)
             local names = { [0] = L["orange"], L["yellow"], L["green"], L["grey"] }
-            fact(L["For your skill:"], ("%s%s|r"):format(colorCode(ns.DIFFICULTY_COLORS[d]), names[d]))
+            fact(who and L["For their skill:"] or L["For your skill:"], ("%s%s|r"):format(colorCode(ns.DIFFICULTY_COLORS[d]), names[d]))
         end
     end
 
@@ -275,6 +278,7 @@ local function newIngredient()
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.itemID) else GameTooltip:SetText(itemName(self.itemID), 1, 1, 1) end
         if ns.Inventory_AddTooltipLines then ns.Inventory_AddTooltipLines(GameTooltip, self.itemID) end
+        GameTooltip:AddLine(L["Click to see where to get it"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     row:SetScript("OnLeave", GameTooltip_Hide)
@@ -283,6 +287,8 @@ local function newIngredient()
             local info = C_Item and C_Item.GetItemInfo or GetItemInfo
             local link = info and select(2, info(self.itemID))
             if link then ChatEdit_InsertLink(link) end
+        else
+            ns.RecipeDetail_ToggleReagent(self.itemID)
         end
     end)
     return row
@@ -308,23 +314,8 @@ local function newNpc()
     row.text:SetJustifyH("LEFT")
     row.text:SetJustifyV("TOP")
     row.text:SetWordWrap(true)
-    local function button(text, width, tooltip, action)
-        local b = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-        b:SetSize(width, 22)
-        b:SetText(text)
-        b:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-            GameTooltip:SetText(tooltip, 1, 1, 1)
-            GameTooltip:AddLine(self.npc.name, 1, 0.82, 0)
-            GameTooltip:Show()
-        end)
-        b:SetScript("OnLeave", GameTooltip_Hide)
-        b:SetScript("OnClick", function(self) action(self.npc) end)
-        return b
-    end
-    row.tomButton = button("TomTom", 66, L["Set a TomTom waypoint"], ns.RecipeDetail_Waypoint)
-    row.tomButton:SetPoint("TOPRIGHT", 0, 0)
-    row.mapButton = button(L["Map"], 52, L["View on map"], ns.RecipeDetail_ViewOnMap)
+    row.tomButton = ns.IconButton_Create(row, "pointer", L["Set a TomTom waypoint"], function(npc) return ns.RecipeDetail_Waypoint(npc) end)
+    row.mapButton = ns.IconButton_Create(row, "map", L["View on map"], function(npc) return ns.RecipeDetail_ViewOnMap(npc) end)
     -- a quest of Completao!!'s: opens it there
     row.questButton = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
     row.questButton:SetSize(QUEST_BUTTON_W, 22)
@@ -343,23 +334,23 @@ end
 
 -- An entry of a source (a trainer, a vendor, a creature that drops it, a quest...) on its own line, with the map and waypoint buttons
 -- when it is an NPC with a known location, and the "View Quest" button when it is a quest Completao has.
-local function npcRow(y, npc)
+local function npcRow(y, npc, indent)
     local row = acquire("npc", newNpc)
+    local x = indent or 14
     local spot = npc.id and ns.RecipeDB_NpcLocation(npc.id)
     local withTomTom = spot and ns.Map_HasTomTom()
     local quest = npc.questID and ns.Quests_Known(npc.questID)
     row:ClearAllPoints()
-    row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 14, -y)
-    row:SetWidth(TEXT_W - 14)
-    row.text:SetWidth(TEXT_W - 14 - (spot and (withTomTom and 130 or 64) or 0) - (quest and QUEST_BUTTON_W + 6 or 0))
+    row:SetPoint("TOPLEFT", panel.child, "TOPLEFT", x, -y)
+    row:SetWidth(TEXT_W - x)
+    row.tomButton:SetShown(withTomTom and true or false)
+    row.mapButton:SetShown(spot and true or false)
+    local taken = ns.IconButton_Row(0, 0, row.tomButton, row.mapButton)
+    row.text:SetWidth(TEXT_W - x - taken - (quest and QUEST_BUTTON_W + 6 or 0))
     -- how far it is, when the game says (the list is in that order)
     local distance = npc.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(npc.distance)
     row.text:SetText(distance and (npc.text .. "  " .. DIM .. distance .. "|r") or npc.text)
     row.tomButton.npc, row.mapButton.npc = npc, npc
-    row.tomButton:SetShown(withTomTom and true or false)
-    row.mapButton:ClearAllPoints()
-    row.mapButton:SetPoint("TOPRIGHT", withTomTom and -72 or 0, 0)
-    row.mapButton:SetShown(spot and true or false)
     row.questButton.questID = npc.questID
     row.questButton:SetShown(quest and true or false)
     local height = math.max(row.text:GetStringHeight(), (spot or quest) and 22 or 0)
@@ -367,11 +358,27 @@ local function npcRow(y, npc)
     return y + height + 6
 end
 
+-- Where an ingredient can be had, under its row (a click on the row opens and closes it): who sells it, the creatures that drop it, the
+-- zones it is fished in... with the map and waypoint buttons of the ones that have a place.
+local function reagentSources(y, itemID)
+    local lines = ns.RecipeDB_ReagentWhere and ns.RecipeDB_ReagentWhere(itemID) or {}
+    if #lines == 0 then
+        return y + put(FONT_SMALL, 14, y, TEXT_W - 14, L["No known source."], nil, { 0.6, 0.6, 0.6 }) + 10
+    end
+    for _, line in ipairs(lines) do
+        y = y + put(FONT_LABEL, 14, y, TEXT_W - 14, line.title, nil, { 1, 0.82, 0 }) + 4
+        for _, entry in ipairs(line.entries) do y = npcRow(y, entry, 28) end
+        y = y + 4
+    end
+    return y + 6
+end
+
 -- The craft button: only for a recipe the character knows, with how many the bags allow.
 local function updateCraftBar()
     if not (panel and current) then return end
     local recipe = current.recipe
-    local known = recipe.learned and true or false
+    -- no crafting for another character's recipes: the game's window is the playing character's
+    local known = recipe.learned and not (ns.Roster_ViewKey and ns.Roster_ViewKey()) and true or false
     panel.craftBar:SetShown(known)
     if not known then return end
     local craftable = ns.Recipes_Craftable and ns.Recipes_Craftable(recipe, false) or 0
@@ -384,6 +391,12 @@ local function render()
     local data = ns.RecipeDetail_Build(current.recipe, current.opts)
     releaseAll()
     updateCraftBar()
+    -- tinted blue with the window when it is another character's recipes
+    if ns.Roster_ViewKey and ns.Roster_ViewKey() then
+        panel:SetBackdropColor(0.05, 0.1, 0.25, 1)
+    else
+        panel:SetBackdropColor(0.05, 0.05, 0.07, 1)
+    end
 
     panel.name:SetText(data.name)
     panel.name:SetTextColor(data.color[1], data.color[2], data.color[3])
@@ -396,7 +409,10 @@ local function render()
 
     if #data.reagents > 0 then
         y = heading(y + 10, (L["Ingredients:"]:gsub(":$", "")))
-        for _, reagent in ipairs(data.reagents) do y = ingredientRow(y, reagent) end
+        for _, reagent in ipairs(data.reagents) do
+            y = ingredientRow(y, reagent)
+            if current.expanded[reagent.itemID] then y = reagentSources(y, reagent.itemID) end
+        end
     end
 
     if #data.economy > 0 then
@@ -422,7 +438,7 @@ local function render()
     end
 
     y = y + put(FONT_SMALL, 0, y + 14, TEXT_W, data.ids, nil, { 0.55, 0.55, 0.55 }) + 28
-    panel.child:SetHeight(math.max(1, y))
+    ns.AutoScroll_SetHeight(panel.scroll, y)
     panel.scroll:SetVerticalScroll(0)
 end
 
@@ -490,12 +506,12 @@ local function create(parent)
     separator:SetHeight(1)
     separator:SetColorTexture(1, 0.82, 0, 0.5)
 
-    panel.scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
-    panel.scroll:SetPoint("TOPLEFT", MARGIN, -(MARGIN + 72 + 58))
-    panel.scroll:SetPoint("BOTTOMRIGHT", -SCROLL_W, MARGIN + 38)
-    panel.child = CreateFrame("Frame", nil, panel.scroll)
-    panel.child:SetSize(TEXT_W, 1)
-    panel.scroll:SetScrollChild(panel.child)
+    -- (the bar is only there when the content is taller than the frame)
+    panel.scroll, panel.child = ns.AutoScroll_Create(panel, function(withBar, scroll)
+        scroll:ClearAllPoints()
+        scroll:SetPoint("TOPLEFT", MARGIN, -(MARGIN + 72 + 58))
+        scroll:SetPoint("BOTTOMRIGHT", withBar and -SCROLL_W or -MARGIN, MARGIN + 38)
+    end)
 
     -- crafting: a button that opens the game's profession window on the recipe, and how many the bags allow
     panel.craftBar = CreateFrame("Frame", nil, panel)
@@ -573,12 +589,30 @@ function ns.RecipeDetail_Show(recipe, opts)
     opts = opts or {}
     local window = opts.parent or _G.FabrikaoFrame
     if not window then return end
+    if ns.Trainers_Hide then ns.Trainers_Hide() end -- the same place
     if not panel then create(window) end
     panel:SetScale(window:GetScale())
     dock(window)
-    current = { recipe = recipe, opts = opts }
+    -- what was opened under the ingredients stays while the same recipe is filled again
+    local expanded = current and current.recipe and recipe and current.recipe.id == recipe.id and current.expanded or {}
+    current = { recipe = recipe, opts = opts, expanded = expanded }
     render()
     panel:Show()
+end
+
+-- Opens or closes where to get an ingredient, under its row; false when no recipe is open.
+function ns.RecipeDetail_ToggleReagent(itemID)
+    if not (panel and current and current.expanded and itemID) then return false end
+    current.expanded[itemID] = not current.expanded[itemID] or nil
+    local offset = panel.scroll:GetVerticalScroll()
+    render()
+    panel.scroll:SetVerticalScroll(offset)
+    return true
+end
+
+-- Is where to get the ingredient open?
+function ns.RecipeDetail_ReagentOpen(itemID)
+    return current ~= nil and current.expanded ~= nil and current.expanded[itemID] == true
 end
 
 function ns.RecipeDetail_Hide()
