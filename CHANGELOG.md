@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - New: look at your other characters' professions. A picker above the professions ("My professions" and each alt) shows an alt's professions and
   the recipes it knows as if it were the one playing, with its skill levels and how many it could make with its own bags (from Embolsao!!'s

@@ -21,10 +21,10 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
-    "- New: with Completao!! installed, the recipes that come from a quest have a \"View Quest\" button that opens the quest there.",
-    "- New: the search of every recipe lists its results like a profession's page (table or detailed, same filters), and a click opens the recipe's panel.",
-    "- New: a small public API, FabrikaoAPI, used by Embolsao!! for the \"Recipes\" entry of its item menu.",
-    "- Fix: the Craft button is off when your bags hold nothing to craft the recipe with.",
+    "- New: a start screen with your professions, what you can craft now and what you can learn, and who teaches each recipe, nearest first.",
+    "- New: look at your other characters' professions with the picker above the list, and at the professions you have not learned.",
+    "- New: a Trainers button, \"Can train: Expert\" when a rank can be learned, and the book or quest of the ranks a trainer doesn't teach.",
+    "- New: click an ingredient to see where to get it. Rogues have Poisons among their professions.",
 }, "\n")
 
 local welcomeFrame
