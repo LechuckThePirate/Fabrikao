@@ -52,6 +52,7 @@ local es = {
     ["Artisan"] = "Artesano",
     ["Master"] = "Maestro",
     ["Grand Master"] = "Gran maestro",
+    ["Can learn: %d"] = "Puedes aprender: %d",
     ["Can train: %s"] = "Puedes entrenar: %s",
     ["You can train %s at a trainer"] = "Puedes entrenar el rango de %s con un entrenador",
     ["You can train %s here"] = "Aquí puedes entrenar el rango de %s",

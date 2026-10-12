@@ -652,13 +652,18 @@ end
 
 local SKILL_NAMES = {
     [171] = "Alchemy", [164] = "Blacksmithing", [333] = "Enchanting", [202] = "Engineering", [165] = "Leatherworking",
-    [197] = "Tailoring", [186] = "Mining", [185] = "Cooking", [129] = "First Aid",
+    [197] = "Tailoring", [186] = "Mining", [185] = "Cooking", [129] = "First Aid", [40] = "Poisons",
 }
 -- the order the professions are listed in a filter
-local SKILL_ORDER = { 171, 164, 333, 202, 165, 197, 186, 185, 129 }
+local SKILL_ORDER = { 171, 164, 333, 202, 165, 197, 186, 185, 129, 40 }
 
 -- the profession's name in the player's language (from the client), or its English one
 function ns.RecipeDB_SkillName(skill)
+    if skill == 40 then -- Poisons is a rogue's spell, not a profession of the game's list: its name is the spell's
+        local spell = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(2842)
+        local name = (spell and spell.name) or (GetSpellInfo and GetSpellInfo(2842))
+        if type(name) == "string" and name ~= "" then return name end
+    end
     local info = C_TradeSkillUI and C_TradeSkillUI.GetProfessionInfoBySkillLineID
         and C_TradeSkillUI.GetProfessionInfoBySkillLineID(skill)
     local name = info and info.professionName

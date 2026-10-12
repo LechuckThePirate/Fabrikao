@@ -46,6 +46,42 @@ local function hasRecipes(spellOffset)
     return C_TradeSkillUI.CanTradeSkillShowCraftingUI(info.spellID) and true or false
 end
 
+-- Poisons, the rogue's class skill (40): the game's list of professions does not have it, it is a spell (2842) a rogue learns at level 20,
+-- and its skill goes up five a level (to 300). Only a rogue has it.
+local POISONS, POISONS_SPELL, ROGUE = 40, 2842, "ROGUE"
+
+local function playerClass()
+    return UnitClass and select(2, UnitClass("player")) or nil
+end
+
+local function knowsSpell(id)
+    if C_SpellBook and C_SpellBook.IsSpellKnown then
+        local ok, known = pcall(C_SpellBook.IsSpellKnown, id)
+        if ok and known then return true end
+    end
+    return IsPlayerSpell ~= nil and IsPlayerSpell(id) and true or false
+end
+
+local function poisonsIcon()
+    local texture = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(POISONS_SPELL)
+    return texture or (GetSpellTexture and GetSpellTexture(POISONS_SPELL)) or "Interface\\Icons\\Ability_Poisons"
+end
+
+-- the skill and its maximum: the game's own numbers when it has them (its profession info, or the older list of skills), else five a level
+local function poisonsSkill()
+    local info = C_TradeSkillUI and C_TradeSkillUI.GetProfessionInfoBySkillLineID and C_TradeSkillUI.GetProfessionInfoBySkillLineID(POISONS)
+    if info and (info.skillLevel or 0) > 0 then return info.skillLevel, info.maxSkillLevel or 300 end
+    if GetNumSkillLines and GetSkillLineInfo then
+        local name = ns.RecipeDB_SkillName and ns.RecipeDB_SkillName(POISONS)
+        for i = 1, GetNumSkillLines() do
+            local skillName, header, _, rank, _, _, maxRank = GetSkillLineInfo(i)
+            if not header and skillName == name and (rank or 0) > 0 then return rank, maxRank or 300 end
+        end
+    end
+    local level = UnitLevel and UnitLevel("player") or 0
+    return math.min(300, level * 5), 300
+end
+
 -- The professions the playing character has: { { name =, icon =, rank =, maxRank =, skillLine =, primary =, hasRecipes = }, ... }
 function ns.Professions_Mine()
     local list = {}
@@ -63,6 +99,14 @@ function ns.Professions_Mine()
                 }
             end
         end
+    end
+    if playerClass() == ROGUE and knowsSpell(POISONS_SPELL) then
+        local rank, maxRank = poisonsSkill()
+        list[#list + 1] = {
+            name = ns.RecipeDB_SkillName and ns.RecipeDB_SkillName(POISONS) or "Poisons", icon = poisonsIcon(), rank = rank, maxRank = maxRank,
+            -- listed with the main skills, after the primary professions and before First Aid, Cooking and Fishing
+            skillLine = POISONS, primary = true, hasRecipes = true, order = #list + 1,
+        }
     end
     table.sort(list, function(a, b)
         if a.primary ~= b.primary then return a.primary end
@@ -99,6 +143,18 @@ function ns.Professions_NextRank(profession)
     return ns.L[name], cap
 end
 
+-- What the window tells of a profession beside it, in green: the rank a trainer can teach ("Can train: Expert") or, for Poisons --whose
+-- "recipes" are abilities that a rogue's trainer teaches--, how many of them can be learned now ("Can learn: 3"). Nil when nothing.
+function ns.Professions_Notice(profession)
+    local rank = ns.Professions_NextRank(profession)
+    if rank then return ns.L["Can train: %s"]:format(rank) end
+    if profession and profession.skillLine == POISONS and profession.learned ~= false and profession.rank and ns.Recipes_LearnableNow then
+        local group = ns.Recipes_LearnableNow({ profession })[1]
+        if group and group.total > 0 then return ns.L["Can learn: %d"]:format(group.total) end
+    end
+    return nil
+end
+
 -- The professions of the character the window shows: the playing one's, or another character's saved copy (Roster.lua).
 function ns.Professions_List()
     return ns.Roster_ViewedProfessions and ns.Roster_ViewedProfessions() or ns.Professions_Mine()
@@ -117,12 +173,14 @@ local QUESTION_MARK = 134400
 function ns.Professions_Missing(have)
     local owned = {}
     for _, p in ipairs(have) do owned[p.skillLine] = true end
+    local viewed = ns.Roster_Viewed and ns.Roster_Viewed()
+    local isRogue = (viewed and viewed.class or playerClass()) == ROGUE
     local list = {}
     for _, skill in ipairs(ns.RecipeDB_Skills and ns.RecipeDB_Skills() or {}) do
-        if not owned[skill] then
+        if not owned[skill] and (skill ~= POISONS or isRogue) then
             list[#list + 1] = {
                 name = ns.RecipeDB_SkillName(skill), skillLine = skill, hasRecipes = true, learned = false,
-                icon = (ns.Roster_Icon and ns.Roster_Icon(skill)) or ICONS[skill] or QUESTION_MARK,
+                icon = (ns.Roster_Icon and ns.Roster_Icon(skill)) or (skill == POISONS and poisonsIcon()) or ICONS[skill] or QUESTION_MARK,
                 primary = not SECONDARY[skill],
             }
         end

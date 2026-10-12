@@ -83,7 +83,12 @@ local function showProfessionTooltip(button)
         GameTooltip:AddLine(L["Skill: %d / %d"]:format(p.rank, p.maxRank), 1, 0.82, 0)
     end
     local nextRank = ns.Professions_NextRank(p)
-    if nextRank then GameTooltip:AddLine(L["You can train %s at a trainer"]:format(nextRank), 0.25, 1, 0.25) end
+    if nextRank then
+        GameTooltip:AddLine(L["You can train %s at a trainer"]:format(nextRank), 0.25, 1, 0.25)
+    else
+        local notice = ns.Professions_Notice(p)
+        if notice then GameTooltip:AddLine(notice, 0.25, 1, 0.25) end
+    end
     if p.hasRecipes then
         GameTooltip:AddLine(L["Click to see its recipes"], 0.7, 0.7, 0.7)
     else
@@ -407,9 +412,9 @@ local function layoutProfessions()
             b.barText:SetText(L["Not learned"])
         end
         b:SetAlpha((profession.hasRecipes and learned) and 1 or 0.6)
-        local nextRank = ns.Professions_NextRank(profession)
-        b.train:SetText(nextRank and L["Can train: %s"]:format(nextRank) or "")
-        b.train:SetShown(nextRank ~= nil)
+        local notice = ns.Professions_Notice(profession)
+        b.train:SetText(notice or "")
+        b.train:SetShown(notice ~= nil)
         y = y + PROFESSION_H + 4
     end
     finishLayout(q, y, #shown == 0 and L["No professions learned yet."] or nil)
