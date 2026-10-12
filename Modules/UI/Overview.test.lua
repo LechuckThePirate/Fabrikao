@@ -121,10 +121,23 @@ describe("The start screen", function()
         end)
 
         it("has the four quadrants with their titles", function()
-            assert.is_true(#text("^Professions$") >= 1) -- (and the title of its group of primary professions)
+            assert.are.equal(1, #text("^Professions$")) -- (once: its first group does not repeat it)
             assert.are.equal(1, #text("^You can learn %("))
             assert.are.equal(1, #text("^You can craft now %("))
             assert.are.equal(1, #text("^Trainers and vendors nearby$"))
+        end)
+
+        it("only tells the groups that are not the primary professions: secondary ones and the ones not learned", function()
+            _G.GetProfessions = function() return 1, 2, 3 end
+            _G.GetProfessionInfo = function(index)
+                if index == 1 then return "Alchemy", 111, 150, 300, 1, 10, 171, 0 end
+                if index == 2 then return "Blacksmithing", 222, 75, 75, 1, 20, 164, 0 end
+                return "Cooking", 333, 50, 75, 1, 30, 185, 0
+            end
+            ns.UI_ShowOverview()
+            assert.are.equal(1, #text("^Professions$"))
+            assert.are.equal(1, #text("^Secondary professions$"))
+            assert.are.equal(0, #text("^Not learned$"))
         end)
 
         it("the top left lists the professions with their bar and skill", function()

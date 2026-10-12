@@ -353,12 +353,15 @@ local function layoutProfessions()
         local group = not learned and "missing" or (profession.primary and "primary" or "secondary")
         if group ~= lastGroup then
             lastGroup = group
-            local s = q.sections.next()
-            s:ClearAllPoints()
-            s:SetPoint("TOPLEFT", q.content, "TOPLEFT", 6, -y - 2)
-            s:SetText(({ primary = L["Professions"], secondary = L["Secondary professions"], missing = L["Not learned"] })[group])
-            s:SetShownWithLine(true)
-            y = y + 24
+            -- the primary ones are what the quadrant's own title says: only the other groups are told apart
+            if group ~= "primary" then
+                local s = q.sections.next()
+                s:ClearAllPoints()
+                s:SetPoint("TOPLEFT", q.content, "TOPLEFT", 6, -y - 2)
+                s:SetText(({ secondary = L["Secondary professions"], missing = L["Not learned"] })[group])
+                s:SetShownWithLine(true)
+                y = y + 24
+            end
         end
         local b = q.rows.next()
         b.profession = profession
