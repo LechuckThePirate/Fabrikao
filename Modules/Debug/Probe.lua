@@ -83,3 +83,54 @@ function ns.Probe()
     FabrikaoDB.probe = probe
     ns.Print(ns.L["Probe finished. Type /reload to save it."])
 end
+
+-- /fabrikao learn: why "You can learn" lists what it lists first. Where the character is and, for the first recipes of each
+-- profession, the key the order uses and every vendor that teaches it with where it stands, how far and in which world position
+-- (the same numbers ns.Map_Distance gives the order). Printed and kept in FabrikaoDB.learnProbe, to be read after /reload.
+function ns.ProbeLearn()
+    local map = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    local position = map and C_Map.GetPlayerMapPosition and C_Map.GetPlayerMapPosition(map, "player")
+    local px, py
+    if position then px, py = position:GetXY() end
+    local function world(mapID, x, y)
+        if not (mapID and x and y and C_Map and C_Map.GetWorldPosFromMapPos and CreateVector2D) then return nil end
+        local continent, at = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(x, y))
+        if continent and at then return { continent = continent, x = at.x, y = at.y } end
+    end
+    local info = map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+    local result = {
+        player = {
+            map = map, mapName = info and info.name, x = px and px * 100, y = py and py * 100, world = world(map, px, py),
+            zone = GetZoneText and GetZoneText(), subzone = GetSubZoneText and GetSubZoneText(),
+            side = UnitFactionGroup and UnitFactionGroup("player"),
+        },
+        groups = {},
+    }
+    ns.Print(("You are in %s (%s) on map %s at %s, %s"):format(tostring(result.player.zone), tostring(result.player.subzone),
+        tostring(map), px and ("%.1f"):format(px * 100) or "?", py and ("%.1f"):format(py * 100) or "?"))
+    for _, group in ipairs(ns.Recipes_LearnableNow(ns.Professions_List(), 6, "near")) do
+        local entry = { profession = group.profession.name, total = group.total, recipes = {} }
+        local trainerKey = ns.RecipeDB_TrainerKey(group.profession.skillLine)
+        for _, recipe in ipairs(group.recipes) do
+            local item = ns.RecipeDB_Item(recipe.db)
+            local line = { name = recipe.name, required = recipe.required, key = ns.RecipeDB_TeacherKey(recipe.db, trainerKey), vendors = {} }
+            for _, vendor in ipairs(item and item.v or {}) do
+                local spot = vendor.id and ns.RecipeDB_NpcLocation(vendor.id)
+                line.vendors[#line.vendors + 1] = {
+                    name = vendor.n, side = vendor.f, map = spot and spot.map, x = spot and spot.x, y = spot and spot.y,
+                    distance = spot and ns.Map_Distance and ns.Map_Distance(spot), world = spot and world(spot.map, spot.x / 100, spot.y / 100),
+                }
+            end
+            entry.recipes[#entry.recipes + 1] = line
+            local near
+            for _, v in ipairs(line.vendors) do
+                if v.distance and (not near or v.distance < near.distance) then near = v end
+            end
+            ns.Print(("%s: %s (%d), key %s%s"):format(entry.profession, line.name, line.required or 0, tostring(line.key),
+                near and (", nearest vendor %s %.0f yd"):format(near.name or "?", near.distance) or ""))
+        end
+        result.groups[#result.groups + 1] = entry
+    end
+    FabrikaoDB.learnProbe = result
+    ns.Print(ns.L["Probe finished. Type /reload to save it."])
+end

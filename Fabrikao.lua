@@ -62,6 +62,8 @@ SlashCmdList.FABRIKAO = function(msg)
         ns.UI_ShowSearch(strtrim(msg:gsub("^%a+", "", 1)))
     elseif msg == "changelog" then
         ns.Welcome_Show()
+    elseif msg == "learn" then
+        ns.ProbeLearn()
     elseif msg == "probe" then
         ns.Probe()
     else
