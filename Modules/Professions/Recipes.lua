@@ -349,8 +349,32 @@ end
 -- required skill its skill reaches, the one with the nearest trainer or vendor first (and by its level among equals: the trainers
 -- of a profession are the same for all its recipes). `professions` is a list as ns.Professions_List returns it.
 -- Returns { { profession =, recipes = { recipe... }, total = n }, ... } in the professions' order, only the ones that have something;
--- `limit` cuts each group's recipes (`total` is how many there were).
-function ns.Recipes_LearnableNow(professions, limit)
+-- `limit` cuts each group's recipes (`total` is how many there were). `sortBy` is how each group is ordered: "near" (the default: the
+-- nearest trainer or vendor first), "level" (the lowest required skill first) or "name" (alphabetical); the others break the ties.
+local function nameKey(entry) return (entry.db.n or ""):lower() end
+local LEARN_ORDERS = {
+    near = function(a, b)
+        if a.key ~= b.key then return a.key < b.key end
+        if a.required ~= b.required then return a.required < b.required end
+        if nameKey(a) ~= nameKey(b) then return nameKey(a) < nameKey(b) end
+        return a.id < b.id
+    end,
+    level = function(a, b)
+        if a.required ~= b.required then return a.required < b.required end
+        if a.key ~= b.key then return a.key < b.key end
+        if nameKey(a) ~= nameKey(b) then return nameKey(a) < nameKey(b) end
+        return a.id < b.id
+    end,
+    name = function(a, b)
+        if nameKey(a) ~= nameKey(b) then return nameKey(a) < nameKey(b) end
+        if a.required ~= b.required then return a.required < b.required end
+        return a.id < b.id
+    end,
+}
+ns.LEARN_SORTS = { "near", "level", "name" } -- (the order the picker lists them in)
+
+function ns.Recipes_LearnableNow(professions, limit, sortBy)
+    local order = LEARN_ORDERS[sortBy] or LEARN_ORDERS.near
     local have = {}
     for _, p in ipairs(professions) do
         if p.hasRecipes and p.rank and p.learned ~= false then have[p.skillLine] = p end
@@ -372,12 +396,7 @@ function ns.Recipes_LearnableNow(professions, limit)
     for _, p in ipairs(professions) do
         local list = found[p.skillLine]
         if list and #list > 0 then
-            table.sort(list, function(a, b)
-                if a.key ~= b.key then return a.key < b.key end
-                if a.required ~= b.required then return a.required < b.required end
-                if a.db.n ~= b.db.n then return a.db.n < b.db.n end
-                return a.id < b.id
-            end)
+            table.sort(list, order)
             local recipes = {}
             for i, entry in ipairs(list) do
                 if limit and i > limit then break end

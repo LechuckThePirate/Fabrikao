@@ -58,6 +58,8 @@ local es = {
     ["You can train %s here"] = "Aquí puedes entrenar el rango de %s",
     ["%s trainers"] = "Entrenadores de %s",
     ["Nearest first"] = "Los más cercanos primero",
+    ["Nearest"] = "Más cercanos",
+    ["Sort the recipes you can learn"] = "Ordenar las recetas que puedes aprender",
     ["No trainers known for this profession."] = "No se conocen entrenadores de esta profesión.",
     ["The trainers of this profession, nearest first, with the map and a waypoint."] =
         "Los entrenadores de esta profesión, los más cercanos primero, con el mapa y un punto de ruta.",

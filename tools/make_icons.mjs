@@ -130,4 +130,11 @@ writeFileSync(join(out, "Pointer.png"), png(render((cv) => {
     cv.polygon([[32, 4], [55, 59], [32, 46], [9, 59]], (x) => (x < 32 ? [255, 218, 74] : [222, 164, 26]), [66, 42, 0], 2.4);
 })));
 
-console.log("Icons/Map.png and Icons/Pointer.png written");
+// sorting: three bars of falling length, and an arrow going down beside them
+writeFileSync(join(out, "Sort.png"), png(render((cv) => {
+    const bar = (y, w) => cv.polygon([[5, y], [5 + w, y], [5 + w, y + 10], [5, y + 10]], [250, 216, 120], INK, 2);
+    bar(10, 36); bar(27, 26); bar(44, 16);
+    cv.polygon([[51, 8], [59, 8], [59, 36], [64, 36], [55, 56], [46, 36], [51, 36]].map(([x, y]) => [Math.min(x, 62), y]), [222, 164, 26], [66, 42, 0], 2.2);
+})));
+
+console.log("Icons/Map.png, Icons/Pointer.png and Icons/Sort.png written");

@@ -1,4 +1,4 @@
-local _, ns = ...
+local ADDON, ns = ...
 local L = ns.L
 
 -- The start screen of the window, under a welcome line, the search box and the picker of the character:
@@ -428,6 +428,62 @@ local function toggleLearn(kind, key)
     layoutLearn()
 end
 
+-- how the recipes of a group are ordered: the character's choice (ns.char.learnSort), nearest first until it picks another
+local function learnSort()
+    local saved = ns.char and ns.char.learnSort
+    for _, sort in ipairs(ns.LEARN_SORTS) do
+        if sort == saved then return sort end
+    end
+    return "near"
+end
+
+local function learnSortLabel(sort)
+    return ({ near = L["Nearest"], level = L["Level"], name = L["Name"] })[sort]
+end
+
+-- The icon at the right of the title that orders the recipes. In the game a click opens a menu with a radio per order; without the
+-- menus it goes to the next order. `onChange` runs after a new order was picked.
+local function newSortButton(parent, onChange)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(22, 22)
+    b:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, -4)
+    local texture = "Interface\\AddOns\\" .. ADDON .. "\\Icons\\Sort.png"
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetAllPoints()
+    b.icon:SetTexture(texture)
+    b:SetHighlightTexture(texture, "ADD")
+    b:SetScript("OnMouseDown", function(self) self.icon:SetPoint("TOPLEFT", 1, -1) end)
+    b:SetScript("OnMouseUp", function(self) self.icon:SetAllPoints() end)
+
+    local function pick(sort)
+        ns.char.learnSort = sort
+        onChange()
+    end
+    b.Pick = pick
+    b:SetScript("OnClick", function(self)
+        if MenuUtil and MenuUtil.CreateContextMenu then
+            MenuUtil.CreateContextMenu(self, function(_, root)
+                for _, sort in ipairs(ns.LEARN_SORTS) do
+                    root:CreateRadio(learnSortLabel(sort), function() return learnSort() == sort end, function() pick(sort) end)
+                end
+            end)
+            return
+        end
+        local current = learnSort()
+        for i, sort in ipairs(ns.LEARN_SORTS) do
+            if sort == current then pick(ns.LEARN_SORTS[i % #ns.LEARN_SORTS + 1]) return end
+        end
+    end)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText(L["Sort the recipes you can learn"], 1, 1, 1)
+        GameTooltip:AddLine(L["Sort: %s"]:format(learnSortLabel(learnSort())), 1, 0.82, 0)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    return b
+end
+
 function layoutLearn()
     local q = quadrants.learn
     q.ranks.reset()
@@ -441,7 +497,7 @@ function layoutLearn()
         local name, cap = ns.Professions_NextRank(p)
         if name then ranks[#ranks + 1] = { profession = p, name = name, cap = cap } end
     end
-    local groups = ns.Recipes_LearnableNow(professions, LEARN_PER_GROUP)
+    local groups = ns.Recipes_LearnableNow(professions, LEARN_PER_GROUP, learnSort())
     local total = #ranks
     for _, group in ipairs(groups) do total = total + group.total end
     q.title:SetText(("%s (%d)"):format(L["You can learn"], total))
@@ -719,6 +775,7 @@ function ns.Overview_Create(parent, top)
     learn.recipes = newPool(function() return newLearnRow(learn.content, toggleLearn) end)
     learn.teachers = newPool(function() return newTrainerRow(learn.content) end)
     learn.relayout = layoutLearn
+    learn.sortButton = newSortButton(learn.frame, layoutLearn)
 
     local craft = newQuadrant("craft", function(f)
         f:SetPoint("TOPLEFT", grid, "LEFT", 0, -half)
