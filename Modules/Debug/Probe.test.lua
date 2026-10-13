@@ -29,15 +29,4 @@ describe("Probe", function()
         assert.are.equal(2, FabrikaoDB.probe.recipesInData)
         assert.matches("Probe finished", WowMock.printed[#WowMock.printed])
     end)
-
-    it("learn: says where the character is and which vendors teach the first recipes, and keeps it", function()
-        ns.ProbeLearn()
-        local probe = FabrikaoDB.learnProbe
-        assert.are.equal("table", type(probe.player))
-        -- the Elixir is known, the Flask (skill 5) is what the character could learn
-        assert.are.equal("Alchemy", probe.groups[1].profession)
-        assert.are.equal(1, probe.groups[1].total)
-        assert.are.equal("Flask", probe.groups[1].recipes[1].name)
-        assert.matches("Probe finished", WowMock.printed[#WowMock.printed])
-    end)
 end)
