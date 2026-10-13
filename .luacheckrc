@@ -23,7 +23,7 @@ read_globals = {
     "Auctionator", "C_AddOns", "C_Item", "CompletaoAPI", "EmbolsaoAPI", "EmbolsaoDB", "RAID_CLASS_COLORS", "UnitClass", "UnitName", "C_Map", "C_PetJournal", "C_Spell", "C_SpellBook", "C_Timer", "C_TradeSkillUI", "ChatEdit_InsertLink", "CreateFrame", "Enum",
     "GameTooltip", "GameTooltip_Hide", "GetAddOnMetadata", "GetBuildInfo", "GetCoinTextureString", "GetCursorPosition", "GetItemCount", "GetItemInfo", "GetLocale",
     "GetProfessionInfo", "GetProfessions", "GetRealmName", "time", "GetSpellInfo", "GetSpellTexture", "GetNumSkillLines", "GetSkillLineInfo", "IsModifiedClick", "IsPlayerSpell", "Minimap", "ProfessionsFrame", "UIParent", "UISpecialFrames", "UnitFactionGroup",
-    "WOW_PROJECT_ID", "strtrim", "tinsert", "OpenWorldMap", "WorldMapFrame", "CreateVector2D", "InCombatLockdown", "CLOSE", "GameFontHighlightSmall", "ShowUIPanel", "C_Texture",
+    "WOW_PROJECT_ID", "strtrim", "tinsert", "OpenWorldMap", "WorldMapFrame", "CreateVector2D", "InCombatLockdown", "CLOSE", "GameFontHighlightSmall", "ShowUIPanel", "C_Texture", "MenuUtil",
 }
 
 -- tests (busted): they define and change the simulated game's globals on purpose

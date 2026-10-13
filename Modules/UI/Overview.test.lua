@@ -212,6 +212,56 @@ describe("The start screen", function()
             assert.are.same({ "Mana Potion", "Healing Potion", "Dropped Dagger", "Iron Sword", "Orphan Plans" }, learnNames())
         end)
 
+        describe("the order button (an icon at the right of the title)", function()
+            local function sortButton()
+                local found = framesWith("Pick")
+                assert.are.equal(1, #found)
+                return found[1]
+            end
+
+            it("is an icon with no text", function()
+                local button = sortButton()
+                assert.matches("Sort%.png$", button.icon._set.SetTexture[1])
+                assert.is_nil(button._text)
+            end)
+
+            it("orders by name", function()
+                sortButton().Pick("name")
+                openGroups()
+                assert.are.same({ "Healing Potion", "Mana Potion", "Dropped Dagger", "Iron Sword", "Orphan Plans" }, learnNames())
+            end)
+
+            it("orders by level, lowest first", function()
+                sortButton().Pick("level")
+                openGroups()
+                -- Alchemy: Mana Potion 30, Healing Potion 100. Blacksmithing: Dropped Dagger 40, Iron Sword 50, Orphan Plans 60
+                assert.are.same({ "Mana Potion", "Healing Potion", "Dropped Dagger", "Iron Sword", "Orphan Plans" }, learnNames())
+            end)
+
+            it("goes back to the nearest first, which is what it starts with", function()
+                sortButton().Pick("name")
+                sortButton().Pick("near")
+                openGroups()
+                assert.are.same({ "Mana Potion", "Healing Potion", "Iron Sword", "Dropped Dagger", "Orphan Plans" }, learnNames())
+            end)
+
+            it("without the game's menus a click goes to the next order, and it is kept", function()
+                click(sortButton()) -- nearest -> level
+                assert.are.equal("level", ns.char.learnSort)
+                click(sortButton()) -- level -> name
+                assert.are.equal("name", ns.char.learnSort)
+                click(sortButton()) -- name -> nearest
+                assert.are.equal("near", ns.char.learnSort)
+            end)
+
+            it("an unknown saved order is the nearest first", function()
+                ns.char.learnSort = "whatever"
+                ns.UI_ShowOverview()
+                openGroups()
+                assert.are.same({ "Mana Potion", "Healing Potion", "Iron Sword", "Dropped Dagger", "Orphan Plans" }, learnNames())
+            end)
+        end)
+
         it("each recipe has its level and where it is learned", function()
             openGroups()
             local first = framesWith("learn")[1]
