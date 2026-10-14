@@ -1,22 +1,23 @@
 name: CI
 
-# Tests (busted) and luacheck on every push and pull request, as in Completao. Lua 5.1: the game's version.
+# Tests (busted) and luacheck on every push, as in Completao. Lua 5.1: the game's version.
+# There is no pull_request trigger on purpose: a pull request shows the checks of its head commit, and the auto/* pull
+# requests opened by the bot would otherwise sit in "action required" waiting for a manual approval (their update
+# workflow runs the tests itself).
 on:
   push:
     branches:
       - '**'
-  pull_request:
-    types: [opened, synchronize, reopened]
 
 jobs:
   luacheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run luacheck
-        uses: nebularg/actions-luacheck@v1
+        uses: nebularg/actions-luacheck@d4137dd840545b28521ed21931e06913d93c0bc1 # v1
         with:
           files: Fabrikao.lua Localization Modules Data Fabrikao.test.lua test setupTests.lua
           args: -q
@@ -25,15 +26,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Lua 5.1
-        uses: leafo/gh-actions-lua@v11
+        uses: leafo/gh-actions-lua@6919171ccf181b826f44b9bca76307b577217377 # v13.0.0
         with:
           luaVersion: "5.1"
 
       - name: Install LuaRocks
-        uses: leafo/gh-actions-luarocks@v5
+        uses: leafo/gh-actions-luarocks@35d062def313a7699a0d513e996bcf4352f05389 # v6.1.0
 
       - name: Install busted
         run: luarocks install busted
