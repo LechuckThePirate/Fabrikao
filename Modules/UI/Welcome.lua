@@ -24,6 +24,7 @@ local LATEST_CHANGELOG_TEXT = table.concat({
     "- New: an icon next to \"You can learn\" orders its recipes by proximity, level or name.",
     "- Data: fresh recipe data, as the public databases have them now.",
     "- Fix: the welcome windows of several addons no longer show through each other.",
+    "- Fix: the View Quest button of a recipe is Completao's icon, next to the map and waypoint icons.",
 }, "\n")
 
 local welcomeFrame

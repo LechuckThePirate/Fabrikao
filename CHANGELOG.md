@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1
 
 - Fix: the "View Quest" button in the panel of a recipe that comes from a quest is Completao!!'s icon, next to the map and waypoint icons, instead of a text button drawn under them.
 
