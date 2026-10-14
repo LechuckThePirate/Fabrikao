@@ -21,10 +21,9 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
-    "- New: a start screen with your professions, what you can craft now and what you can learn, and who teaches each recipe, nearest first.",
-    "- New: look at your other characters' professions with the picker above the list, and at the professions you have not learned.",
-    "- New: a Trainers button, \"Can train: Expert\" when a rank can be learned, and the book or quest of the ranks a trainer doesn't teach.",
-    "- New: click an ingredient to see where to get it. Rogues have Poisons among their professions.",
+    "- New: an icon next to \"You can learn\" orders its recipes by proximity, level or name.",
+    "- Data: fresh recipe data, as the public databases have them now.",
+    "- Fix: the welcome windows of several addons no longer show through each other.",
 }, "\n")
 
 local welcomeFrame

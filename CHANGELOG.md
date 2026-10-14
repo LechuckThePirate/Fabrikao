@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - New: an icon at the right of "You can learn" orders its recipes by proximity (as before, the default), by level or by name; the choice is kept.
+- Data: fresh recipe data, as the public databases have them now.
 - Fix: the welcome windows of several addons no longer show their text, buttons and links through each other when they open together: each one opens in front, with all its content, and a click brings it forward.
 
 ## 0.3.0
