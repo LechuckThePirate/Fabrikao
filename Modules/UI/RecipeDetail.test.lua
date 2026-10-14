@@ -206,21 +206,33 @@ describe("Recipe detail", function()
             assert.are.equal("The Elixir Quest", line.entries[1].text)
         end)
 
-        it("has a View Quest button when Completao knows the quest, and it opens the quest there", function()
+        -- the visible quest icon buttons (Completao!!'s icon): they are small icons like the map and waypoint ones, not a text button
+        local function questButtons()
+            local found = {}
+            for _, f in ipairs(WowMock.frames) do
+                if f.iconKind == "quest" and f.npc and f._scripts.OnClick and f:IsVisible() then found[#found + 1] = f end
+            end
+            return found
+        end
+
+        it("has Completao's icon button when Completao knows the quest, and it opens the quest there", function()
             open()
-            local button = WowMock.FindButton("View Quest")
-            assert.is_true(button:IsVisible())
-            click(button)
+            local found = questButtons()
+            assert.are.equal(1, #found)
+            assert.matches("Completao", found[1].icon._set.SetTexture[1])
+            assert.are.equal(22, found[1]:GetWidth())
+            assert.is_nil(WowMock.FindButton("View Quest"))
+            click(found[1])
             assert.are.equal(38, shown)
         end)
 
         it("has none without Completao, or when it doesn't know the quest", function()
             _G.CompletaoAPI = nil
             open()
-            assert.is_false(WowMock.FindButton("View Quest"):IsVisible())
+            assert.are.equal(0, #questButtons())
             _G.CompletaoAPI = { version = 1, HasQuest = function() return false end, ShowQuest = function() return false end }
             open()
-            assert.is_false(WowMock.FindButton("View Quest"):IsVisible())
+            assert.are.equal(0, #questButtons())
         end)
     end)
 

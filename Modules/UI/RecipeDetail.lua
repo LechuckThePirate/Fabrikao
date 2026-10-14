@@ -15,7 +15,6 @@ local MARGIN = 22
 local SCROLL_W = 28 -- the scroll bar
 local TEXT_W = WIDTH - MARGIN - SCROLL_W - 6
 local LABEL_W = 150
-local QUEST_BUTTON_W = 96 -- "View Quest"
 local ICON, ROW_H = 42, 54
 local GOLD = "|cffffd100"
 local GREEN, RED, DIM = "|cff40bf40", "|cffff4040", "|cff9a9a9a"
@@ -316,24 +315,13 @@ local function newNpc()
     row.text:SetWordWrap(true)
     row.tomButton = ns.IconButton_Create(row, "pointer", L["Set a TomTom waypoint"], function(npc) return ns.RecipeDetail_Waypoint(npc) end)
     row.mapButton = ns.IconButton_Create(row, "map", L["View on map"], function(npc) return ns.RecipeDetail_ViewOnMap(npc) end)
-    -- a quest of Completao!!'s: opens it there
-    row.questButton = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-    row.questButton:SetSize(QUEST_BUTTON_W, 22)
-    row.questButton:SetPoint("TOPRIGHT", 0, 0)
-    row.questButton:SetText(L["View Quest"])
-    row.questButton:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText(L["View Quest"], 1, 1, 1)
-        GameTooltip:AddLine(L["Opens this quest in Completao!!"], 1, 0.82, 0, true)
-        GameTooltip:Show()
-    end)
-    row.questButton:SetScript("OnLeave", GameTooltip_Hide)
-    row.questButton:SetScript("OnClick", function(self) ns.Quests_Show(self.questID) end)
+    -- a quest of Completao!!'s: its icon opens the quest there
+    row.questButton = ns.IconButton_Create(row, "quest", L["View Quest"], function(npc) return ns.Quests_Show(npc.questID) end)
     return row
 end
 
 -- An entry of a source (a trainer, a vendor, a creature that drops it, a quest...) on its own line, with the map and waypoint buttons
--- when it is an NPC with a known location, and the "View Quest" button when it is a quest Completao has.
+-- when it is an NPC with a known location, and Completao!!'s icon (View Quest) when it is a quest Completao has.
 local function npcRow(y, npc, indent)
     local row = acquire("npc", newNpc)
     local x = indent or 14
@@ -345,14 +333,13 @@ local function npcRow(y, npc, indent)
     row:SetWidth(TEXT_W - x)
     row.tomButton:SetShown(withTomTom and true or false)
     row.mapButton:SetShown(spot and true or false)
-    local taken = ns.IconButton_Row(0, 0, row.tomButton, row.mapButton)
-    row.text:SetWidth(TEXT_W - x - taken - (quest and QUEST_BUTTON_W + 6 or 0))
+    row.questButton:SetShown(quest and true or false)
+    local taken = ns.IconButton_Row(0, 0, row.tomButton, row.mapButton, row.questButton)
+    row.text:SetWidth(TEXT_W - x - taken)
     -- how far it is, when the game says (the list is in that order)
     local distance = npc.distance and ns.Map_FormatDistance and ns.Map_FormatDistance(npc.distance)
     row.text:SetText(distance and (npc.text .. "  " .. DIM .. distance .. "|r") or npc.text)
-    row.tomButton.npc, row.mapButton.npc = npc, npc
-    row.questButton.questID = npc.questID
-    row.questButton:SetShown(quest and true or false)
+    row.tomButton.npc, row.mapButton.npc, row.questButton.npc = npc, npc, npc
     local height = math.max(row.text:GetStringHeight(), (spot or quest) and 22 or 0)
     row:SetHeight(height)
     return y + height + 6

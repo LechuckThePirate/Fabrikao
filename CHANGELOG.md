@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: the "View Quest" button in the panel of a recipe that comes from a quest is Completao!!'s icon, next to the map and waypoint icons, instead of a text button drawn under them.
+
 ## 0.4.0
 
 - New: an icon at the right of "You can learn" orders its recipes by proximity (as before, the default), by level or by name; the choice is kept.
