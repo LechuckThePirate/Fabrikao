@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.3
 
 - Fix: the next rank of a profession ("Can train: Journeyman") shows up as soon as the skill is the one a trainer asks for (50 of 75, 125 of 150, 200 of 225...), instead of waiting for the skill to reach the cap of the current rank.
 
