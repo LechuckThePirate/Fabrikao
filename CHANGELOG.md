@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: the next rank of a profession ("Can train: Journeyman") shows up as soon as the skill is the one a trainer asks for (50 of 75, 125 of 150, 200 of 225...), instead of waiting for the skill to reach the cap of the current rank.
+
 ## 0.4.1
 
 - Fix: the "View Quest" button in the panel of a recipe that comes from a quest is Completao!!'s icon, next to the map and waypoint icons, instead of a text button drawn under them.

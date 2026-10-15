@@ -116,7 +116,7 @@ local function newProfessionRow(content)
     back:SetColorTexture(0, 0, 0, 0.5)
     b.barText = b.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     b.barText:SetPoint("CENTER")
-    -- "Can train: Journeyman": the skill is at the cap of its rank and a trainer can teach the next one
+    -- "Can train: Journeyman": the skill is close enough to the cap of its rank and a trainer can teach the next one
     b.train = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     b.train:SetPoint("TOPRIGHT", -10, -4)
     b.train:SetTextColor(0.25, 1, 0.25)
