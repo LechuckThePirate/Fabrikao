@@ -21,6 +21,7 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
+    "- Fix: \"You can learn\" no longer lists recipes that are only taught in season (Gingerbread Cookie, Egg Nog...).",
     "- New: an icon next to \"You can learn\" orders its recipes by proximity, level or name.",
     "- Data: fresh recipe data, as the public databases have them now.",
     "- Fix: the welcome windows of several addons no longer show through each other.",
