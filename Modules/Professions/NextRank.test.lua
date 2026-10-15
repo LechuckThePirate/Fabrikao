@@ -1,7 +1,7 @@
 dofile("setupTests.lua")
 
--- "Can train: Journeyman": a profession whose skill is at the cap of its rank, when the character's level lets a trainer teach the next
--- one, and this game has a higher rank (the data has recipes that ask for more skill).
+-- "Can train: Journeyman": a profession whose skill is within 25 of the cap of its rank (a trainer asks for 50 of 75, 125 of 150...), when
+-- the character's level lets a trainer teach the next one, and this game has a higher rank (the data has recipes that ask for more skill).
 describe("The next rank of a profession", function()
     local ns, skill
 
@@ -71,9 +71,18 @@ describe("The next rank of a profession", function()
             assert.are.equal(225, cap)
         end)
 
-        it("is not there before the skill reaches the cap", function()
-            assert.is_nil(nextRank(74, 75, 40))
+        it("is there before the cap, once the skill is the one the trainer asks for (50 of 75, 125 of 150, 200 of 225)", function()
+            assert.are.equal("Journeyman", nextRank(50, 75, 10))
+            assert.are.equal("Journeyman", nextRank(60, 75, 40))
+            assert.are.equal("Expert", nextRank(125, 150, 20))
+            assert.are.equal("Artisan", nextRank(200, 225, 35))
+        end)
+
+        it("is not there while the skill is under what the trainer asks for", function()
+            assert.is_nil(nextRank(49, 75, 40))
             assert.is_nil(nextRank(0, 75, 40))
+            assert.is_nil(nextRank(124, 150, 40))
+            assert.is_nil(nextRank(199, 225, 40))
         end)
 
         it("is not there when the level is lower than the rank asks for", function()
@@ -99,8 +108,14 @@ describe("The next rank of a profession", function()
             assert.are.equal("Can train: Journeyman", badge())
         end)
 
-        it("is not on a profession that has not reached its cap, or when the level is too low", function()
+        it("is on a profession that has not reached its cap, once the trainer's skill is there", function()
             givenSkill(60, 75, 40)
+            ns.UI_Show()
+            assert.are.equal("Can train: Journeyman", badge())
+        end)
+
+        it("is not on a profession with too little skill, or when the level is too low", function()
+            givenSkill(49, 75, 40)
             ns.UI_Show()
             assert.is_nil(badge())
             givenSkill(75, 75, 5)

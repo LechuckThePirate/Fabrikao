@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: the next rank of a profession ("Can train: Journeyman") shows up as soon as the skill is the one a trainer asks for (50 of 75, 125 of 150, 200 of 225...), instead of waiting for the skill to reach the cap of the current rank.
+
 ## 0.4.2
 
 - Fix: "You can learn" no longer lists recipes that nobody teaches out of season: the Winter Veil ones (Gingerbread Cookie, Egg Nog, Green Holiday Shirt, Edge of Winter, Winter's Might, Winter Clothes and Boots) and the Lunar Festival fireworks launchers. They are still in the profession's page.

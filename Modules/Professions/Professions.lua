@@ -130,18 +130,20 @@ function ns.Professions_Mine()
 end
 
 -- The ranks of a profession: each one caps the skill at a multiple of 75 (the rank that ends at 150 is Journeyman...), and a character
--- trains the next one at a trainer once its skill has reached the cap and it is the level the rank asks for.
+-- trains the next one once its skill is 25 short of the current cap (Journeyman asks for 50 of the 75, Expert 125 of 150...) and it is the
+-- level the rank asks for: it does not have to wait for the cap.
 local RANK_NAMES = { [75] = "Apprentice", [150] = "Journeyman", [225] = "Expert", [300] = "Artisan", [375] = "Master", [450] = "Grand Master" }
 local RANK_LEVEL = { [150] = 10, [225] = 20, [300] = 35, [375] = 50, [450] = 65 } -- the level to train the rank that ends there
 local RANK_STEP = 75
+local RANK_SKILL_MARGIN = 25 -- how far under its cap the skill may be to train the next rank
 
--- The rank a character can train now in the profession, or nil: its skill is at the cap of its rank, a higher rank exists in this
--- game (the data has recipes that ask for more skill) and its level allows it. `profession` is an entry of ns.Professions_List
+-- The rank a character can train now in the profession, or nil: its skill is within RANK_SKILL_MARGIN of the cap of its rank, a higher
+-- rank exists in this game (the data has recipes that ask for more skill) and its level allows it. `profession` is an entry of ns.Professions_List
 -- (`charLevel` is the character's level when it is another one's: false when its copy has none; without it, the playing one's is used).
 -- Returns the rank's name (as the game calls it) and the skill it ends at.
 function ns.Professions_NextRank(profession)
     if not (profession and profession.learned ~= false and profession.rank and profession.maxRank and profession.maxRank > 0) then return nil end
-    if profession.rank < profession.maxRank then return nil end
+    if profession.rank < profession.maxRank - RANK_SKILL_MARGIN then return nil end
     local cap = profession.maxRank + RANK_STEP
     local name = RANK_NAMES[cap]
     if not name then return nil end
