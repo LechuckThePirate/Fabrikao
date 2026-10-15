@@ -19,6 +19,7 @@ Localization\Locale.lua
 Modules\Settings\Settings.lua
 Data\Generated\Recipes.lua
 Modules\Data\RecipeDB.lua
+Modules\Data\Seasonal.lua
 Modules\Data\Prices.lua
 Modules\Data\Inventory.lua
 Modules\Data\Quests.lua

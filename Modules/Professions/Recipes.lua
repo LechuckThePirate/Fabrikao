@@ -384,7 +384,8 @@ function ns.Recipes_LearnableNow(professions, limit, sortBy)
         local p = have[db.s]
         if p then
             local required = ns.RecipeDB_Required(db)
-            if required and required <= p.rank and not knownByView(id) then
+            -- (a recipe tied to a world event is out of season most of the year: nobody can teach it)
+            if required and required <= p.rank and not ns.Seasonal_Event(id) and not knownByView(id) then
                 local list = found[db.s] or {}
                 found[db.s] = list
                 trainerKeys[db.s] = trainerKeys[db.s] or ns.RecipeDB_TrainerKey(db.s)
