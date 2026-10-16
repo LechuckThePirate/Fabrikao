@@ -21,10 +21,10 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
+    "- Data: fresh recipe data, as the public databases have them now.",
     "- Fix: the next rank of a profession (Journeyman...) shows up as soon as the skill is the one a trainer asks for (50 of 75...).",
     "- Fix: \"You can learn\" no longer lists recipes that are only taught in season (Gingerbread Cookie, Egg Nog...).",
     "- New: an icon next to \"You can learn\" orders its recipes by proximity, level or name.",
-    "- Data: fresh recipe data, as the public databases have them now.",
     "- Fix: the welcome windows of several addons no longer show through each other.",
     "- Fix: the View Quest button of a recipe is Completao's icon, next to the map and waypoint icons.",
 }, "\n")
