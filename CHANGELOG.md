@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.5
+
+- Data: recipe data with a few more recipes, sources and trainers, as the public databases have them now.
+
 ## 0.4.4
 
 - Data: fresh recipe data, as the public databases have them now.
