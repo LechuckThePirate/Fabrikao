@@ -92,6 +92,23 @@ vendors it names are among the NPCs whose positions are fetched), then
 each, for the map and TomTom buttons) and `recipes_write.mjs` again to put the positions in. Pages are cached in `tools/local/cache/`
 (`CACHE_TTL_DAYS` and `REFRESH_BUDGET` make a run download the oldest ones again, a few at a time). Source codes in the data: 1 crafted, 2 drop, 3 PvP, 4 quest, 5 vendor, 6 trainer, 16 gathered, 21 salvaged.
 
+**Layers (since mid-October 2026 the web sources refuse scripted requests to the Forever pages; a refusal is final, the tools never try to get
+around it).** `recipes_write.mjs <out> [--mode web|open] [--no-open] [--base ...] [--report f]` builds the data in layers, strongest first:
+what the web sources gave this run > what they gave earlier (the page and JSON caches and, in `open` mode, the last published file, which
+fills whatever the caches no longer rebuild or is the base when they are lost) > the open layer. The open layer
+(`tools/local/open/`) is the game's own client tables for the newest Forever build (`wago_fetch.mjs` downloads the CSVs, `wago.mjs` reads
+them) plus Questie's Forever database (`questie_db.mjs`, from the QuestieDB addon: `QUESTIEDB_TOC`), distilled by `build_open.mjs` into the
+small `open/open_data.json` (the only thing the server needs; the big sources stay on the maintainer's machine) and merged by
+`open_layer.mjs` + `merge.mjs`, which **only fill gaps and never replace or remove a value**: recipes with a teaching item that has a known
+source, ingredients, products and teaching items that are missing, vendors / quests / trainers / positions the data lacks (Questie's droppers
+and containers only for an item with no other source). Skill colors, learned-at levels, training costs, prices, drop chances, "new in Forever"
+and the position of an NPC that already has one are web-only or disputed and are never touched. `wh_probe.mjs` makes ONE request to tell if the
+web sources answer; `WH_OFFLINE=1` makes the fetch tools read only their cache; `recipes_fetch.mjs` keeps the earlier listing of a skill it
+could not fetch (a refusal used to leave `recipes_raw.json` empty). `compare_data.mjs old.lua new.lua` compares two data files field by
+field (lost / changed / added) and `node --test tools/local/selftest.mjs` checks the pipeline code, including that `open` mode on the current
+file loses and changes nothing. To refresh the open layer after a game build: `node tools/local/open/wago_fetch.mjs && node
+tools/local/open/build_open.mjs`, then `pwsh tools/local/vps/deploy.ps1` (without `-Cache`: the server's cache is newer than the local one).
+
 ## Forever's API (what the code relies on)
 
 Forever runs on the retail engine: professions use `GetProfessions()` / `GetProfessionInfo(index)` for the list. **All professions live in one
@@ -130,8 +147,12 @@ No deploy script: copy or symlink the repo root as `Fabrikao` into
   kept as `tools/local/vps/fabrikao-run.sh`) runs the tools above in a node container against a clone of this repo (the scripts and the page
   cache live in the clone's git-ignored `tools/local`; `tools/local/vps/deploy.ps1` copies them there, `-Cache` seeds the cache, `-Cron`
   installs the cron entry) and publishes `Recipes.lua` + `updated.txt` at `https://media.joanvilarino.online/fabrikao-data/` (a run
-  that lost more than 5 % of the recipes publishes nothing). `.github/workflows/update-recipe-data.yml` (cron 05:50) fetches it, checks
-  its shape and age, runs busted and opens the pull request `auto/recipe-data`, which the maintainer merges; nothing merges by itself.
+  that lost more than 5 % of the recipes publishes nothing). The run probes the web sources once (`wh_probe.mjs`): when they answer it crawls
+  them as before, when they refuse (or fail midway) it runs in `open` mode (see "Layers") and publishes `source.txt` (`web` or `open since
+  <date>`) next to `updated.txt`; the next run that they answer goes back to them by itself.
+  `.github/workflows/update-recipe-data.yml` (cron 05:50) fetches it, checks
+  its shape and age, warns (does not fail) while `source.txt` says `open`, still fails when `updated.txt` is over 3 days old, runs busted and
+  opens the pull request `auto/recipe-data` (its body says where the data came from), which the maintainer merges; nothing merges by itself.
   The server holds no credentials for this repo. Needs the repo setting "Allow GitHub Actions to create and approve pull requests".
   When the generator's output changes shape, update the scripts on the VPS with `deploy.ps1`. Log: `/var/log/fabrikao-data.log`.
 - **Release** (only when asked): one commit `release: X.Y.Z -- short summary` that bumps `## Version` in `Fabrikao.toc` and adds the
