@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.6
+
+- Data: the trainers of several professions, as the public databases have them now.
+
 ## 0.4.5
 
 - Data: recipe data with a few more recipes, sources and trainers, as the public databases have them now.
