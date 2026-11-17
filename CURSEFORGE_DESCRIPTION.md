@@ -129,9 +129,16 @@ filters or all the preferences. Settings can be saved per character or shared by
 | `/fab minimap` | Shows or hides the minimap button |
 | `/fab version` | The addon's version |
 
+## Supported game versions
+
+- Classic "Forever"
+- Classic Era
+- TBC Classic (Anniversary)
+
 ## Languages
 
-English and Spanish (esES / esMX).
+English, Spanish (esES / esMX) and French (frFR) -- the French translation is by
+Kroosstiich, thank you! Missing your language? Open an issue or a pull request on GitHub.
 
 ## Feedback
 
