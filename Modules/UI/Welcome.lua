@@ -21,8 +21,9 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
-    "- New: recipes, trainers, vendors, creatures, quests, herbs, veins and chests are named in the game's language, " ..
-        "and the search finds them by those names too.",
+    "- New: French translation, for the French game client (thanks to Kroosstiich).",
+    "- Fix: on WoW Forever with the gamepad UI, picking a sort order or another filter in the recipe lists no longer " ..
+        "ends in \"Fabrikao has been blocked from an action\".",
 }, "\n")
 
 local welcomeFrame
