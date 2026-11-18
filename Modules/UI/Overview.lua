@@ -740,7 +740,6 @@ local function layoutCraft()
     if mineNone and #who > 1 then line(DIM .. L["Nothing to craft with what your bags hold."] .. "|r", 8) end
 
     -- each alt's, under its name, by profession
-    local altsAny = false
     for i = 2, #who do
         local owner = who[i].owner
         local byProfession = {}
@@ -752,7 +751,6 @@ local function layoutCraft()
             list[#list + 1] = craft
         end
         if count > 0 then
-            altsAny = true
             y = y + 10
             local s = q.sections.next()
             s:ClearAllPoints()
@@ -779,23 +777,59 @@ local function layoutCraft()
     end
     q.title:SetText(("%s (%d)"):format(L["You can craft now"], all))
 
-    local note
-    if #who > 1 and not ns.Inventory_Installed() then
-        -- without Embolsao!! nothing is known of what the other characters carry
-        note = L["Install Embolsao!! to see what your other characters can craft with what they carry."]
-        if not mineNone then
-            line(DIM .. note .. "|r", 8)
-            note = nil
-        end
-    elseif mineNone and not altsAny then
-        note = L["Nothing to craft with what your bags hold."]
+    -- without Embolsao!! nothing is known of what the other characters carry: said at the end, with its link
+    local promo = q.embolsao
+    promo:Hide()
+    promo.box:Hide()
+    if ns.Consolidated() and not ns.Inventory_Installed() then
+        if mineNone and #who == 1 then line(DIM .. L["Nothing to craft with what your bags hold."] .. "|r", 8) end
+        y = y + 8
+        promo:ClearAllPoints()
+        promo:SetPoint("TOPLEFT", q.content, "TOPLEFT", 8, -y)
+        promo:SetPoint("RIGHT", q.content, "RIGHT", -8, 0)
+        promo:Show()
+        local textHeight = math.max(promo.text:GetStringHeight() or 0, 28)
+        promo:SetHeight(textHeight + 34)
+        y = y + textHeight + 38
+        finishLayout(q, y)
+        return
     end
-    if note and mineNone and #who > 1 then
-        -- (the line that the playing character has nothing is already there: the note goes under it)
-        line(DIM .. note .. "|r", 8)
-        note = nil
-    end
-    finishLayout(q, y, note)
+    finishLayout(q, y, (mineNone and #who == 1) and L["Nothing to craft with what your bags hold."] or nil)
+end
+
+-- The end of "You can craft now" with "Consolidate alts" on and no Embolsao!!: why the alts are not there, and a button that shows the
+-- link to Embolsao!! on CurseForge, selected to copy (the game cannot open a web page).
+local function newEmbolsaoPromo(content)
+    local promo = CreateFrame("Frame", nil, content)
+    promo.text = promo:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    promo.text:SetPoint("TOPLEFT")
+    promo.text:SetPoint("TOPRIGHT")
+    promo.text:SetJustifyH("LEFT")
+    promo.text:SetWordWrap(true)
+    promo.text:SetText(
+        L["Install Embolsao!! to bring your alts in: without it there is no knowing what they carry, so only what this character can craft is here."])
+    promo.button = CreateFrame("Button", nil, promo, "UIPanelButtonTemplate")
+    promo.button:SetSize(170, 22)
+    promo.button:SetPoint("BOTTOMLEFT", 0, 4)
+    promo.button:SetText(L["Embolsao!! on CurseForge"])
+    promo.box = ns.LinkBox(promo, ns.EMBOLSAO_URL, 260)
+    promo.box:SetPoint("LEFT", promo.button, "RIGHT", 8, 0)
+    promo.box:SetPoint("RIGHT", promo, "RIGHT", 0, 0)
+    promo.box:Hide()
+    promo.button:SetScript("OnClick", function()
+        promo.box:Show()
+        promo.box:SetFocus()
+        promo.box:HighlightText()
+    end)
+    promo.button:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L["Embolsao!! on CurseForge"], 1, 1, 1)
+        GameTooltip:AddLine(L["Shows the link, selected: copy it with Ctrl+C (the game cannot open web pages)."], 1, 0.82, 0, true)
+        GameTooltip:Show()
+    end)
+    promo.button:SetScript("OnLeave", GameTooltip_Hide)
+    promo:Hide()
+    return promo
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -902,6 +936,7 @@ function ns.Overview_Create(parent, top)
     craft.title:SetText(L["You can craft now"])
     craft.rows = newPool(function() return newCraftRow(craft.content) end)
     craft.relayout = layoutCraft
+    craft.embolsao = newEmbolsaoPromo(craft.content)
 
     return overview
 end

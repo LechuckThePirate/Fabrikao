@@ -83,9 +83,11 @@ local es = {
     ["%s: %d / %d"] = "%s: %d / %d",
     ["%d possible with the bags of %s"] = "%d posibles con las bolsas de %s",
     ["Log in with that character to craft it."] = "Entra con ese personaje para fabricarla.",
-    ["Install Embolsao!! to see what your other characters can craft with what they carry."] =
-        "Instala Embolsao!! para ver lo que tus otros personajes pueden fabricar con lo que llevan.",
-    ["Nothing to craft with what their bags hold."] = "No hay nada que fabricar con lo que llevan en las bolsas.",
+    ["Install Embolsao!! to bring your alts in: without it there is no knowing what they carry, so only what this character can craft is here."] =
+        "Instala Embolsao!! para integrar a tus alters: sin él no se sabe qué llevan en las bolsas, así que aquí solo sale lo que fabrica este personaje.",
+    ["Embolsao!! on CurseForge"] = "Embolsao!! en CurseForge",
+    ["Shows the link, selected: copy it with Ctrl+C (the game cannot open web pages)."] =
+        "Muestra el enlace ya seleccionado: cópialo con Ctrl+C (el juego no puede abrir páginas web).",
 
     -- recipes
     ["Known"] = "Conocida",

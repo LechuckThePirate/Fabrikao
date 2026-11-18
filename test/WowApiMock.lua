@@ -159,7 +159,7 @@ local function methodFor(self, k)
     -- is nil, as in the game
     if type(k) ~= "string" then return nil end
     local verbs = { "Set", "Get", "Is", "Has", "Can", "Create", "Register", "Unregister", "Enable", "Disable",
-        "Start", "Stop", "Lock", "Unlock", "Raise", "Lower", "Play", "Add", "Clear", "Hook", "Adjust", "Update" }
+        "Start", "Stop", "Lock", "Unlock", "Raise", "Lower", "Play", "Add", "Clear", "Hook", "Adjust", "Update", "Highlight" }
     local isMethod = false
     for _, v in ipairs(verbs) do
         if k:sub(1, #v) == v and (k:len() == #v or k:sub(#v + 1, #v + 1):match("%u")) then isMethod = true break end
