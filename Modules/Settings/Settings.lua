@@ -12,7 +12,7 @@ ns.DEFAULTS = {
 }
 
 local SWITCHABLE = {
-    quiet = true, minimap = true, view = true, scale = true, useAlts = true,
+    quiet = true, minimap = true, view = true, scale = true, useAlts = true, consolidateAlts = true,
 }
 
 local function deepCopy(value)

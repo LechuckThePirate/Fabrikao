@@ -145,17 +145,22 @@ describe("The next rank of a profession", function()
             FabrikaoDB.characters = { ["Elsa-Realm"] = { name = "Elsa", realm = "Realm", class = "MAGE", time = 1, level = 5, professions = {
                 { skillLine = 164, name = "Blacksmithing", icon = 333, rank = 75, maxRank = 75, primary = true, hasRecipes = true, known = {} },
             } } }
+            -- with Consolidate alts on, her Blacksmithing is listed (after the playing character's own profession)
+            local function smithing()
+                for _, b in ipairs(framesWith("profession")) do
+                    if b.profession.skillLine == 164 then return b.train:IsShown() and b.train._text or nil end
+                end
+                error("no Blacksmithing")
+            end
             ns.UI_Show()
-            ns.UI_ViewCharacter("Elsa-Realm")
-            assert.is_nil(badge())
+            ns.SetConsolidated(true)
+            assert.is_nil(smithing())
             FabrikaoDB.characters["Elsa-Realm"].level = nil -- a copy of an older version: unknown, not the playing character's
-            ns.UI_ViewCharacter(nil)
-            ns.UI_ViewCharacter("Elsa-Realm")
-            assert.is_nil(badge())
+            ns.Overview_Refresh()
+            assert.is_nil(smithing())
             FabrikaoDB.characters["Elsa-Realm"].level = 12
-            ns.UI_ViewCharacter(nil)
-            ns.UI_ViewCharacter("Elsa-Realm")
-            assert.are.equal("Can train: Journeyman", badge())
+            ns.Overview_Refresh()
+            assert.are.equal("Can train: Journeyman", smithing())
         end)
     end)
 

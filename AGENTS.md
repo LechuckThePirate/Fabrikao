@@ -38,7 +38,7 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search
   of every recipe (dropdowns of the game's menus, `WowStyle1DropdownTemplate` + `SetupMenu` with radios, falling back to cycling buttons when
   the templates are missing; each keeps its own filters: `ns.char.filters`, `ns.char.searchFilters`; the category of a recipe comes from
-  its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/Overview.lua` — the start screen under the welcome line, the search, the character picker and the button of the professions
+  its product item through `C_Item.GetItemInfoInstant`, `ns.RecipeDB_Category`); `Modules/UI/Overview.lua` — the start screen under the welcome line, the search and the button of the professions
   not learned: the professions (top left), what can be crafted now (bottom left, `ns.Recipes_CraftableNow`) and, the whole right side,
   what can be learned (`ns.Recipes_LearnableNow`: the ranks and the recipes by profession, the recipe with the nearest
   trainer or vendor first: `ns.RecipeDB_TrainerKey` / `_TeacherKey`), where a click on a rank or a recipe opens
@@ -59,11 +59,16 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   that it lacks) and `Recipes.lua`
   (a profession's recipes for the lists: from the data, with "known" from the spell book; the live answer of the game's window
   instead when that profession's tab is open; filtering, search and the "how many can I make" count from the bags)
-- `Modules/Professions/Roster.lua` — the alt viewer's data: each character saves its professions and the recipes of the data it knows in
-  `FabrikaoDB.characters[key]` (at login, when the skills or recipes change and at logout); `ns.Roster_SetView(key)` makes the window show
-  another character (read only: no live trade skill read, no Craft button, ingredient counts from Embolsao's copies of that character; the
-  window is tinted blue and the title and a line on the recipes page name it; closing the window puts the playing character back).
-  Everything that asks "does the character know it?" goes through `ns.Roster_Knows`, and the professions through `ns.Professions_List`
+- `Modules/Professions/Roster.lua` — the alts' data and "Consolidate alts": each character saves its professions, ruleset (realm, +HC on
+  Hardcore), level and the recipes of the data it knows in `FabrikaoDB.characters[key]` (at login, when the skills or recipes change and at
+  logout). The switch in the title bar (`ns.Consolidated()`, `ns.char.consolidateAlts`, as in Completao: same "Consolidate alts" text) puts
+  together the characters of the playing one's ruleset (`ns.Roster_Alts`) for the whole addon: `ns.Roster_Knows` counts as known what any
+  of them knows (`ns.Roster_KnowsFor(key, id)` per character, `ns.Roster_KnownBy` for "Known by" in the panel and the tooltips),
+  `ns.Professions_List` is `ns.Roster_AccountProfessions` (each profession once, `holders` = the alts that have it, named after it in their
+  class color; `owner` = whose skill it shows, nil for the playing one), the start screen's "You can learn" and "You can craft now" are per
+  character (an alt's from its copy and Embolsao's copy of its bags), and the lists come from the data, never the game's live window
+  (`ns.Recipes_LiveAllowed`). **Only the playing character crafts**: an alt's craft rows are not clickable and the panel's Craft button is
+  only for what the playing character knows. The old picker that showed one alt at a time is gone
 - `Modules/UI/` — `MainWindow.lua` (the frame and the recipes page; the start screen is `Overview.lua`), `SearchPage.lua` (search of every recipe in the data, with a detail
   panel) and `MinimapButton.lua`; `Bindings.xml` has the key binding (the game loads it itself: **never list it in the TOC**)
 - `Data/Vanilla/Generated/Recipes.lua` and `Data/TBC/Generated/Recipes.lua` (**generated, never edit by hand**): the same shape for Classic Era and TBC Anniversary, see below; `Data/DataClassic.test.lua` checks them

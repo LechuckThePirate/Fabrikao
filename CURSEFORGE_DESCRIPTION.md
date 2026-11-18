@@ -11,8 +11,8 @@ learn them: which trainer, which vendor, which creature drops them, with the dis
 ## Features
 
 ### Your professions
-The window (`/fab`, the minimap button or a key binding) opens on a start screen in three parts, under a search box and the
-picker of the character to look at: your **professions** -- the primary ones first (rogues have **Poisons** among them),
+The window (`/fab`, the minimap button or a key binding) opens on a start screen in three parts, under a search box: your
+**professions** -- the primary ones first (rogues have **Poisons** among them),
 then First Aid, Cooking and Fishing -- each with its icon and skill bar; **what you can craft now** with what your bags
 hold, and **what you can learn**. Click a profession to see its recipes. The **gear** next to the close button opens the
 preferences, and the window can be resized and remembers its size and place. A scroll bar only shows when there is
@@ -26,9 +26,12 @@ and, with TomTom installed, a waypoint icon. The Expert rank of Cooking, First A
 and the Artisan one a quest: the vendors and whoever gives the quest are there instead of the trainers.
 
 ### Your other characters
-The picker above the professions shows the professions and recipes of **your other characters** as if you were playing
-them (read only, no crafting): the window turns blue and says whose they are. A character appears once you have logged in
-with it. A button lists the professions you have not learned too, so you can browse their recipes and trainers.
+**Consolidate alts**, the switch in the title bar (the same as in Completao!!), looks at all your characters of the realm as
+one, in the whole addon: every profession of any of them is listed once, with the names of the alts that have it in their
+class color; a recipe any of them knows counts as known, and its panel and tooltip say **who knows it**; and the start
+screen shows what **each of them can learn** and **can craft now** with their own bags (with Embolsao!!). Only the character
+you play crafts: an alt's recipes are there to tell, not to click. A character appears once you have logged in with it. A
+button lists the professions you have not learned too, so you can browse their recipes and trainers.
 
 ### Every recipe, known or not
 A profession's page lists the recipes you **know** first, colored by difficulty as in the game (orange, yellow, green,

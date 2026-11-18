@@ -9,9 +9,11 @@ local WIDTH, HEIGHT = 440, 560
 local ICON = "Interface\\AddOns\\" .. ADDON .. "\\Icons\\Fabrikao.png"
 local ISSUES_URL = "https://github.com/LechuckThePirate/Fabrikao/issues"
 
+ns.EMBOLSAO_URL = "https://www.curseforge.com/wow/addons/embolsao" -- (also offered on the start screen, Overview.lua)
+
 -- The other addons of the same author, shown with their links.
 local SIBLINGS = {
-    { name = "Embolsao!!", url = "https://www.curseforge.com/wow/addons/embolsao" },
+    { name = "Embolsao!!", url = ns.EMBOLSAO_URL },
     { name = "Completao!!", url = "https://www.curseforge.com/wow/addons/completao-forever" },
     { name = "Aggreao!!", url = "https://www.curseforge.com/wow/addons/aggreao" },
 }
@@ -46,6 +48,7 @@ local function linkBox(parent, url, width)
     box:SetScript("OnLeave", function(self) self:SetTextColor(0.4, 0.7, 1, 1) end)
     return box
 end
+ns.LinkBox = linkBox -- (the start screen's link to Embolsao!! is one too)
 
 local function create()
     welcomeFrame = CreateFrame("Frame", "FabrikaoWelcomeFrame", UIParent, "BackdropTemplate")

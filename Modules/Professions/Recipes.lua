@@ -132,7 +132,7 @@ end
 
 -- The last copy read of a profession (this session), whether its window is open or not.
 function ns.Recipes_Cached(skillLine)
-    if ns.Roster_ViewKey and ns.Roster_ViewKey() then return nil end -- the copies are the playing character's
+    if not ns.Recipes_LiveAllowed() then return nil end -- the copies are the playing character's
     return cache[skillLine]
 end
 
@@ -307,23 +307,48 @@ function ns.Recipes_FromData(skillLine, rank)
     return copy
 end
 
--- What the playing character can make right now across its professions: the recipes of the data it knows (the spell book) whose
--- ingredients its bags hold. `professions` is a list as ns.Professions_Mine returns it. Returns
--- { { recipe =, craftable =, skillLine =, profession = the profession's name }, ... }, orange first and then by name, cut to `limit`
--- when given, and how many there were in all.
-function ns.Recipes_CraftableNow(professions, limit)
+-- How many times the bags of a saved character allow the recipe (Embolsao!!'s copy of them; `counts` keeps what was asked).
+local function craftableBy(name, reagents, counts)
+    local most
+    for _, reagent in ipairs(reagents) do
+        local have = 0
+        for _, itemID in ipairs(reagent.items) do
+            if counts[itemID] == nil then counts[itemID] = ns.Inventory_CountFor(itemID, name) end
+            have = have + counts[itemID]
+        end
+        local times = math.floor(have / reagent.quantity)
+        most = most and math.min(most, times) or times
+    end
+    return most or 0
+end
+
+-- What a character can make right now across its professions: the recipes of the data it knows whose ingredients its bags hold.
+-- `professions` is a list as ns.Professions_Mine returns it; `owner` the key of a saved character (its copy of the recipes and
+-- Embolsao!!'s of its bags: only to tell, it crafts when it is the one playing), nil for the playing one (the spell book and the bags).
+-- Returns { { recipe =, craftable =, skillLine =, profession = the profession's name, owner = }, ... }, orange first and then by name,
+-- cut to `limit` when given, and how many there were in all.
+function ns.Recipes_CraftableNow(professions, limit, owner)
     local have = {}
     for _, p in ipairs(professions) do
         if p.hasRecipes then have[p.skillLine] = p end
     end
-    local found = {}
+    local name = owner and ns.Roster_BagsName(owner)
+    if owner and not name then return {}, 0 end
+    local found, counts = {}, {}
     for id, db in ns.RecipeDB_Each() do
         local p = have[db.s]
-        if p and db.m and #db.m > 0 and ns.RecipeDB_Known(id) then
+        local known
+        if owner then known = ns.Roster_KnowsFor(owner, id) else known = ns.RecipeDB_Known(id) end
+        if p and db.m and #db.m > 0 and known then
             -- the bags first: only what can be made is worth building
-            local craftable = ns.Recipes_Craftable({ reagents = reagentsOfData(db) }, false)
+            local reagents = reagentsOfData(db)
+            local craftable
+            if owner then craftable = craftableBy(name, reagents, counts) else craftable = ns.Recipes_Craftable({ reagents = reagents }, false) end
             if craftable > 0 then
-                found[#found + 1] = { recipe = fromData(id, db, true, p.rank, false), craftable = craftable, skillLine = p.skillLine, profession = p.name }
+                found[#found + 1] = {
+                    recipe = fromData(id, db, true, p.rank, false), craftable = craftable, skillLine = p.skillLine, profession = p.name,
+                    owner = owner,
+                }
             end
         end
     end
@@ -340,9 +365,9 @@ function ns.Recipes_CraftableNow(professions, limit)
     return found, total
 end
 
--- Does the character the window shows know the recipe? (the spell book of the playing one, the saved copy of another)
-local function knownByView(id)
-    if ns.Roster_Knows then return ns.Roster_Knows(id) end
+-- Does the character of a profession know the recipe? (the spell book of the playing one, the saved copy of another: its `owner`)
+local function knownBy(p, id)
+    if ns.Roster_KnowsFor then return ns.Roster_KnowsFor(p.owner, id) end
     return ns.RecipeDB_Known(id)
 end
 
@@ -389,7 +414,7 @@ function ns.Recipes_LearnableNow(professions, limit, sortBy)
         if p then
             local required = ns.RecipeDB_Required(db)
             -- (a recipe tied to a world event is out of season most of the year: nobody can teach it)
-            if required and required <= p.rank and not ns.Seasonal_Event(id) and not knownByView(id) then
+            if required and required <= p.rank and not ns.Seasonal_Event(id) and not knownBy(p, id) then
                 local list = found[db.s] or {}
                 found[db.s] = list
                 trainerKeys[db.s] = trainerKeys[db.s] or ns.RecipeDB_TrainerKey(db.s)
@@ -449,12 +474,17 @@ function ns.Recipes_Teachers(db)
     return out
 end
 
+-- Can the lists be the game window's live answer? Not with "Consolidate alts" on: the window knows nothing of the alts' recipes.
+function ns.Recipes_LiveAllowed()
+    return not (ns.Consolidated and ns.Consolidated())
+end
+
 -- A profession's recipes: callback(copy) at once. The live answer of the game's window if that profession's is open,
--- else the data's (always the data's for another character: the window is the playing one's).
+-- else the data's (always the data's for the whole account, see ns.Recipes_LiveAllowed).
 -- opts: { name = the profession's name, rank = the character's skill }
 function ns.Recipes_Request(skillLine, callback, opts)
     opts = opts or {}
-    local other = ns.Roster_ViewKey and ns.Roster_ViewKey() ~= nil
+    local other = not ns.Recipes_LiveAllowed()
     local copy = (not other and ns.Recipes_Read(skillLine, opts.name)) or ns.Recipes_FromData(skillLine, opts.rank)
     copy.rank = opts.rank
     if not other then cache[skillLine] = copy end

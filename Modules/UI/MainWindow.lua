@@ -2,17 +2,14 @@ local ADDON, ns = ...
 local L = ns.L
 
 -- The addon's window. First page: the start screen in four quadrants (Overview.lua): the character's professions, what it can learn,
--- what it can craft now and the trainers close by, under a search box, the picker of the character to look at (the playing one, or an
--- alt that has logged in with the addon: its professions and known recipes as it saved them, Roster.lua) and a button that lists the
--- professions that are not learned too. Click a profession for its recipes: the ones the character knows (colored by difficulty, with
--- how many it can make from the bags) and, below, the ones it doesn't know, with a search box, filters, sorting and two views to choose
--- from (RecipeList.lua). The gear opens the preferences.
--- Another character's professions are read only (no crafting) and the window shows it: tinted blue, with the name in the title.
+-- what it can craft now and the trainers close by, under a search box and a button that lists the professions that are not learned
+-- too. Click a profession for its recipes: the ones the character knows (colored by difficulty, with how many it can make from the bags)
+-- and, below, the ones it doesn't know, with a search box, filters, sorting and two views to choose from (RecipeList.lua). The gear opens the preferences.
+-- "Consolidate alts", the switch in the title bar, looks at every character of the account as one (Roster.lua).
 
 local WIDTH, HEIGHT = 760, 620
 local MIN_WIDTH, MIN_HEIGHT = 640, 420
 local MAX_WIDTH, MAX_HEIGHT = 1600, 1200
-local VIEW_TINT = { 0.15, 0.35, 0.9, 0.3 } -- as Embolsao!!'s window when it shows another character's bags
 
 local frame, overview, page
 local state = { skillLine = nil, copy = nil, professionName = nil }
@@ -105,8 +102,10 @@ end
 
 -- a click on a recipe: its panel opens next to the window
 local function selectRecipe(data)
+    local profession = state.skillLine and ns.Professions_Get(state.skillLine)
     ns.RecipeDetail_Show(data.recipe, {
         parent = frame, alts = data.alts, rank = state.copy and state.copy.rank,
+        owner = profession and profession.owner, -- (the skill is an alt's: a profession only alts have, "Consolidate alts")
         onClose = function() ns.RecipeList_Select(nil) end,
     })
     ns.RecipeList_Select(data.recipe.id)
@@ -145,10 +144,11 @@ local function createPage(parent, top)
     page.title:SetPoint("LEFT", page.icon, "RIGHT", 8, 0)
     page.rank = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     page.rank:SetPoint("TOPRIGHT", 0, -4)
-    -- said on the page itself when the recipes are another character's (the window is tinted too, see applyViewLook)
-    page.viewBanner = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    page.viewBanner:SetPoint("TOPRIGHT", page.rank, "BOTTOMRIGHT", 0, -2)
-    page.viewBanner:Hide()
+    -- said on the page itself when the recipes are the whole account's ("Consolidate alts")
+    page.accountBanner = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    page.accountBanner:SetPoint("TOPRIGHT", page.rank, "BOTTOMRIGHT", 0, -2)
+    page.accountBanner:SetTextColor(0.4, 1, 0.4)
+    page.accountBanner:Hide()
 
     -- the profession's trainers, nearest first, in a panel next to the window (Trainers.lua)
     page.trainersButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
@@ -245,6 +245,12 @@ function ns.UI_ShowRecipes(profession)
         if notice then text = text .. "  |cff40ff40" .. notice .. "|r" end
         page.rank:SetText(text)
     end
+    -- the whole account: the recipes any character knows are known, the skill is the one of the character named
+    if ns.Consolidated() then
+        page.accountBanner:SetText(profession.owner and L["All your characters (skill of %s)"]:format(ns.Roster_NameOf(profession.owner))
+            or L["All your characters"])
+    end
+    page.accountBanner:SetShown(ns.Consolidated())
     page.search:SetText("")
     page.updateHint()
     updateControls()
@@ -260,47 +266,22 @@ function ns.UI_ShowRecipes(profession)
 end
 
 ---------------------------------------------------------------------------------------------------
--- Another character's professions
+-- Consolidate alts
 ---------------------------------------------------------------------------------------------------
--- The window says whose professions it shows, so they can't be taken for the character's own: the background tinted blue (as
--- Embolsao!!'s when it shows another character's bags), the name in the title and a line on the recipes page.
-local function applyViewLook()
+-- The switch was flipped: whatever page is open is drawn again for the whole account, or for the playing character again (a
+-- profession only an alt has goes back to the start screen).
+function ns.UI_ConsolidatedChanged()
     if not frame then return end
-    local viewed = ns.Roster_Viewed()
-
-    if not frame.viewTint then
-        local tint = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
-        tint:SetPoint("TOPLEFT", 4, -22)
-        tint:SetPoint("BOTTOMRIGHT", -4, 4)
-        tint:SetColorTexture(VIEW_TINT[1], VIEW_TINT[2], VIEW_TINT[3], VIEW_TINT[4])
-        tint:Hide()
-        frame.viewTint = tint
+    frame.consolidateSwitch.Update()
+    ns.RecipeDetail_Hide()
+    if state.skillLine then
+        local profession = ns.Professions_Get(state.skillLine)
+        if profession then ns.UI_ShowRecipes(profession) else ns.UI_ShowOverview() end
+    elseif overview:IsShown() then
+        ns.Overview_Refresh()
+    else
+        ns.SearchPage_Refresh()
     end
-    frame.viewTint:SetShown(viewed ~= nil)
-    local bg = frame.Bg or (frame.NineSlice and frame.NineSlice.Bg)
-    if bg and bg.SetVertexColor then
-        if viewed then bg:SetVertexColor(0.55, 0.7, 1) else bg:SetVertexColor(1, 1, 1) end
-    end
-
-    local title = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText
-    if title then
-        local text = ("Fabrikao!! v%s"):format(ns.Version())
-        if viewed then text = text .. " - " .. ns.Roster_ColoredName(viewed) end
-        title:SetText(text)
-    end
-
-    if page then
-        page.viewBanner:SetShown(viewed ~= nil)
-        if viewed then page.viewBanner:SetText(L["Professions of %s (read only)"]:format(ns.Roster_ColoredName(viewed))) end
-    end
-end
-
--- Shows the professions of another character (a key of ns.Roster_Others), or the playing character's again with nil. It always
--- goes back to the list of professions, which is another one.
-function ns.UI_ViewCharacter(key)
-    ns.Roster_SetView(key)
-    applyViewLook()
-    if frame and state.skillLine then ns.UI_ShowOverview() elseif frame then ns.Overview_Refresh() end
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -407,6 +388,47 @@ local function createFrame()
     gear:SetScript("OnLeave", GameTooltip_Hide)
     frame.gear = gear
 
+    -- "Consolidate alts", left of the gear, as in Completao!!: an on/off switch (a track and a knob that slides to the right when on),
+    -- for the whole addon, so it sits in the title bar
+    local switch = CreateFrame("Button", nil, frame)
+    switch:SetSize(30, 14)
+    switch:SetFrameLevel(level)
+    switch:SetPoint("RIGHT", gear, "LEFT", -8, 0)
+    local track = switch:CreateTexture(nil, "BACKGROUND")
+    track:SetAllPoints()
+    local knob = switch:CreateTexture(nil, "ARTWORK")
+    knob:SetSize(12, 12)
+    knob:SetColorTexture(0.95, 0.95, 0.95, 1)
+    local switchLabel = switch:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    switchLabel:SetPoint("RIGHT", switch, "LEFT", -5, 0)
+    switchLabel:SetText(L["Consolidate alts"])
+    function switch.Update()
+        local on = ns.Consolidated()
+        switch.on = on
+        track:SetColorTexture(on and 0.20 or 0.30, on and 0.65 or 0.30, on and 0.25 or 0.30, 1)
+        knob:ClearAllPoints()
+        knob:SetPoint(on and "RIGHT" or "LEFT", on and -1 or 1, 0)
+        switchLabel:SetTextColor(on and 0.4 or 0.6, on and 1 or 0.6, on and 0.4 or 0.6)
+    end
+    switch:SetScript("OnClick", function()
+        ns.SetConsolidated(not ns.Consolidated())
+    end)
+    switch:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:SetText(L["Consolidate alts"])
+        for _, line in ipairs({
+            L["Looks at all your characters as one: a recipe any of them knows counts as known, and the professions of all of them are listed."],
+            L["The start screen shows what each of them can learn and craft now (with their bags, from Embolsao!!); only the character you play crafts."],
+            L["Only the characters of the same realm go together. Each one is remembered once it logs in."],
+        }) do
+            GameTooltip:AddLine(line, 1, 1, 1, true)
+        end
+        GameTooltip:Show()
+    end)
+    switch:SetScript("OnLeave", GameTooltip_Hide)
+    switch.Update()
+    frame.consolidateSwitch = switch
+
     overview = ns.Overview_Create(frame, top)
 
     createPage(frame, top)
@@ -415,14 +437,6 @@ local function createFrame()
     frame:HookScript("OnShow", function()
         if state.skillLine then refreshRecipes() else ns.Overview_Refresh() end
     end)
-    -- closing the window puts the playing character's professions back, as Embolsao!! does with the bags
-    frame:HookScript("OnHide", function()
-        if ns.Roster_ViewKey() then
-            ns.Roster_SetView(nil)
-            applyViewLook()
-        end
-    end)
-    applyViewLook()
     local events = CreateFrame("Frame")
     events:RegisterEvent("SKILL_LINES_CHANGED")
     events:RegisterEvent("BAG_UPDATE_DELAYED")

@@ -137,15 +137,17 @@ describe("Poisons", function()
             assert.are.same({}, ns.Professions_Missing(ns.Professions_List()))
         end)
 
-        it("an alt's class decides it when looking at an alt", function()
+        it("an alt rogue's Poisons are listed with Consolidate alts on, with what it can learn by its own known ones", function()
             setup("MAGE", 40, false)
             FabrikaoDB.characters = { ["Rex-Realm"] = { name = "Rex", realm = "Realm", class = "ROGUE", level = 30, time = 1, professions = {
-                { skillLine = 185, name = "Cooking", icon = 333, rank = 20, maxRank = 75, primary = false, hasRecipes = true, known = {} },
+                { skillLine = 40, name = "Poisons", icon = 333, rank = 150, maxRank = 300, primary = true, hasRecipes = true, known = { 8681 } },
             } } }
-            ns.Roster_SetView("Rex-Realm")
-            local missing = {}
-            for _, p in ipairs(ns.Professions_Missing(ns.Professions_List())) do missing[#missing + 1] = p.skillLine end
-            assert.are.same({ 40 }, missing)
+            ns.char.consolidateAlts = true
+            local poisons
+            for _, p in ipairs(ns.Professions_List()) do if p.skillLine == 40 then poisons = p end end
+            assert.are.equal("Rex-Realm", poisons.owner)
+            assert.are.equal("Can learn: 2", ns.Professions_Notice(poisons)) -- Instant Poison is his already
+            assert.are.same({}, ns.Professions_Missing(ns.Professions_List()))
         end)
     end)
 

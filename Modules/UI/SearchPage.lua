@@ -284,6 +284,11 @@ function ns.SearchPage_ResetFilters()
     if page:IsVisible() then refresh() end
 end
 
+-- Lists the matches again when the page is shown (what counts as known changed: "Consolidate alts").
+function ns.SearchPage_Refresh()
+    if page and page:IsVisible() then refresh() end
+end
+
 function ns.SearchPage_Results()
     return state.results
 end

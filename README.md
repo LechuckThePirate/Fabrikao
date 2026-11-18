@@ -6,7 +6,7 @@ For WoW Forever (`Fabrikao.toc`: interface 16001), Classic Era (`Fabrikao_Vanill
 (`Fabrikao_TBC.toc`: 20506). What it does is in `CURSEFORGE_DESCRIPTION.md` and `CHANGELOG.md`: the
 character's professions, every recipe of the game (known or not) with filters, a table and a detailed view, a panel with everything
 known about a recipe, a search of every recipe, trainers, vendors and creatures on the map (and TomTom waypoints), and optional
-the professions and known recipes of your other characters (read only), and optional integrations with Embolsao (items of the other
+"Consolidate alts" (every character of the realm as one: their professions, what each knows, can learn and can craft), and optional integrations with Embolsao (items of the other
 characters) and Auctionator (prices).
 
 ## Install (development)

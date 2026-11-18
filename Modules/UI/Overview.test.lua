@@ -126,11 +126,9 @@ describe("The start screen", function()
     end)
 
     describe("what is on it", function()
-        it("welcomes, and keeps the search, the picker of the character and the button of the professions not learned", function()
+        it("welcomes, and keeps the search and the button of the professions not learned", function()
             assert.are.equal(1, #text("^Welcome to Fabrikao"))
             assert.is_not_nil(WowMock.Find(function(f) return f._template == "InputBoxTemplate" and f:IsVisible() end))
-            assert.is_not_nil(WowMock.Find(function(f) return f._template == "WowStyle1DropdownTemplate" and f:IsVisible() end)
-                or WowMock.Find(function(f) return f._text == "My professions" and f:IsVisible() end))
             assert.are.equal(1, #text("professions not learned$"))
         end)
 
@@ -416,24 +414,48 @@ describe("The start screen", function()
         end)
     end)
 
-    describe("another character's professions", function()
+    describe("with Consolidate alts on", function()
         before_each(function()
+            _G.RAID_CLASS_COLORS = { MAGE = { colorStr = "ff3fc7eb" } }
             FabrikaoDB.characters = { ["Elsa-Realm"] = { name = "Elsa", realm = "Realm", class = "MAGE", level = 12, time = 1, professions = {
                 { skillLine = 171, name = "Alchemy", icon = 111, rank = 40, maxRank = 75, primary = true, hasRecipes = true, known = { 3 } },
             } } }
-            ns.UI_ViewCharacter("Elsa-Realm")
+            ns.SetConsolidated(true)
         end)
 
-        it("the learnable recipes are the alt's: its skill and what it knows", function()
+        it("names the alts that have a profession next to it, in their class color", function()
+            local row
+            for _, f in ipairs(framesWith("profession")) do
+                if f.profession.skillLine == 171 then row = f end
+            end
+            assert.matches("|cff3fc7ebElsa|r", row.name._text)
+            assert.are.equal(1, #text("^All your characters$"))
+        end)
+
+        it("what each character can learn is apart, under its name: the alt's by its skill and what it knows", function()
             -- skill 40: the Elixir (1) and the Mana Potion (30) are within reach; the alt knows the potion, not the elixir (the
             -- playing character does)
             openGroups()
-            assert.are.same({ "Elixir of Wisdom" }, learnNames())
+            local hers = {}
+            for _, f in ipairs(framesWith("learn")) do
+                if f.learn.owner == "Elsa-Realm" then hers[#hers + 1] = f.name._text end
+            end
+            assert.are.same({ "Elixir of Wisdom" }, hers)
+            -- under her name, after everything of the playing character's
+            local name = text("^|cff3fc7ebElsa|r %(1%)$")[1]
+            assert.is_not_nil(name)
+            local _, _, _, _, nameY = name:GetPoint()
+            for _, f in ipairs(framesWith("learn")) do
+                local _, _, _, _, rowY = f:GetPoint()
+                if f.learn.owner == nil then assert.is_true(rowY > nameY) else assert.is_true(rowY < nameY) end
+            end
         end)
 
-        it("the craft quadrant says there is no crafting", function()
-            assert.are.equal(1, #text("^There is no crafting"))
-            assert.are.equal(1, #text("^You can craft now$"))
+        it("goes back to the playing character alone when switched off", function()
+            ns.SetConsolidated(false)
+            openGroups()
+            for _, f in ipairs(framesWith("learn")) do assert.is_nil(f.learn.owner) end
+            assert.are.equal(0, #text("^All your characters$"))
         end)
     end)
 end)
