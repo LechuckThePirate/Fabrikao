@@ -23,9 +23,13 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
-    "- New: French translation, for the French game client (thanks to Kroosstiich).",
-    "- Fix: on WoW Forever with the gamepad UI, picking a sort order or another filter in the recipe lists no longer " ..
-        "ends in \"Fabrikao has been blocked from an action\".",
+    "- New: \"Consolidate alts\", a switch in the title bar, as in Completao!!: all your characters of the realm as one. " ..
+        "Every profession of any of them is listed once, with the alts that have it after its name; a recipe any of them " ..
+        "knows counts as known, and its panel says who knows it; the start screen shows what each of them can learn and " ..
+        "craft now with their own bags (with Embolsao!!). Only the character you play crafts.",
+    "- Changed: the picker that showed one other character at a time is gone.",
+    "- Fix: an alt's professions could be saved empty, and on Forever the bags of an alt with a two-word name were " ..
+        "not found. Log in once with each alt to save it again.",
 }, "\n")
 
 local welcomeFrame
