@@ -287,7 +287,15 @@ end
 ---------------------------------------------------------------------------------------------------
 -- When to save
 ---------------------------------------------------------------------------------------------------
-local pending = false
+-- An empty list of professions is only believed once the game has answered with some this session: while it loads (SKILL_LINES_CHANGED
+-- fires then too) and while it logs out, it answers none, and saving that wiped the copy of every alt. A character that drops its last
+-- profession had it listed before, so that is still saved.
+local pending, answered = false, false
+
+local function snapshot(allowEmpty)
+    if ns.Professions_Mine and #ns.Professions_Mine() > 0 then answered = true end
+    ns.Roster_Snapshot(allowEmpty and answered)
+end
 
 -- Soon, and once for a burst of events (learning a recipe fires several).
 local function schedule(allowEmpty)
@@ -295,7 +303,7 @@ local function schedule(allowEmpty)
     pending = true
     C_Timer.After(3, function()
         pending = false
-        ns.Roster_Snapshot(allowEmpty)
+        snapshot(allowEmpty)
     end)
 end
 
@@ -307,9 +315,10 @@ pcall(events.RegisterEvent, events, "NEW_RECIPE_LEARNED") -- (not every client h
 events:SetScript("OnEvent", function(_, event)
     if not ns.db then return end
     if event == "PLAYER_LOGOUT" then
-        ns.Roster_Snapshot(true)
+        snapshot(false) -- (the game may have let the professions go already)
     elseif event == "PLAYER_ENTERING_WORLD" then
         schedule(false)
+        C_Timer.After(15, function() snapshot(false) end) -- again, for a game slow to load them
     else
         schedule(true)
     end

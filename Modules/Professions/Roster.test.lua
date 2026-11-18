@@ -121,6 +121,51 @@ describe("Roster", function()
         end)
     end)
 
+    describe("an empty answer of the game", function()
+        local timers
+
+        before_each(function()
+            timers = {}
+            WowMock.Reset()
+            _G.C_Timer = { After = function(_, f) timers[#timers + 1] = f end }
+            ns = LoadAddon({ files = { "Modules/Professions/Professions.lua", "Modules/Professions/Roster.lua", "Modules/Data/RecipeDB.lua" } })
+            ns.RECIPE_DATA = DATA
+            ns.db = FabrikaoDB
+            ns.Roster_Snapshot() -- the copy of an earlier session
+        end)
+
+        local function runTimers()
+            local now = timers
+            timers = {}
+            for _, f in ipairs(now) do f() end
+        end
+
+        it("never wipes the copy while the game loads or logs out (it answers no professions then)", function()
+            givenProfessions({})
+            FireEvent("PLAYER_ENTERING_WORLD")
+            FireEvent("SKILL_LINES_CHANGED")
+            runTimers()
+            FireEvent("PLAYER_LOGOUT")
+            assert.are.equal(2, #FabrikaoDB.characters["Therzok-Realm"].professions)
+        end)
+
+        it("still saves a character that dropped its last profession while playing", function()
+            FireEvent("SKILL_LINES_CHANGED")
+            runTimers() -- the game answered its professions this session
+            givenProfessions({})
+            FireEvent("SKILL_LINES_CHANGED")
+            runTimers()
+            assert.are.equal(0, #FabrikaoDB.characters["Therzok-Realm"].professions)
+        end)
+
+        it("saves an alt whose earlier copy came out empty once the game answers", function()
+            FabrikaoDB.characters["Therzok-Realm"].professions = {}
+            FireEvent("PLAYER_ENTERING_WORLD")
+            runTimers()
+            assert.are.equal(2, #FabrikaoDB.characters["Therzok-Realm"].professions)
+        end)
+    end)
+
     describe("another character", function()
         before_each(function()
             saveAlt("Elsa-Realm", "Elsa", "MAGE", {
