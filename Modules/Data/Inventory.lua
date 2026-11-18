@@ -122,10 +122,39 @@ function ns.Inventory_Count(itemID, alts)
     return bags + bank + ns.Inventory_OthersTotal(itemID)
 end
 
+-- The name Embolsao knows a character by, as an identity: the same name, or, for a short name ("Barby", what the game gives on
+-- Forever for a two-word name), the only character of Embolsao's whose name starts with that word ("Barby Turika").
+local function embolsaoIdentity(name)
+    local id = identity(name)
+    local names = {}
+    local embolsao = api()
+    if embolsao then
+        for _, character in ipairs(embolsao.GetCharacters() or {}) do names[#names + 1] = character.name end
+    else
+        for _, character in ipairs(othersFromSavedVariable()) do names[#names + 1] = character.name end
+    end
+    local found
+    for _, other in ipairs(names) do
+        if identity(other) == id then return id end
+        local first = (other or ""):match("^(%S+)%s")
+        if first and identity(first) == id then
+            if found then return id end -- two of them: no telling which
+            found = identity(other)
+        end
+    end
+    return found or id
+end
+
+local resolved = {} -- name -> embolsaoIdentity (asked for every ingredient: the characters don't change while one plays)
+
 -- How many of an item another character (by name) carries in its bags, from Embolsao's copy: what "can craft now" counts for it.
 -- Zero where Embolsao has no copy of it.
 function ns.Inventory_CountFor(itemID, name)
-    local id = identity(name)
+    local id = resolved[name]
+    if not id then
+        id = embolsaoIdentity(name)
+        resolved[name] = id
+    end
     for _, holder in ipairs(holdersOf(itemID)) do
         if identity(holder.name) == id then return holder.bags end
     end

@@ -29,7 +29,7 @@ read_globals = {
     "CollapseTradeSkillSubClass", "GetNumCrafts", "GetCraftInfo", "GetCraftItemLink", "GetCraftRecipeLink", "GetCraftDisplaySkillLine",
     "ExpandCraftSkillLine", "CollapseCraftSkillLine", "ExpandSkillHeader", "CollapseSkillHeader", "IsSpellKnown", "GetItemIcon", "GetItemInfoInstant",
     "GetTime", "GameTooltip_ShowCompareItem", "IsEquippableItem", "ShoppingTooltip1", "ShoppingTooltip2", "GetCVarBool", "IsAddOnLoaded", "TradeSkillFrame", "CraftFrame", "TradeSkillFrame_SetSelection", "TradeSkillFrame_Update", "CraftFrame_SetSelection", "CraftFrame_Update",
-    "WOW_PROJECT_ID", "C_GameRules", "strtrim", "tinsert", "OpenWorldMap", "WorldMapFrame", "CreateVector2D", "InCombatLockdown", "CLOSE", "GameFontHighlightSmall", "ShowUIPanel", "C_Texture", "MenuUtil",
+    "WOW_PROJECT_ID", "C_GameRules", "GetUnitName", "UnitFullName", "strtrim", "tinsert", "OpenWorldMap", "WorldMapFrame", "CreateVector2D", "InCombatLockdown", "CLOSE", "GameFontHighlightSmall", "ShowUIPanel", "C_Texture", "MenuUtil",
 }
 
 -- tests (busted): they define and change the simulated game's globals on purpose

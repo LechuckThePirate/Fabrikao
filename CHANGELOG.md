@@ -4,6 +4,7 @@
 
 - New: "Consolidate alts", a switch in the title bar for the whole addon, as in Completao!!: all your characters of the realm are looked at as one. Every profession of any of them is listed once, with the alts that have it after its name in their class color (hover for each one's skill); a recipe any of them knows counts as known in the lists and the search, and its panel and tooltip say who knows it; the start screen shows what each of them can learn and what each can craft now with their own bags (with Embolsao!!): first everything of the character you play, then each alt under its name, by profession. Only the character you play crafts: an alt's rows don't open the profession window, and the Craft button is only for the recipes you know. Characters of other realms, and Hardcore ones with normal ones, are never put together.
 - Changed: the picker that showed one other character at a time is gone: "Consolidate alts" shows all of them at once.
+- Fix: on WoW Forever, the bags of an alt with a two-word name ("Barby Turika") were not found in Embolsao!!'s copies, as the game gives only the first word of the name: "can craft now" and the counts of that alt were always zero.
 - Fix: the copy each character keeps of its professions could be saved empty (while the game was still loading them, or when logging out), so the alts showed none. Log in once with each alt to save it again.
 
 ## 0.7.0

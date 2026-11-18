@@ -332,7 +332,7 @@ function ns.Recipes_CraftableNow(professions, limit, owner)
     for _, p in ipairs(professions) do
         if p.hasRecipes then have[p.skillLine] = p end
     end
-    local name = owner and ns.Roster_PlainName(owner)
+    local name = owner and ns.Roster_BagsName(owner)
     if owner and not name then return {}, 0 end
     local found, counts = {}, {}
     for id, db in ns.RecipeDB_Each() do

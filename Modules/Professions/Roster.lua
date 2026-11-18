@@ -78,9 +78,16 @@ function ns.Roster_Snapshot(allowEmpty)
         }
     end
 
+    -- On Forever a two-word name ("Barby Turika") comes back cut to its first word from UnitName: the longest any call gives is the
+    -- one Embolsao!! saves the character's bags under
+    local fullName = UnitName("player")
+    for _, other in ipairs({ GetUnitName and GetUnitName("player", false) or false, UnitFullName and UnitFullName("player") or false }) do
+        if other and #other > #fullName then fullName = other end
+    end
+
     ns.db.characters = ns.db.characters or {}
     ns.db.characters[key] = {
-        name = UnitName("player"), realm = GetRealmName and GetRealmName() or "", class = classOf(), ruleset = myRuleset(),
+        name = UnitName("player"), fullName = fullName, realm = GetRealmName and GetRealmName() or "", class = classOf(), ruleset = myRuleset(),
         level = UnitLevel and UnitLevel("player") or nil, time = time and time() or 0, professions = professions,
     }
     knownSets[key] = nil
@@ -194,6 +201,14 @@ end
 function ns.Roster_PlainName(key)
     local record = key and characters()[key]
     return type(record) == "table" and record.name or nil
+end
+
+-- The name Embolsao!! knows a saved character by: its whole name ("Barby Turika"), which copies of older versions lack (then the
+-- short one, which ns.Inventory_CountFor matches by its first word).
+function ns.Roster_BagsName(key)
+    local record = key and characters()[key]
+    if type(record) ~= "table" then return nil end
+    return record.fullName or record.name
 end
 
 -- Does a character know the spell? `key` nil is the playing one (its spell book), else its saved copy.

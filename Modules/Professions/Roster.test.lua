@@ -285,6 +285,16 @@ describe("Roster", function()
             ns.Roster_Snapshot()
             assert.are.equal("Realm", FabrikaoDB.characters["Therzok-Realm"].ruleset)
         end)
+
+        it("saves the whole name too, when the game cuts a two-word one (Embolsao!! saves the bags under it)", function()
+            _G.GetUnitName = function() return "Therzok Bonecrusher" end
+            ns.Roster_Snapshot()
+            _G.GetUnitName = nil
+            local saved = FabrikaoDB.characters["Therzok-Realm"]
+            assert.are.equal("Therzok", saved.name)
+            assert.are.equal("Therzok Bonecrusher", saved.fullName)
+            assert.are.equal("Elsa", ns.Roster_BagsName("Elsa-Realm")) -- a copy without it: the short name
+        end)
     end)
 
     describe("the professions that are not learned", function()

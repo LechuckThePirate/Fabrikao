@@ -146,6 +146,24 @@ describe("You can craft now", function()
             assert.are.equal("You can craft now (3)", title()._text)
         end)
 
+        it("finds the bags of an alt whose two-word name the game cut (Forever): Embolsao!! saves it whole", function()
+            saveElsa() -- saved as "Elsa" by an older version
+            local characters = { { name = "Elsa Cacorchos" } }
+            _G.EmbolsaoAPI = { version = 1, GetCharacters = function() return characters end,
+                GetOthersItemCount = function() return 0, 0 end,
+                GetItemHolders = function(itemID)
+                    if itemID == 10 then return { { name = "Elsa Cacorchos", class = "MAGE", bags = 4, bank = 0 } } end
+                    return {}
+                end }
+            assert.are.equal(4, ns.Inventory_CountFor(10, "Elsa"))
+            assert.are.equal(4, ns.Inventory_CountFor(10, "Elsa Cacorchos"))
+            -- two characters that start with the same word: no telling which one
+            characters[2] = { name = "Elsa Otra" }
+            ns = LoadAddon()
+            ns.RECIPE_DATA = DATA
+            assert.are.equal(0, ns.Inventory_CountFor(10, "Elsa"))
+        end)
+
         it("an alt's row only tells: a click crafts nothing", function()
             saveElsa()
             withEmbolsao({ [10] = { { name = "Elsa", class = "MAGE", bags = 3, bank = 0 } } })
