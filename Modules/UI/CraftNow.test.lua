@@ -127,15 +127,23 @@ describe("You can craft now", function()
 
         after_each(function() _G.EmbolsaoAPI = nil end)
 
-        it("lists what each alt can craft with its own bags, under its name, after the playing character", function()
+        -- the group of a profession of an alt, folded until it is opened
+        local function openGroup(text)
+            local header = WowMock.Find(function(f) return f.kind == "craft" and f.text and f.text._text == text and f:IsVisible() end)
+            header._scripts.OnClick(header, "LeftButton")
+        end
+
+        it("lists what each alt can craft with its own bags, under its name and by profession, after the playing character", function()
             saveElsa()
             withEmbolsao({ [10] = { { name = "Elsa", class = "MAGE", bags = 3, bank = 7 } } })
             ns.UI_Show()
             ns.SetConsolidated(true)
-            assert.are.same({ "Healing Potion (5)", "Elixir of Wisdom (2)", "Iron Sword (3)" }, names()) -- her bags, not her bank
-            assert.are.equal("You can craft now (3)", title()._text)
+            assert.are.same({ "Healing Potion (5)", "Elixir of Wisdom (2)" }, names()) -- the playing character's, with no title
             local headings = WowMock.FindAll(function(f) return f._text and f._text:match("Elsa|r %(1%)") and f:IsVisible() end)
             assert.are.equal(1, #headings)
+            openGroup("Blacksmithing (1)")
+            assert.are.same({ "Healing Potion (5)", "Elixir of Wisdom (2)", "Iron Sword (3)" }, names()) -- her bags, not her bank
+            assert.are.equal("You can craft now (3)", title()._text)
         end)
 
         it("an alt's row only tells: a click crafts nothing", function()
@@ -143,6 +151,7 @@ describe("You can craft now", function()
             withEmbolsao({ [10] = { { name = "Elsa", class = "MAGE", bags = 3, bank = 0 } } })
             ns.UI_Show()
             ns.SetConsolidated(true)
+            openGroup("Blacksmithing (1)")
             local sword = rows()[3]
             assert.are.equal("Elsa-Realm", sword.craft.owner)
             click(sword)

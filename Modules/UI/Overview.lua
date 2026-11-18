@@ -16,7 +16,7 @@ local L = ns.L
 local GAP, TITLE_H = 8, 26
 local TOP_H = 84 -- the welcome line, the search box and the row of the toggle
 local PROFESSION_H, ROW_H, TRAINER_H, HEADER_H = 48, 28, 36, 26
-local MAX_CRAFT, CRAFT_PER_CHARACTER, LEARN_PER_GROUP, TEACHERS_MAX = 100, 30, 25, 8
+local MAX_CRAFT, LEARN_PER_GROUP, TEACHERS_MAX = 100, 25, 8
 local PLUS, MINUS = "Interface\\Buttons\\UI-PlusButton-Up", "Interface\\Buttons\\UI-MinusButton-Up"
 local DIM = "|cff9a9a9a"
 
@@ -512,21 +512,15 @@ local function newSortButton(parent, onChange)
 end
 
 -- Whose professions "You can learn" and "You can craft now" are about: the playing character's or, with "Consolidate alts" on, its
--- own and then every alt's of its realm, each with its own professions: { { owner = key or nil, professions = }, ... }. `named` tells
--- whether each group says whose it is.
+-- own and then every alt's of its realm (each one under its name, after the playing character's), each with its own professions:
+-- { { owner = key or nil, professions = }, ... }.
 local function learners()
     local list = { { owner = nil, professions = ns.Professions_Mine() } }
-    if not ns.Consolidated() then return list, false end
+    if not ns.Consolidated() then return list end
     for _, alt in ipairs(ns.Roster_Alts()) do
         list[#list + 1] = { owner = alt.key, professions = ns.Roster_ProfessionsOf(alt.key) or {} }
     end
-    return list, #list > 1
-end
-
--- "Alchemy" or, for several characters, "Alchemy - Elsa" (the name in its class color)
-local function withOwner(text, owner, named)
-    if not named then return text end
-    return ("%s - %s"):format(text, ns.Roster_NameOf(owner))
+    return list
 end
 
 function layoutLearn()
@@ -535,20 +529,33 @@ function layoutLearn()
     q.recipes.reset()
     q.teachers.reset()
     local y = startLayout(q)
-    local who, named = learners()
+    local who = learners()
 
-    local ranks, groups = {}, {}
+    -- each character's: the ranks a trainer can teach it and its recipes by profession
+    local total = 0
     for _, learner in ipairs(who) do
+        learner.ranks, learner.count = {}, 0
         for _, p in ipairs(learner.professions) do
             local name, cap = ns.Professions_NextRank(p)
-            if name then ranks[#ranks + 1] = { profession = p, name = name, cap = cap } end
+            if name then learner.ranks[#learner.ranks + 1] = { profession = p, name = name, cap = cap } end
         end
-        for _, group in ipairs(ns.Recipes_LearnableNow(learner.professions, LEARN_PER_GROUP, learnSort())) do groups[#groups + 1] = group end
+        learner.groups = ns.Recipes_LearnableNow(learner.professions, LEARN_PER_GROUP, learnSort())
+        learner.count = #learner.ranks
+        for _, group in ipairs(learner.groups) do learner.count = learner.count + group.total end
+        total = total + learner.count
     end
-    local total = #ranks
-    for _, group in ipairs(groups) do total = total + group.total end
     q.title:SetText(("%s (%d)"):format(L["You can learn"], total))
     local withTomTom = ns.Map_HasTomTom and ns.Map_HasTomTom()
+
+    -- a title with a line under it
+    local function section(text)
+        local s = q.sections.next()
+        s:ClearAllPoints()
+        s:SetPoint("TOPLEFT", q.content, "TOPLEFT", 6, -y - 2)
+        s:SetText(text)
+        s:SetShownWithLine(true)
+        y = y + 24
+    end
 
     -- a dim line (what is left out, or that nobody is known)
     local function dim(text, x)
@@ -601,13 +608,7 @@ function layoutLearn()
         y = y + 2
     end
 
-    if #ranks > 0 then
-        local s = q.sections.next()
-        s:ClearAllPoints()
-        s:SetPoint("TOPLEFT", q.content, "TOPLEFT", 6, -y - 2)
-        s:SetText(L["Skill ranges"])
-        s:SetShownWithLine(true)
-        y = y + 24
+    local function layRanks(ranks)
         for _, entry in ipairs(ranks) do
             local p = entry.profession
             local key = foldKey(p.owner, p.skillLine)
@@ -619,7 +620,7 @@ function layoutLearn()
             b:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
             b.mark:SetTexture(open and MINUS or PLUS)
             b.icon:SetTexture(p.icon)
-            b.name:SetText(withOwner(("%s: |cff40ff40%s|r"):format(p.name, entry.name), p.owner, named))
+            b.name:SetText(("%s: |cff40ff40%s|r"):format(p.name, entry.name))
             b.skillText:SetText(L["skill %d"]:format(entry.cap))
             y = y + ROW_H
             if open then
@@ -636,58 +637,73 @@ function layoutLearn()
                 teachers(list)
             end
         end
-        y = y + 10 -- (room between the two parts)
     end
 
-    -- the recipes have their own title, as the ranks do
-    if #groups > 0 then
-        local s = q.sections.next()
-        s:ClearAllPoints()
-        s:SetPoint("TOPLEFT", q.content, "TOPLEFT", 6, -y - 2)
-        s:SetText(L["Recipes"])
-        s:SetShownWithLine(true)
-        y = y + 24
+    local function layRecipe(recipe, p)
+        local open = not isFolded("teach", recipe.id)
+        local b = q.recipes.next()
+        b.learn = { recipe = recipe, rank = p.rank, owner = p.owner }
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
+        b:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
+        b.mark:SetTexture(open and MINUS or PLUS)
+        b.icon:SetTexture(recipe.icon)
+        local color = difficultyColor(ns.RecipeDB_Difficulty(recipe.db, p.rank))
+        b.name:SetText(recipe.name)
+        b.name:SetTextColor(color[1], color[2], color[3])
+        local source = ns.RecipeDB_ShortSource(recipe.db)
+        b.skillText:SetText(source and ("%d  %s"):format(recipe.required or 0, source) or tostring(recipe.required or ""))
+        y = y + ROW_H
+        if open then teachers(ns.Recipes_Teachers(recipe.db)) end
     end
 
-    for _, group in ipairs(groups) do
-        local p = group.profession
-        local folded
-        folded, y = groupHeader(q, "learn", p, y, withOwner(("%s (%d)"):format(p.name, group.total), p.owner, named))
-        if not folded then
-            for _, recipe in ipairs(group.recipes) do
-                local open = not isFolded("teach", recipe.id)
-                local b = q.recipes.next()
-                b.learn = { recipe = recipe, rank = p.rank, owner = p.owner }
-                b:ClearAllPoints()
-                b:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
-                b:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
-                b.mark:SetTexture(open and MINUS or PLUS)
-                b.icon:SetTexture(recipe.icon)
-                local color = difficultyColor(ns.RecipeDB_Difficulty(recipe.db, p.rank))
-                b.name:SetText(recipe.name)
-                b.name:SetTextColor(color[1], color[2], color[3])
-                local source = ns.RecipeDB_ShortSource(recipe.db)
-                b.skillText:SetText(source and ("%d  %s"):format(recipe.required or 0, source) or tostring(recipe.required or ""))
-                y = y + ROW_H
-                if open then teachers(ns.Recipes_Teachers(recipe.db)) end
+    local function layGroups(groups)
+        for _, group in ipairs(groups) do
+            local p = group.profession
+            local folded
+            folded, y = groupHeader(q, "learn", p, y, ("%s (%d)"):format(p.name, group.total))
+            if not folded then
+                for _, recipe in ipairs(group.recipes) do layRecipe(recipe, p) end
+                if group.total > #group.recipes then dim(L["and %d more"]:format(group.total - #group.recipes), 28) end
+                y = y + 4
             end
-            if group.total > #group.recipes then dim(L["and %d more"]:format(group.total - #group.recipes), 28) end
-            y = y + 4
         end
     end
-    finishLayout(q, y, (#ranks == 0 and #groups == 0) and L["Nothing new to learn with your skill."] or nil)
+
+    -- the playing character's first, the ranks and the recipes under their own titles
+    local mine = who[1]
+    if #mine.ranks > 0 then
+        section(L["Skill ranges"])
+        layRanks(mine.ranks)
+        y = y + 10 -- (room between the two parts)
+    end
+    if #mine.groups > 0 then
+        section(L["Recipes"])
+        layGroups(mine.groups)
+    end
+    if mine.count == 0 and #who > 1 then dim(L["Nothing new to learn with your skill."], 8) end
+
+    -- then each alt's ("Consolidate alts"), under its name: its ranks and its recipes by profession
+    for i = 2, #who do
+        local learner = who[i]
+        if learner.count > 0 then
+            y = y + 10
+            section(("%s (%d)"):format(ns.Roster_NameOf(learner.owner), learner.count))
+            layRanks(learner.ranks)
+            layGroups(learner.groups)
+        end
+    end
+    finishLayout(q, y, total == 0 and L["Nothing new to learn with your skill."] or nil)
 end
 
--- what the bags allow to craft now, from the recipes known: the playing character's (a click crafts), another one's from its copy of
--- the recipes and Embolsao!!'s of its bags (only to tell: it crafts when it is the one playing), or, with "Consolidate alts" on, each
--- of them under its name
+-- what the bags allow to craft now, from the recipes known: the playing character's first (a click crafts) and, with "Consolidate
+-- alts" on, under them each alt's, from its copy of the recipes and Embolsao!!'s of its bags (only to tell: it crafts when it is the
+-- one playing), in a group per profession and alt that folds, as in "You can learn" ("Cooking (3) - Elsa")
 local function layoutCraft()
     local q = quadrants.craft
     q.rows.reset()
     local y = startLayout(q)
-    local who, named = learners()
-    local perCharacter = named and CRAFT_PER_CHARACTER or MAX_CRAFT
-    local all, shown, noBags = 0, 0, false
+    local who = learners()
 
     local function line(text, x)
         local s = q.sections.next()
@@ -695,52 +711,89 @@ local function layoutCraft()
         s:SetPoint("TOPLEFT", q.content, "TOPLEFT", x, -y - 4)
         s:SetText(text)
         s:SetShownWithLine(true)
-        return s
+        s.line:Hide()
+        y = y + 24
     end
 
-    for _, learner in ipairs(who) do
-        local owner = learner.owner
-        local crafts, total = ns.Recipes_CraftableNow(learner.professions, perCharacter, owner)
-        all, shown = all + total, shown + #crafts
-        if owner and not ns.Inventory_Installed() then noBags = true end
-        if named and total > 0 then
-            line(("%s (%d)"):format(ns.Roster_NameOf(owner), total), 6)
-            y = y + 26
+    local function row(craft, owner)
+        local b = q.rows.next()
+        b.craft = craft
+        -- (Classic: the secure overlay opens the profession window; there is none for another character's)
+        ns.Craft_Prepare(b, not owner and craft.recipe.id or nil, craft.skillLine)
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
+        b:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
+        b.icon:SetTexture(craft.recipe.icon)
+        local color = difficultyColor(craft.recipe.difficulty)
+        b.name:SetText(("%s (%d)"):format(craft.recipe.name, craft.craftable))
+        b.name:SetTextColor(color[1], color[2], color[3])
+        b.skillText:SetText(craft.profession)
+        y = y + ROW_H
+    end
+
+    -- the playing character's, as a plain list
+    local crafts, total = ns.Recipes_CraftableNow(who[1].professions, MAX_CRAFT)
+    local all = total
+    for _, craft in ipairs(crafts) do row(craft) end
+    if total > #crafts then line(DIM .. L["and %d more"]:format(total - #crafts) .. "|r", 8) end
+    local mineNone = total == 0
+    if mineNone and #who > 1 then line(DIM .. L["Nothing to craft with what your bags hold."] .. "|r", 8) end
+
+    -- each alt's, under its name, by profession
+    local altsAny = false
+    for i = 2, #who do
+        local owner = who[i].owner
+        local byProfession = {}
+        local theirs, count = ns.Recipes_CraftableNow(who[i].professions, nil, owner)
+        all = all + count
+        for _, craft in ipairs(theirs) do
+            local list = byProfession[craft.skillLine] or {}
+            byProfession[craft.skillLine] = list
+            list[#list + 1] = craft
         end
-        for _, craft in ipairs(crafts) do
-            local b = q.rows.next()
-            b.craft = craft
-            -- (Classic: the secure overlay opens the profession window; there is none for another character's)
-            ns.Craft_Prepare(b, not owner and craft.recipe.id or nil, craft.skillLine)
-            b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", q.content, "TOPLEFT", 0, -y)
-            b:SetPoint("RIGHT", q.content, "RIGHT", 0, 0)
-            b.icon:SetTexture(craft.recipe.icon)
-            local color = difficultyColor(craft.recipe.difficulty)
-            b.name:SetText(("%s (%d)"):format(craft.recipe.name, craft.craftable))
-            b.name:SetTextColor(color[1], color[2], color[3])
-            b.skillText:SetText(craft.profession)
-            y = y + ROW_H
-        end
-        if total > #crafts then
-            line(DIM .. L["and %d more"]:format(total - #crafts) .. "|r", 8).line:Hide()
+        if count > 0 then
+            altsAny = true
+            y = y + 10
+            local s = q.sections.next()
+            s:ClearAllPoints()
+            s:SetPoint("TOPLEFT", q.content, "TOPLEFT", 6, -y - 2)
+            s:SetText(("%s (%d)"):format(ns.Roster_NameOf(owner), count))
+            s:SetShownWithLine(true)
             y = y + 24
         end
-        if named and total > 0 then y = y + 4 end
+        for _, p in ipairs(who[i].professions) do
+            local list = byProfession[p.skillLine]
+            if list then
+                local folded
+                folded, y = groupHeader(q, "craft", p, y, ("%s (%d)"):format(p.name, #list))
+                if not folded then
+                    for n, craft in ipairs(list) do
+                        if n > LEARN_PER_GROUP then break end
+                        row(craft, owner)
+                    end
+                    if #list > LEARN_PER_GROUP then line(DIM .. L["and %d more"]:format(#list - LEARN_PER_GROUP) .. "|r", 28) end
+                    y = y + 4
+                end
+            end
+        end
     end
     q.title:SetText(("%s (%d)"):format(L["You can craft now"], all))
 
     local note
-    if noBags then
+    if #who > 1 and not ns.Inventory_Installed() then
         -- without Embolsao!! nothing is known of what the other characters carry
         note = L["Install Embolsao!! to see what your other characters can craft with what they carry."]
-        if shown > 0 then
-            line(DIM .. note .. "|r", 8).line:Hide()
-            y = y + 24
+        if not mineNone then
+            line(DIM .. note .. "|r", 8)
             note = nil
         end
-    elseif shown == 0 then
-        note = named and L["Nothing to craft with what their bags hold."] or L["Nothing to craft with what your bags hold."]
+    elseif mineNone and not altsAny then
+        note = L["Nothing to craft with what your bags hold."]
+    end
+    if note and mineNone and #who > 1 then
+        -- (the line that the playing character has nothing is already there: the note goes under it)
+        line(DIM .. note .. "|r", 8)
+        note = nil
     end
     finishLayout(q, y, note)
 end
@@ -848,6 +901,7 @@ function ns.Overview_Create(parent, top)
     end)
     craft.title:SetText(L["You can craft now"])
     craft.rows = newPool(function() return newCraftRow(craft.content) end)
+    craft.relayout = layoutCraft
 
     return overview
 end

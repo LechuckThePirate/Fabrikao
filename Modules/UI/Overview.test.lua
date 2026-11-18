@@ -441,7 +441,14 @@ describe("The start screen", function()
                 if f.learn.owner == "Elsa-Realm" then hers[#hers + 1] = f.name._text end
             end
             assert.are.same({ "Elixir of Wisdom" }, hers)
-            assert.are.equal(1, #text("^Alchemy %(1%) %- |cff3fc7ebElsa|r$"))
+            -- under her name, after everything of the playing character's
+            local name = text("^|cff3fc7ebElsa|r %(1%)$")[1]
+            assert.is_not_nil(name)
+            local _, _, _, _, nameY = name:GetPoint()
+            for _, f in ipairs(framesWith("learn")) do
+                local _, _, _, _, rowY = f:GetPoint()
+                if f.learn.owner == nil then assert.is_true(rowY > nameY) else assert.is_true(rowY < nameY) end
+            end
         end)
 
         it("goes back to the playing character alone when switched off", function()
