@@ -112,7 +112,12 @@ small `open/open_data.json` (the only thing the server needs; the big sources st
 `open_layer.mjs` + `merge.mjs`, which **only fill gaps and never replace or remove a value**: recipes with a teaching item that has a known
 source, ingredients, products and teaching items that are missing, vendors / quests / trainers / positions the data lacks (Questie's droppers
 and containers only for an item with no other source). Skill colors, learned-at levels, training costs, prices, drop chances, "new in Forever"
-and the position of an NPC that already has one are web-only or disputed and are never touched. `wh_probe.mjs` makes ONE request to tell if the
+and the position of an NPC that already has one are web-only or disputed and are never touched by the open layer. **The one exception**,
+`open/client_skills.mjs` (after the open layer, in both modes; `--no-client-skills` turns it off): for a recipe an item teaches, the orange
+level is the item's `RequiredSkillRank` in the client and yellow / green / grey the client's `SkillLineAbility`, never below the orange. The
+web listing kept old learned-at levels for some 370 Forever patterns, plans and formulas (Green Silk Pack 175, its pattern asks for 140, which
+a player confirmed in game). An item asking for more than the client's own grey contradicts itself and is left alone. Trainers' recipes keep
+the web level: the client has none for them (`MinSkillLineRank` is 1 everywhere). `wh_probe.mjs` makes ONE request to tell if the
 web sources answer; `WH_OFFLINE=1` makes the fetch tools read only their cache; `recipes_fetch.mjs` keeps the earlier listing of a skill it
 could not fetch (a refusal used to leave `recipes_raw.json` empty). `compare_data.mjs old.lua new.lua` compares two data files field by
 field (lost / changed / added) and `node --test tools/local/selftest.mjs` checks the pipeline code, including that `open` mode on the current
