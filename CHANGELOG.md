@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- New: "Consolidate alts", a switch in the title bar for the whole addon, as in Completao!!: all your characters of the realm are looked at as one. Every profession of any of them is listed once, with the alts that have it after its name in their class color (hover for each one's skill); a recipe any of them knows counts as known in the lists and the search, and its panel and tooltip say who knows it; the start screen shows what each of them can learn and what each can craft now with their own bags (with Embolsao!!). Only the character you play crafts: an alt's rows don't open the profession window, and the Craft button is only for the recipes you know. Characters of other realms, and Hardcore ones with normal ones, are never put together.
+- Changed: the picker that showed one other character at a time is gone: "Consolidate alts" shows all of them at once.
+
 ## 0.7.0
 
 - New: French translation, for the French game client (thanks to Kroosstiich).

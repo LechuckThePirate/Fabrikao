@@ -91,6 +91,11 @@ local function showRecipeTooltip(row)
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     local shown = recipe.link and pcall(GameTooltip.SetHyperlink, GameTooltip, recipe.link)
     if not shown then GameTooltip:SetText(recipe.name, 1, 1, 1) end
+    -- the whole account ("Consolidate alts"): who of the characters knows it
+    local knownBy = ns.Consolidated and ns.Consolidated() and ns.Roster_KnownBy(recipe.id)
+    if knownBy and #knownBy > 0 then
+        GameTooltip:AddLine(L["Known by: %s"]:format(ns.Roster_NamesText(knownBy)), 0.25, 1, 0.25, true)
+    end
     if recipe.colors then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(L["Skill needed: %d"]:format(recipe.required or recipe.colors[1]), 1, 0.82, 0)

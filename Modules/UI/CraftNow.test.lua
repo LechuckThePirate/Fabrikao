@@ -113,19 +113,52 @@ describe("You can craft now", function()
         assert.are.same({ "Healing Potion (5)", "Mana Potion (4)", "Elixir of Wisdom (2)" }, names())
     end)
 
-    it("is not there while another character's professions are shown (no crafting)", function()
-        FabrikaoDB.characters = { ["Elsa-Realm"] = { name = "Elsa", realm = "Realm", class = "MAGE", time = 1, professions = {
-            { skillLine = 164, name = "Blacksmithing", icon = 333, rank = 120, maxRank = 150, primary = true, hasRecipes = true, known = { 5 } },
-        } } }
-        ns.UI_Show()
-        assert.are.equal(2, #rows())
-        ns.UI_ViewCharacter("Elsa-Realm")
-        assert.are.same({}, names())
-        assert.are.equal("You can craft now", title()._text) -- no count: there is nothing to count
-        local note = WowMock.FindAll(function(f) return f._text and f._text:match("^There is no crafting") and f:IsVisible() end)
-        assert.are.equal(1, #note)
-        ns.UI_ViewCharacter(nil)
-        assert.are.equal(2, #rows())
+    describe("with Consolidate alts on", function()
+        local function saveElsa()
+            FabrikaoDB.characters = { ["Elsa-Realm"] = { name = "Elsa", realm = "Realm", class = "MAGE", time = 1, professions = {
+                { skillLine = 164, name = "Blacksmithing", icon = 333, rank = 120, maxRank = 150, primary = true, hasRecipes = true, known = { 5 } },
+            } } }
+        end
+
+        local function withEmbolsao(holders)
+            _G.EmbolsaoAPI = { version = 1, GetCharacters = function() return {} end, GetOthersItemCount = function() return 0, 0 end,
+                GetItemHolders = function(itemID) return holders[itemID] or {} end }
+        end
+
+        after_each(function() _G.EmbolsaoAPI = nil end)
+
+        it("lists what each alt can craft with its own bags, under its name, after the playing character", function()
+            saveElsa()
+            withEmbolsao({ [10] = { { name = "Elsa", class = "MAGE", bags = 3, bank = 7 } } })
+            ns.UI_Show()
+            ns.SetConsolidated(true)
+            assert.are.same({ "Healing Potion (5)", "Elixir of Wisdom (2)", "Iron Sword (3)" }, names()) -- her bags, not her bank
+            assert.are.equal("You can craft now (3)", title()._text)
+            local headings = WowMock.FindAll(function(f) return f._text and f._text:match("Elsa|r %(1%)") and f:IsVisible() end)
+            assert.are.equal(1, #headings)
+        end)
+
+        it("an alt's row only tells: a click crafts nothing", function()
+            saveElsa()
+            withEmbolsao({ [10] = { { name = "Elsa", class = "MAGE", bags = 3, bank = 0 } } })
+            ns.UI_Show()
+            ns.SetConsolidated(true)
+            local sword = rows()[3]
+            assert.are.equal("Elsa-Realm", sword.craft.owner)
+            click(sword)
+            assert.are.same({}, opened)
+            click(rows()[1])
+            assert.are.equal(1, #opened) -- the playing character's still do
+        end)
+
+        it("says Embolsao!! is needed to know what the alts carry", function()
+            saveElsa()
+            ns.UI_Show()
+            ns.SetConsolidated(true)
+            assert.are.equal(2, #rows())
+            local note = WowMock.FindAll(function(f) return f._text and f._text:match("Install Embolsao") and f:IsVisible() end)
+            assert.are.equal(1, #note)
+        end)
     end)
 
     it("cuts the list to the limit and says how many there were", function()

@@ -72,8 +72,11 @@ function ns.RecipeDetail_Build(recipe, opts)
     opts = opts or {}
     local db = recipe.db
     local rank = recipe.rank or opts.rank
-    local viewed = ns.Roster_Viewed and ns.Roster_Viewed() -- another character's professions are shown: read only, in the third person
-    local who = viewed and ns.Roster_ColoredName(viewed)
+    -- the skill is an alt's ("Consolidate alts": what it can learn, or a profession only alts have): said in the third person
+    local who, whoName
+    if opts.owner and ns.Roster_NameOf then
+        who, whoName = ns.Roster_NameOf(opts.owner), ns.Roster_PlainName(opts.owner) or opts.owner
+    end
     local out = { name = recipe.name, icon = recipe.icon }
     out.color = recipe.learned and ns.DIFFICULTY_COLORS[recipe.difficulty or ns.DIFFICULTY_LAST] or { 0.85, 0.85, 0.85 }
 
@@ -82,7 +85,13 @@ function ns.RecipeDetail_Build(recipe, opts)
     if recipe.category then subtitle[#subtitle + 1] = recipe.category end
     out.subtitle = table.concat(subtitle, "  -  ")
 
-    if recipe.learned then
+    -- the whole account: who of the characters knows it
+    local knownBy = ns.Consolidated and ns.Consolidated() and ns.Roster_KnownBy(recipe.id) or nil
+    local mineToo = knownBy and knownBy[1] and knownBy[1].me
+
+    if recipe.learned and knownBy and #knownBy > 0 and not mineToo then
+        out.status = GREEN .. CHECK .. " " .. L["%s knows this recipe"]:format(ns.Roster_NamesText(knownBy)) .. "|r"
+    elseif recipe.learned then
         out.status = GREEN .. CHECK .. " " .. (who and L["%s knows this recipe"]:format(who) or L["You know this recipe"]) .. "|r"
     elseif rank then
         out.status = CROSS .. " " .. (who and L["%s doesn't know this recipe yet"]:format(who) or L["You don't know this recipe yet"])
@@ -93,11 +102,13 @@ function ns.RecipeDetail_Build(recipe, opts)
     local facts = {}
     local function fact(label, value) facts[#facts + 1] = { label = label, value = value } end
 
+    if knownBy and #knownBy > 0 then fact(L["Known by:"], ns.Roster_NamesText(knownBy)) end
+
     local required = recipe.required or (db and ns.RecipeDB_Required(db))
     if required then
         local text = tostring(required)
         if rank then
-            local have = who and L["%s has %d"]:format(viewed.label, rank) or L["you have %d"]:format(rank)
+            local have = who and L["%s has %d"]:format(whoName, rank) or L["you have %d"]:format(rank)
             text = text .. ("   (%s)"):format((rank >= required and GREEN or RED) .. have .. "|r")
         end
         fact(L["Skill needed:"], text)
@@ -361,8 +372,9 @@ end
 local function updateCraftBar()
     if not (panel and current) then return end
     local recipe = current.recipe
-    -- no crafting for another character's recipes: the game's window is the playing character's
-    local known = recipe.learned and not (ns.Roster_ViewKey and ns.Roster_ViewKey()) and true or false
+    -- the game's window is the playing character's: with "Consolidate alts" on, a recipe only an alt knows is known too, but not to craft
+    local known = recipe.learned and true or false
+    if known and ns.Consolidated and ns.Consolidated() and recipe.db then known = ns.RecipeDB_Known(recipe.id) and true or false end
     panel.craftBar:SetShown(known)
     if not known then return end
     local craftable = ns.Recipes_Craftable and ns.Recipes_Craftable(recipe, false) or 0
@@ -377,12 +389,7 @@ local function render()
     local data = ns.RecipeDetail_Build(current.recipe, current.opts)
     releaseAll()
     updateCraftBar()
-    -- tinted blue with the window when it is another character's recipes
-    if ns.Roster_ViewKey and ns.Roster_ViewKey() then
-        panel:SetBackdropColor(0.05, 0.1, 0.25, 1)
-    else
-        panel:SetBackdropColor(0.05, 0.05, 0.07, 1)
-    end
+    panel:SetBackdropColor(0.05, 0.05, 0.07, 1)
 
     panel.name:SetText(data.name)
     panel.name:SetTextColor(data.color[1], data.color[2], data.color[3])

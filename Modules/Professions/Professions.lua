@@ -144,15 +144,18 @@ function ns.Professions_Mine()
             skillLine = POISONS, primary = true, hasRecipes = true, order = #list + 1,
         }
     end
-    table.sort(list, function(a, b)
-        if a.primary ~= b.primary then return a.primary end
-        if not a.primary then
-            local oa, ob = SECONDARY[a.skillLine] or 99, SECONDARY[b.skillLine] or 99
-            if oa ~= ob then return oa < ob end
-        end
-        return a.order < b.order
-    end)
+    table.sort(list, ns.Professions_Before)
     return list
+end
+
+-- The order of the window's lists: the primary professions first (as the game lists them, by `order`), then First Aid, Cooking, Fishing.
+function ns.Professions_Before(a, b)
+    if a.primary ~= b.primary then return a.primary end
+    if not a.primary then
+        local oa, ob = SECONDARY[a.skillLine] or 99, SECONDARY[b.skillLine] or 99
+        if oa ~= ob then return oa < ob end
+    end
+    return a.order < b.order
 end
 
 -- The ranks of a profession: each one caps the skill at a multiple of 75 (the rank that ends at 150 is Journeyman...), and a character
@@ -193,9 +196,11 @@ function ns.Professions_Notice(profession)
     return nil
 end
 
--- The professions of the character the window shows: the playing one's, or another character's saved copy (Roster.lua).
+-- The professions the window lists: the playing character's, or with "Consolidate alts" on, those of the whole account, each once
+-- (ns.Roster_AccountProfessions).
 function ns.Professions_List()
-    return ns.Roster_ViewedProfessions and ns.Roster_ViewedProfessions() or ns.Professions_Mine()
+    if ns.Consolidated and ns.Consolidated() then return ns.Roster_AccountProfessions() end
+    return ns.Professions_Mine()
 end
 
 -- icons of the professions the character may not have (the game's own when any character saved one, else these)
@@ -211,8 +216,7 @@ local ICONS = {
 function ns.Professions_Missing(have)
     local owned = {}
     for _, p in ipairs(have) do owned[p.skillLine] = true end
-    local viewed = ns.Roster_Viewed and ns.Roster_Viewed()
-    local isRogue = (viewed and viewed.class or playerClass()) == ROGUE
+    local isRogue = playerClass() == ROGUE
     local list = {}
     for _, skill in ipairs(ns.RecipeDB_Skills and ns.RecipeDB_Skills() or {}) do
         if not owned[skill] and (skill ~= POISONS or isRogue) then

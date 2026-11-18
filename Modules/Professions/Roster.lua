@@ -1,14 +1,15 @@
 local _, ns = ...
 
--- The professions and known recipes of every character that has logged in with the addon, kept account-wide, so the window can show
--- an alt's professions as if that character were playing (read only: no crafting). The game cannot tell what another character
--- knows, so each character saves a copy of its own:
---   FabrikaoDB.characters[key] = { name =, realm =, class = "MAGE", time =, professions = { { skillLine =, name =, icon =, rank =,
---     maxRank =, primary =, hasRecipes =, known = { spellID, ... } }, ... } }   (the professions in the window's order)
--- `known` holds the spells of the addon's data the character knows, per profession. Which character the window shows is the
--- "view": the playing one by default (nil), or another one's key (ns.Roster_SetView).
-
-local viewKey, viewRecord, viewKnown -- the character shown, its saved copy and the set of the spells it knows
+-- The professions and known recipes of every character that has logged in with the addon, kept account-wide. The game cannot tell
+-- what another character knows, so each character saves a copy of its own:
+--   FabrikaoDB.characters[key] = { name =, realm =, class = "MAGE", ruleset =, level =, time =, professions = { { skillLine =, name =,
+--     icon =, rank =, maxRank =, primary =, hasRecipes =, known = { spellID, ... } }, ... } }   (the professions in the window's order)
+-- `known` holds the spells of the addon's data the character knows, per profession.
+--
+-- "Consolidate alts" (the switch in the title bar, ns.Consolidated) looks at the account as one, for the whole addon: a recipe any
+-- character knows counts as known, the professions of all of them are listed (each once, with the alts that have it), and what each
+-- of them can learn and craft now is on the start screen (only the playing one crafts). Only the characters of the playing one's
+-- ruleset go together, as in Completao!!: the game has no query for a realm's ruleset, so each realm is one, plus whether Hardcore is on.
 
 local function characters()
     return ns.db and ns.db.characters or {}
@@ -23,6 +24,22 @@ end
 local function classOf()
     return UnitClass and select(2, UnitClass("player")) or nil
 end
+
+local function rulesetOf(realm, hardcore)
+    return (realm or "?") .. (hardcore and "+HC" or "")
+end
+
+local function myRuleset()
+    local hardcore = C_GameRules and C_GameRules.IsHardcoreActive and C_GameRules.IsHardcoreActive() or false
+    return rulesetOf(GetRealmName and GetRealmName() or nil, hardcore)
+end
+
+-- Whether a saved character goes with the playing one (one saved before the ruleset was: by its realm).
+local function sameRuleset(record)
+    return (record.ruleset or rulesetOf(record.realm, false)) == myRuleset()
+end
+
+local knownSets = {} -- key -> the set of the spells an alt knows (built once: its copy does not change while another one plays)
 
 ---------------------------------------------------------------------------------------------------
 -- Saving the playing character
@@ -63,9 +80,10 @@ function ns.Roster_Snapshot(allowEmpty)
 
     ns.db.characters = ns.db.characters or {}
     ns.db.characters[key] = {
-        name = UnitName("player"), realm = GetRealmName and GetRealmName() or "", class = classOf(),
+        name = UnitName("player"), realm = GetRealmName and GetRealmName() or "", class = classOf(), ruleset = myRuleset(),
         level = UnitLevel and UnitLevel("player") or nil, time = time and time() or 0, professions = professions,
     }
+    knownSets[key] = nil
     return true
 end
 
@@ -110,55 +128,149 @@ function ns.Roster_ColoredName(info)
     return text
 end
 
----------------------------------------------------------------------------------------------------
--- The view
----------------------------------------------------------------------------------------------------
--- Shows another character's professions from now on (a key of ns.Roster_Others), or the playing character's with nil. A key that
--- isn't there goes back to the playing one. Returns the key now in use.
-function ns.Roster_SetView(key)
-    local record = key ~= nil and key ~= myKey() and characters()[key] or nil
-    if type(record) ~= "table" then record = nil end
-    viewKey, viewRecord, viewKnown = nil, nil, nil
-    if record then
-        viewKey, viewRecord, viewKnown = key, record, {}
-        for _, p in ipairs(record.professions or {}) do
-            for _, id in ipairs(p.known or {}) do viewKnown[id] = true end
-        end
-    end
-    return viewKey
-end
-
-function ns.Roster_ViewKey()
-    return viewKey
-end
-
--- The character being shown when it is not the playing one: { key =, name =, label =, class = }; nil for the playing character.
-function ns.Roster_Viewed()
-    if not viewKey then return nil end
-    for _, info in ipairs(ns.Roster_Others()) do
-        if info.key == viewKey then return info end
-    end
-    ns.Roster_SetView(nil) -- its copy is gone
-    return nil
-end
-
--- Does the character shown know the spell? (the playing character: the spell book; another one: what it saved)
+-- Does the character know the spell? (the spell book; with "Consolidate alts" on, any character of the account: what it saved)
 function ns.Roster_Knows(spellID)
-    if viewKnown then return viewKnown[spellID] == true end
-    return ns.RecipeDB_Known(spellID)
+    if ns.RecipeDB_Known(spellID) then return true end
+    if not ns.Consolidated() then return false end
+    for _, alt in ipairs(ns.Roster_Alts()) do
+        if ns.Roster_KnowsFor(alt.key, spellID) then return true end
+    end
+    return false
 end
 
--- The professions of the character shown when it is another one, in the shape of ns.Professions_Mine; nil for the playing one.
-function ns.Roster_ViewedProfessions()
-    if not (viewKey and viewRecord) then return nil end
+-- A saved character's professions, in the shape of ns.Professions_Mine, each with its `owner` (the character's key).
+local function professionsOf(key, record)
     local list = {}
-    for i, p in ipairs(viewRecord.professions or {}) do
+    for i, p in ipairs(record.professions or {}) do
         list[#list + 1] = {
             name = p.name, icon = p.icon, rank = p.rank or 0, maxRank = p.maxRank or 0, skillLine = p.skillLine,
-            primary = p.primary and true or false, hasRecipes = p.hasRecipes ~= false, order = i,
-            charLevel = viewRecord.level or false, -- (what it takes to train the next rank depends on it; false: not saved)
+            primary = p.primary and true or false, hasRecipes = p.hasRecipes ~= false, order = i, owner = key,
+            charLevel = record.level or false, -- (what it takes to train the next rank depends on it; false: not saved)
         }
     end
+    return list
+end
+
+---------------------------------------------------------------------------------------------------
+-- Consolidate alts
+---------------------------------------------------------------------------------------------------
+-- The "Consolidate alts" switch is on.
+function ns.Consolidated()
+    return ns.char and ns.char.consolidateAlts and true or false
+end
+
+function ns.SetConsolidated(on)
+    if not ns.char then return end
+    ns.char.consolidateAlts = on and true or nil
+    if ns.UI_ConsolidatedChanged then ns.UI_ConsolidatedChanged() end
+end
+
+-- The other characters of the playing one's ruleset with a saved copy, by name: { { key =, name =, label =, class =, level = }, ... }
+function ns.Roster_Alts()
+    local all = characters()
+    local list = {}
+    for _, info in ipairs(ns.Roster_Others()) do
+        local record = all[info.key]
+        if sameRuleset(record) then
+            info.level = record.level
+            list[#list + 1] = info
+        end
+    end
+    return list
+end
+
+-- A character's name in its class color, from its key (nil: the playing one).
+function ns.Roster_NameOf(key)
+    if key == nil or key == myKey() then
+        return ns.Roster_ColoredName({ label = UnitName("player"), class = classOf() })
+    end
+    for _, info in ipairs(ns.Roster_Others()) do
+        if info.key == key then return ns.Roster_ColoredName(info) end
+    end
+    return key
+end
+
+-- The plain name of a saved character (as Embolsao!! names it too), from its key.
+function ns.Roster_PlainName(key)
+    local record = key and characters()[key]
+    return type(record) == "table" and record.name or nil
+end
+
+-- Does a character know the spell? `key` nil is the playing one (its spell book), else its saved copy.
+function ns.Roster_KnowsFor(key, spellID)
+    if key == nil or key == myKey() then return ns.RecipeDB_Known(spellID) end
+    local set = knownSets[key]
+    if not set then
+        set = {}
+        local record = characters()[key]
+        for _, p in ipairs(type(record) == "table" and record.professions or {}) do
+            for _, id in ipairs(p.known or {}) do set[id] = true end
+        end
+        knownSets[key] = set
+    end
+    return set[spellID] == true
+end
+
+-- A saved character's professions (see professionsOf), nil when it has no copy.
+function ns.Roster_ProfessionsOf(key)
+    local record = characters()[key]
+    if type(record) ~= "table" then return nil end
+    return professionsOf(key, record)
+end
+
+-- Who of the account knows the spell: the playing character first, then the alts of its ruleset by name:
+-- { { key =, name =, label =, class =, me = true or nil }, ... }
+function ns.Roster_KnownBy(spellID)
+    local list = {}
+    if ns.RecipeDB_Known(spellID) then
+        local name = UnitName("player")
+        list[1] = { name = name, label = name, class = classOf(), me = true }
+    end
+    for _, alt in ipairs(ns.Roster_Alts()) do
+        if ns.Roster_KnowsFor(alt.key, spellID) then list[#list + 1] = alt end
+    end
+    return list
+end
+
+-- Names in their class colors, joined: "Elsa, Bob".
+function ns.Roster_NamesText(list)
+    local out = {}
+    for i, info in ipairs(list) do out[i] = ns.Roster_ColoredName(info) end
+    return table.concat(out, ", ")
+end
+
+-- The professions of the whole account, each once: the playing character's (with its own skill), then those only alts have (with the
+-- best skill among them), in the order of ns.Professions_Mine. Each has `holders`, the alts that have it, by name (with their rank and
+-- maxRank), and `owner`, whose skill it shows (nil: the playing character's).
+function ns.Roster_AccountProfessions()
+    local list, bySkill = {}, {}
+    for _, p in ipairs(ns.Professions_Mine()) do
+        local entry = { holders = {}, mine = true }
+        for k, v in pairs(p) do entry[k] = v end
+        list[#list + 1] = entry
+        bySkill[p.skillLine] = entry
+    end
+    for _, alt in ipairs(ns.Roster_Alts()) do
+        for _, p in ipairs(ns.Roster_ProfessionsOf(alt.key) or {}) do
+            local entry = bySkill[p.skillLine]
+            if not entry then
+                entry = p
+                entry.holders = {}
+                list[#list + 1] = entry
+                bySkill[p.skillLine] = entry
+            elseif not entry.mine and p.rank > entry.rank then
+                local holders = entry.holders -- the best skill among the alts is the one shown
+                for k in pairs(entry) do entry[k] = nil end
+                for k, v in pairs(p) do entry[k] = v end
+                entry.holders = holders
+            end
+            entry.holders[#entry.holders + 1] = {
+                key = alt.key, name = alt.name, label = alt.label, class = alt.class, rank = p.rank, maxRank = p.maxRank,
+            }
+        end
+    end
+    for i, entry in ipairs(list) do entry.order = i end
+    table.sort(list, ns.Professions_Before)
     return list
 end
 

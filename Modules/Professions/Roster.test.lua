@@ -146,41 +146,99 @@ describe("Roster", function()
             assert.are.same({ "Bad Yuyu", "Elsa-Other", "Elsa-Realm" }, labels)
         end)
 
-        it("shows the playing character's own professions and recipes until another one is picked", function()
-            assert.is_nil(ns.Roster_ViewKey())
-            assert.is_nil(ns.Roster_Viewed())
-            assert.are.equal("Alchemy", ns.Professions_List()[1].name)
-            assert.is_true(ns.Roster_Knows(1)) -- the spell book
-            assert.is_false(ns.Roster_Knows(5))
-        end)
-
-        it("shows that character's professions and recipes when picked, as the saved copy has them", function()
-            assert.are.equal("Elsa-Realm", ns.Roster_SetView("Elsa-Realm"))
-            assert.are.equal("Elsa", ns.Roster_Viewed().name)
+        it("without Consolidate alts, the professions and recipes are the playing character's own", function()
+            assert.is_false(ns.Consolidated())
             local list = ns.Professions_List()
             assert.are.equal(2, #list)
-            assert.are.equal("Blacksmithing", list[1].name)
-            assert.are.equal(80, list[1].rank)
-            assert.are.equal(150, list[1].maxRank)
-            assert.is_true(list[1].primary)
-            assert.is_true(ns.Roster_Knows(5)) -- Elsa's
-            assert.is_false(ns.Roster_Knows(1)) -- the playing character knows it, she doesn't
+            assert.are.equal("Alchemy", list[1].name)
+            assert.is_true(ns.Roster_Knows(1)) -- the spell book
+            assert.is_false(ns.Roster_Knows(5)) -- Elsa's only
         end)
 
-        it("goes back to the playing character with nil, or with a key that isn't there", function()
-            ns.Roster_SetView("Elsa-Realm")
-            assert.is_nil(ns.Roster_SetView("Nobody-Realm"))
-            assert.is_nil(ns.Roster_ViewKey())
-            ns.Roster_SetView("Elsa-Realm")
-            ns.Roster_SetView(nil)
-            assert.are.equal("Alchemy", ns.Professions_List()[1].name)
-            -- and the playing character is not "another" one
-            assert.is_nil(ns.Roster_SetView("Therzok-Realm"))
+        it("knows what each character knows, from its saved copy", function()
+            assert.is_true(ns.Roster_KnowsFor("Elsa-Realm", 5))
+            assert.is_false(ns.Roster_KnowsFor("Elsa-Realm", 1))
+            assert.is_true(ns.Roster_KnowsFor(nil, 1)) -- the playing character: its spell book
+            assert.is_false(ns.Roster_KnowsFor("Nobody-Realm", 5))
+            local list = ns.Roster_ProfessionsOf("Elsa-Realm")
+            assert.are.equal("Blacksmithing", list[1].name)
+            assert.are.equal(80, list[1].rank)
+            assert.are.equal("Elsa-Realm", list[1].owner)
         end)
 
         it("colors the name by class", function()
-            ns.Roster_SetView("Elsa-Realm")
-            assert.are.equal("|cff3fc7ebElsa|r", ns.Roster_ColoredName(ns.Roster_Viewed()))
+            assert.are.equal("|cff3fc7ebElsa|r", ns.Roster_NameOf("Elsa-Realm"))
+            assert.are.equal("|cff3fc7ebElsa|r", ns.Roster_ColoredName(ns.Roster_Others()[2]))
+        end)
+    end)
+
+    describe("Consolidate alts", function()
+        before_each(function()
+            ns.char = { consolidateAlts = true }
+            saveAlt("Elsa-Realm", "Elsa", "MAGE", {
+                { skillLine = 164, name = "Blacksmithing", icon = 333, rank = 80, maxRank = 150, primary = true, hasRecipes = true, known = { 5 } },
+                { skillLine = 171, name = "Alchemy", icon = 111, rank = 40, maxRank = 75, primary = true, hasRecipes = true, known = { 3 } },
+            })
+            saveAlt("Bob-Realm", "Bob", "MAGE", {
+                { skillLine = 164, name = "Blacksmithing", icon = 333, rank = 120, maxRank = 150, primary = true, hasRecipes = true, known = {} },
+            })
+        end)
+
+        it("counts as known a recipe any character knows", function()
+            assert.is_true(ns.Roster_Knows(1)) -- the playing character's
+            assert.is_true(ns.Roster_Knows(5)) -- Elsa's
+            assert.is_true(ns.Roster_Knows(3)) -- Elsa's, in a profession the playing character has too
+            assert.is_false(ns.Roster_Knows(6 + 100))
+        end)
+
+        it("says who knows a recipe: the playing character first, then the alts by name", function()
+            known[5] = true
+            local names = {}
+            for _, info in ipairs(ns.Roster_KnownBy(5)) do names[#names + 1] = info.name end
+            assert.are.same({ "Therzok", "Elsa" }, names)
+            assert.are.same({}, ns.Roster_KnownBy(6 + 100))
+        end)
+
+        it("lists every profession of the account once, with the alts that have it", function()
+            local list = ns.Professions_List()
+            local names = {}
+            for _, p in ipairs(list) do names[#names + 1] = p.name end
+            assert.are.same({ "Alchemy", "Blacksmithing", "Cooking" }, names) -- the primary ones first
+            local alchemy, smithing = list[1], list[2]
+            assert.are.equal(150, alchemy.rank) -- the playing character's own skill
+            assert.is_nil(alchemy.owner)
+            assert.are.equal("Elsa", alchemy.holders[1].name)
+            -- one only alts have: the best skill among them, and both of them
+            assert.are.equal(120, smithing.rank)
+            assert.are.equal("Bob-Realm", smithing.owner)
+            assert.are.equal(2, #smithing.holders)
+            assert.are.equal(0, #list[3].holders) -- Cooking: only the playing character
+        end)
+
+        it("only puts together the characters of the same realm", function()
+            saveAlt("Ann-Other", "Ann", "MAGE", {
+                { skillLine = 197, name = "Tailoring", icon = 1, rank = 10, maxRank = 75, primary = true, hasRecipes = true, known = { 9 } },
+            })
+            FabrikaoDB.characters["Ann-Other"].realm = "Other"
+            local names = {}
+            for _, info in ipairs(ns.Roster_Alts()) do names[#names + 1] = info.name end
+            assert.are.same({ "Bob", "Elsa" }, names)
+            assert.is_false(ns.Roster_Knows(9))
+        end)
+
+        it("leaves a Hardcore character out of the normal ones of its realm", function()
+            FabrikaoDB.characters["Bob-Realm"].ruleset = "Realm+HC"
+            assert.are.equal(1, #ns.Roster_Alts())
+            _G.C_GameRules = { IsHardcoreActive = function() return true end }
+            local alts = ns.Roster_Alts()
+            _G.C_GameRules = nil
+            assert.are.equal(1, #alts)
+            assert.are.equal("Bob", alts[1].name)
+        end)
+
+        it("saves the ruleset of the playing character", function()
+            ns.Roster_Snapshot()
+            assert.are.equal("Realm", FabrikaoDB.characters["Therzok-Realm"].ruleset)
         end)
     end)
 
@@ -202,14 +260,12 @@ describe("Roster", function()
             assert.are.equal(4242, ns.Professions_Missing(ns.Professions_List())[1].icon)
         end)
 
-        it("is relative to the character shown", function()
+        it("with Consolidate alts on, are the ones no character of the account has", function()
             saveAlt("Elsa-Realm", "Elsa", "MAGE", {
                 { skillLine = 164, name = "Blacksmithing", icon = 333, rank = 1, maxRank = 75, primary = true, hasRecipes = true, known = {} },
             })
-            ns.Roster_SetView("Elsa-Realm")
-            local skills = {}
-            for _, p in ipairs(ns.Professions_Missing(ns.Professions_List())) do skills[#skills + 1] = p.skillLine end
-            assert.are.same({ 171, 185 }, skills)
+            ns.char = { consolidateAlts = true }
+            assert.are.same({}, ns.Professions_Missing(ns.Professions_List()))
         end)
     end)
 end)

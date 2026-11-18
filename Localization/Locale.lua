@@ -30,7 +30,6 @@ local es = {
     ["skill %d"] = "habilidad %d",
     ["Click to see where to learn it"] = "Clic para ver dónde aprenderla",
     ["Nothing new to learn with your skill."] = "Nada nuevo que aprender con tu habilidad.",
-    ["There is no crafting for another character's professions."] = "No se puede fabricar con las profesiones de otro personaje.",
     ["Click to see who teaches it"] = "Clic para ver quién la enseña",
     ["Right-click for its details"] = "Clic derecho para ver su detalle",
     ["Click to see how to get it"] = "Clic para ver cómo conseguirlo",
@@ -65,13 +64,28 @@ local es = {
         "Los entrenadores de esta profesión, los más cercanos primero, con el mapa y un punto de ruta.",
     ["Click to open it in the profession window"] = "Clic para abrirla en la ventana de profesiones",
     ["Nothing to craft with what your bags hold."] = "No hay nada que fabricar con lo que llevas en las bolsas.",
-    ["My professions"] = "Mis profesiones",
     ["Show professions not learned"] = "Mostrar profesiones no aprendidas",
     ["Hide professions not learned"] = "Ocultar profesiones no aprendidas",
-    ["Professions of %s (read only)"] = "Profesiones de %s (solo lectura)",
-    ["Log in with your other characters to see their professions here."] =
-        "Entra con tus otros personajes para ver aquí sus profesiones.",
     ["< Professions"] = "< Profesiones",
+
+    -- consolidate alts
+    ["Consolidate alts"] = "Consolidar alters",
+    ["Looks at all your characters as one: a recipe any of them knows counts as known, and the professions of all of them are listed."] =
+        "Trata a todos tus personajes como uno solo: una receta que conozca cualquiera de ellos cuenta como conocida, y se listan las profesiones de todos.",
+    ["The start screen shows what each of them can learn and craft now (with their bags, from Embolsao!!); only the character you play crafts."] =
+        "La pantalla de inicio muestra lo que cada uno puede aprender y fabricar ahora (con sus bolsas, de Embolsao!!); solo fabrica el personaje que juega.",
+    ["Only the characters of the same realm go together. Each one is remembered once it logs in."] =
+        "Solo se juntan los personajes del mismo reino. Cada uno se recuerda en cuanto entra al juego.",
+    ["All your characters"] = "Todos tus personajes",
+    ["All your characters (skill of %s)"] = "Todos tus personajes (habilidad de %s)",
+    ["Known by: %s"] = "La conocen: %s",
+    ["Known by:"] = "La conocen:",
+    ["%s: %d / %d"] = "%s: %d / %d",
+    ["%d possible with the bags of %s"] = "%d posibles con las bolsas de %s",
+    ["Log in with that character to craft it."] = "Entra con ese personaje para fabricarla.",
+    ["Install Embolsao!! to see what your other characters can craft with what they carry."] =
+        "Instala Embolsao!! para ver lo que tus otros personajes pueden fabricar con lo que llevan.",
+    ["Nothing to craft with what their bags hold."] = "No hay nada que fabricar con lo que llevan en las bolsas.",
 
     -- recipes
     ["Known"] = "Conocida",
