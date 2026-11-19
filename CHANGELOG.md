@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- New: other addons can ask Fabrikao how to craft an item (its public API, `FabrikaoAPI.HasRecipeFor` and `ShowRecipeFor`): the window opens on the search page with the recipes that make it, and the panel of the best one (one you or an alt know, else the one learned first) shows its ingredients and where to learn it. Enfocao!! uses it in the menu of a goal of gathering items.
+
 ## 0.8.0
 
 - New: "Consolidate alts", a switch in the title bar for the whole addon, as in Completao!!: all your characters of the realm are looked at as one. Every profession of any of them is listed once, with the alts that have it after its name in their class color (hover for each one's skill); a recipe any of them knows counts as known in the lists and the search, and its panel and tooltip say who knows it; the start screen shows what each of them can learn and what each can craft now with their own bags (with Embolsao!!): first everything of the character you play, then each alt under its name, by profession. Only the character you play crafts: an alt's rows don't open the profession window, and the Craft button is only for the recipes you know. Characters of other realms, and Hardcore ones with normal ones, are never put together.

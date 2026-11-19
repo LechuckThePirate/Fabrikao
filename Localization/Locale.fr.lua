@@ -192,6 +192,7 @@ local fr = {
     ["No recipes found"] = "Aucune recette trouvée",
     ["%d recipes"] = "%d recettes",
     ["%d recipes using %s"] = "%d recettes utilisant %s",
+    ["%d recipes that make %s"] = "%d recettes qui fabriquent %s",
     ["%d recipes (showing the first %d)"] = "%d recettes (affichage des %d premières)",
     ["Profession: %s"] = "Métier : %s",
     ["Profession:"] = "Métier :",
