@@ -33,6 +33,9 @@ Addon files at the repo root, packaged as the folder `Fabrikao` (`.pkgmeta`):
   cover that path in `Alts.test.lua`); never reference `EmbolsaoAPI` / `EmbolsaoDB` anywhere else
 - `Modules/Data/Quests.lua` — Completao!! (optional) through its public API (`CompletaoAPI.HasQuest / ShowQuest`): a recipe that comes from a quest
   has a "View Quest" button in its panel when Completao knows the quest; without it nothing shows. Never reference `CompletaoAPI` anywhere else
+- `Modules/API/API.lua` — the public API for the other addons (`FabrikaoAPI`, documented at the top of the file): `ShowRecipesUsing`
+  (Embolsao), `HasRecipeFor` / `ShowRecipeFor` (how to craft an item: the search page's `product` mode and the best recipe's panel; Enfocao).
+  New functions keep `version` 1: callers check that the function is there
 - `Modules/Data/Prices.lua` — approximate prices for the table view: auction prices from Auctionator's public API when it is installed,
   else what vendors pay; `Modules/UI/RecipeList.lua` — the two views of the recipe list (table with sortable columns, detailed
   with a big icon); `Modules/UI/FilterBar.lua` — the two rows of filters and sorting shared by a profession's page and the search

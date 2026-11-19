@@ -451,14 +451,15 @@ local function createFrame()
 end
 
 -- the search page of every recipe in the data, optionally starting with a text, or with the recipes that use an item
-function ns.UI_ShowSearch(text, ingredient)
+-- (ingredient) or make one (product)
+function ns.UI_ShowSearch(text, ingredient, product)
     ns.UI_Show()
     ns.RecipeDetail_Hide()
     ns.Trainers_Hide()
     state.skillLine, state.copy, state.professionName = nil, nil, nil
     overview:Hide()
     page:Hide()
-    ns.SearchPage_Show(text, ingredient)
+    ns.SearchPage_Show(text, ingredient, product)
 end
 
 -- Draws again what the window shows, from the data as it is now (a recipe was learned, the skill went up...): the recipes of the open
