@@ -23,10 +23,8 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
-    "- New: other addons can ask Fabrikao how to craft an item: the window opens on the recipes that make it, with the " ..
-        "panel of the best one open (one you or an alt know, else the one learned at the lowest skill).",
-    "- Fix: on WoW Forever, the skill needed for about 370 recipes taught by a pattern, plans, formula or recipe item was " ..
-        "too high. They now ask for what the item asks for in the game, with the game's own skill-up colors.",
+    "- Fix: on WoW Forever, \"Consolidate alts\" puts all your characters together again, each once: since the game " ..
+        "stopped giving the realm name, it left out the alts that had not logged in since and could list one twice.",
 }, "\n")
 
 local welcomeFrame
