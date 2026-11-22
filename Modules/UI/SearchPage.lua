@@ -42,12 +42,14 @@ end
 local function updateCount()
     local count
     if state.total == 0 then
-        local browse = state.skill ~= nil or state.ingredient ~= nil or ns.FilterBar_Active(filters)
+        local browse = state.skill ~= nil or state.ingredient ~= nil or state.product ~= nil or ns.FilterBar_Active(filters)
         count = (page.search:GetText() == "" and not browse) and L["Type to search every recipe."] or L["No recipes found"]
     elseif state.truncated > 0 then
         count = L["%d recipes (showing the first %d)"]:format(state.total, MAX_RESULTS)
     elseif state.ingredient then
         count = L["%d recipes using %s"]:format(state.total, itemName(state.ingredient))
+    elseif state.product then
+        count = L["%d recipes that make %s"]:format(state.total, itemName(state.product))
     else
         count = L["%d recipes"]:format(state.total)
     end
@@ -90,8 +92,9 @@ local function refresh()
     if not page then return end
     local text = page.search:GetText()
     -- with filters on and no text, everything that passes them is listed
-    local browse = state.skill ~= nil or state.ingredient ~= nil or ns.FilterBar_Active(filters)
-    local found = ns.RecipeDB_Search(text, { skill = state.skill, all = browse, ingredient = state.ingredient })
+    local browse = state.skill ~= nil or state.ingredient ~= nil or state.product ~= nil or ns.FilterBar_Active(filters)
+    local found = ns.RecipeDB_Search(text, { skill = state.skill, all = browse, ingredient = state.ingredient,
+        product = state.product })
 
     -- the recipes as the lists see them (known or not, colored for the character's skill in each profession), so the
     -- filters of the profession's page work here too
@@ -217,7 +220,7 @@ function ns.SearchPage_Create(parent, top)
     local function updateHint() hint:SetShown(search:GetText() == "" and not search:HasFocus()) end
     page.updateHint = updateHint
     search:SetScript("OnTextChanged", function(_, userInput)
-        if userInput then state.ingredient = nil end -- typing starts an ordinary search
+        if userInput then state.ingredient, state.product = nil, nil end -- typing starts an ordinary search
         updateHint()
         refresh()
     end)
@@ -248,18 +251,19 @@ function ns.SearchPage_Create(parent, top)
     local events = CreateFrame("Frame")
     events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
     events:SetScript("OnEvent", function()
-        if page:IsVisible() and state.ingredient then updateCount() end
+        if page:IsVisible() and (state.ingredient or state.product) then updateCount() end
     end)
 
     page:Hide()
     return page
 end
 
--- text: what to put in the box (nil: leave it); ingredient: an item id, to list only the recipes that use it
-function ns.SearchPage_Show(text, ingredient)
+-- text: what to put in the box (nil: leave it); ingredient: an item id, to list only the recipes that use it;
+-- product: an item id, to list only the recipes that make it
+function ns.SearchPage_Show(text, ingredient, product)
     if not page then return end
-    state.ingredient = ingredient
-    if ingredient and state.skill then -- a profession picked before would hide recipes of the others
+    state.ingredient, state.product = ingredient, product
+    if (ingredient or product) and state.skill then -- a profession picked before would hide recipes of the others
         state.skill = nil
         page.skillButton:SetText(L["Profession: %s"]:format(L["All"]))
     end
@@ -291,4 +295,15 @@ end
 
 function ns.SearchPage_Results()
     return state.results
+end
+
+-- Opens the panel of a recipe of the list, as a click on it does; false when it isn't listed (a filter hides it).
+function ns.SearchPage_Open(spellID)
+    for _, row in ipairs(state.results) do
+        if row.recipe and row.recipe.id == spellID then
+            selectRecipe(row)
+            return true
+        end
+    end
+    return false
 end
