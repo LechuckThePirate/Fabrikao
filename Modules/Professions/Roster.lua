@@ -34,9 +34,45 @@ local function myRuleset()
     return rulesetOf(GetRealmName and GetRealmName() or nil, hardcore)
 end
 
+-- Since late November 2026 Forever answers GetRealmName() with "", so the characters saved before that carry the realm and
+-- the ones saved after it don't: an unknown realm ("", or "?" when the game gave none) goes with any.
+local function unknownRealm(realm)
+    return realm == nil or realm == "" or realm == "?"
+end
+
+local function realmsMatch(a, b)
+    return unknownRealm(a) or unknownRealm(b) or a == b
+end
+
+local function splitRuleset(ruleset)
+    if ruleset:sub(-3) == "+HC" then return ruleset:sub(1, -4), true end
+    return ruleset, false
+end
+
 -- Whether a saved character goes with the playing one (one saved before the ruleset was: by its realm).
 local function sameRuleset(record)
-    return (record.ruleset or rulesetOf(record.realm, false)) == myRuleset()
+    local realm, hardcore = splitRuleset(record.ruleset or rulesetOf(record.realm, false))
+    local myRealm, myHardcore = splitRuleset(myRuleset())
+    return hardcore == myHardcore and realmsMatch(realm, myRealm)
+end
+
+-- Whether a saved copy is of the playing character: its key, or the same name saved with the realm the game no longer gives.
+local function isMe(key, record)
+    if key == myKey() then return true end
+    return record.name ~= nil and record.name == (UnitName and UnitName("player"))
+        and realmsMatch(record.realm, GetRealmName and GetRealmName() or "")
+end
+
+-- Whether another saved copy of the same character (the same name, saved with and without the realm) is newer than this one.
+local function supersededBy(key, record, all)
+    for otherKey, other in pairs(all) do
+        if otherKey ~= key and type(other) == "table" and other.name == record.name and realmsMatch(other.realm, record.realm)
+            and (unknownRealm(other.realm) ~= unknownRealm(record.realm))
+            and ((other.time or 0) > (record.time or 0) or ((other.time or 0) == (record.time or 0) and otherKey > key)) then
+            return true
+        end
+    end
+    return false
 end
 
 local knownSets = {} -- key -> the set of the spells an alt knows (built once: its copy does not change while another one plays)
@@ -106,17 +142,19 @@ end
 
 -- The characters other than the playing one that have a saved copy, by name: { { key =, name =, label =, class =, time = }, ... }
 function ns.Roster_Others()
-    local mine = myKey()
+    local all = characters()
+    local kept = {}
+    for key, record in pairs(all) do
+        if type(record) == "table" and not supersededBy(key, record, all) then kept[key] = record end
+    end
     local taken = {}
-    for key, record in pairs(characters()) do
-        if type(record) == "table" then
-            local name = record.name or key
-            taken[name] = (taken[name] or 0) + 1
-        end
+    for key, record in pairs(kept) do
+        local name = record.name or key
+        taken[name] = (taken[name] or 0) + 1
     end
     local list = {}
-    for key, record in pairs(characters()) do
-        if key ~= mine and type(record) == "table" then
+    for key, record in pairs(kept) do
+        if not isMe(key, record) then
             list[#list + 1] = { key = key, name = record.name or key, label = label(record, key, taken), class = record.class, time = record.time }
         end
     end

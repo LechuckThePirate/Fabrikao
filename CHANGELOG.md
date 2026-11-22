@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: on WoW Forever, since the game stopped giving the realm name, "Consolidate alts" left out the alts that had not logged in since, and could list the character you play, or an alt, twice. An unknown realm now goes with any: all your characters are together again, each once, from its newest copy.
+
 ## 0.9.0
 
 - New: other addons can ask Fabrikao how to craft an item (its public API, `FabrikaoAPI.HasRecipeFor` and `ShowRecipeFor`): the window opens on the search page with the recipes that make it, and the panel of the best one (one you or an alt know, else the one learned first) shows its ingredients and where to learn it. Enfocao!! uses it in the menu of a goal of gathering items.
