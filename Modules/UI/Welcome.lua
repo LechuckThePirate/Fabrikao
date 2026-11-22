@@ -23,13 +23,10 @@ local CHANGELOG_BOTTOM = 56 + SIBLINGS_HEIGHT
 -- Mirrors the latest entry in CHANGELOG.md -- update this alongside it (and the version bump) on every release; shown as-is,
 -- scrollable, in the window below.
 local LATEST_CHANGELOG_TEXT = table.concat({
-    "- New: \"Consolidate alts\", a switch in the title bar, as in Completao!!: all your characters of the realm as one. " ..
-        "Every profession of any of them is listed once, with the alts that have it after its name; a recipe any of them " ..
-        "knows counts as known, and its panel says who knows it; the start screen shows what each of them can learn and " ..
-        "craft now with their own bags (with Embolsao!!). Only the character you play crafts.",
-    "- Changed: the picker that showed one other character at a time is gone.",
-    "- Fix: an alt's professions could be saved empty, and on Forever the bags of an alt with a two-word name were " ..
-        "not found. Log in once with each alt to save it again.",
+    "- New: other addons can ask Fabrikao how to craft an item: the window opens on the recipes that make it, with the " ..
+        "panel of the best one open (one you or an alt know, else the one learned at the lowest skill).",
+    "- Fix: on WoW Forever, the skill needed for about 370 recipes taught by a pattern, plans, formula or recipe item was " ..
+        "too high. They now ask for what the item asks for in the game, with the game's own skill-up colors.",
 }, "\n")
 
 local welcomeFrame
