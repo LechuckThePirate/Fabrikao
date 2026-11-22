@@ -3,6 +3,7 @@
 ## Unreleased
 
 - New: other addons can ask Fabrikao how to craft an item (its public API, `FabrikaoAPI.HasRecipeFor` and `ShowRecipeFor`): the window opens on the search page with the recipes that make it, and the panel of the best one (one you or an alt know, else the one learned first) shows its ingredients and where to learn it. Enfocao!! uses it in the menu of a goal of gathering items.
+- Fix: on WoW Forever, the skill needed for about 370 recipes taught by a pattern, plans, formula or recipe item was too high, mostly in Tailoring, Leatherworking and Blacksmithing (Green Silk Pack said 175; its pattern asks for 140). They now ask for what the item asks for in the game, and their skill-up colors are the game's own. Recipes taught by trainers are unchanged.
 
 ## 0.8.0
 
