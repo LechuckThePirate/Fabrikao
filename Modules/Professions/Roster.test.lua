@@ -286,6 +286,51 @@ describe("Roster", function()
             assert.are.equal("Realm", FabrikaoDB.characters["Therzok-Realm"].ruleset)
         end)
 
+        describe("when the game gives no realm name (Forever since late November 2026)", function()
+            before_each(function()
+                _G.GetRealmName = function() return "" end
+            end)
+
+            it("the alts saved with the realm still go together with the playing character", function()
+                local names = {}
+                for _, info in ipairs(ns.Roster_Alts()) do names[#names + 1] = info.name end
+                assert.are.same({ "Bob", "Elsa" }, names)
+            end)
+
+            it("and an alt saved without it goes with them when the game gives the realm again", function()
+                FabrikaoDB.characters["Bob-Realm"] = nil
+                saveAlt("Bob-", "Bob", "ROGUE", {})
+                FabrikaoDB.characters["Bob-"].realm, FabrikaoDB.characters["Bob-"].ruleset = "", ""
+                _G.GetRealmName = function() return "Realm" end
+                assert.are.equal(2, #ns.Roster_Alts())
+            end)
+
+            it("the playing character's copy saved with the realm is not taken for an alt", function()
+                saveAlt("Therzok-Realm", "Therzok", "WARRIOR", {})
+                ns.Roster_Snapshot()
+                assert.is_not_nil(FabrikaoDB.characters["Therzok-"])
+                for _, info in ipairs(ns.Roster_Others()) do assert.are_not.equal("Therzok", info.name) end
+            end)
+
+            it("an alt saved with and without the realm is listed once, from its newest copy", function()
+                FabrikaoDB.characters["Elsa-"] = { name = "Elsa", realm = "", ruleset = "", class = "MAGE", time = 5, professions = {
+                    { skillLine = 197, name = "Tailoring", icon = 1, rank = 10, maxRank = 75, primary = true, hasRecipes = true, known = { 9 } },
+                } }
+                local elsas = {}
+                for _, info in ipairs(ns.Roster_Alts()) do
+                    if info.name == "Elsa" then elsas[#elsas + 1] = info end
+                end
+                assert.are.equal(1, #elsas)
+                assert.are.equal("Elsa-", elsas[1].key)
+                assert.are.equal("Elsa", elsas[1].label) -- no realm after its name
+            end)
+
+            it("still leaves a Hardcore character out of the normal ones", function()
+                FabrikaoDB.characters["Bob-Realm"].ruleset = "Realm+HC"
+                assert.are.equal(1, #ns.Roster_Alts())
+            end)
+        end)
+
         it("saves the whole name too, when the game cuts a two-word one (Embolsao!! saves the bags under it)", function()
             _G.GetUnitName = function() return "Therzok Bonecrusher" end
             ns.Roster_Snapshot()
