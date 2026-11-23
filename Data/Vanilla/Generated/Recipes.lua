@@ -14,7 +14,7 @@ local _, ns = ...
 -- npcs[npcID] = { map id, x, y } where a vendor or trainer stands (x and y in percent of the map), for waypoints
 -- source codes: 1 crafted, 2 drop, 3 PvP, 4 quest, 5 vendor, 6 trainer, 16 gathered, 21 salvaged
 ns.RECIPE_DATA = {
-    generated = "2026-10-31",
+    generated = "2026-11-23",
     recipes = {
         [818] = {s=185,n="Basic Campfire",m={{4470,1}},c={1,25,50,75}},
         [2149] = {s=165,n="Handstitched Leather Boots",p={2302,1,1},m={{2318,2},{2320,1}},c={1,40,55,70}},
@@ -3801,7 +3801,6 @@ ns.RECIPE_DATA = {
         [3846] = {1440,14.8,31.3},
         [3881] = {1411,51.1,42.6},
         [3888] = {1440,36.6,49.6},
-        [3900] = {1439,43.5,94.4},
         [3915] = {1440,36.7,49.7},
         [3916] = {1440,53.5,46.2},
         [3919] = {1440,59.3,42.1},
