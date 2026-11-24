@@ -54,7 +54,7 @@ local function create()
     welcomeFrame = CreateFrame("Frame", "FabrikaoWelcomeFrame", UIParent, "BackdropTemplate")
     welcomeFrame:SetSize(WIDTH, HEIGHT)
     welcomeFrame:SetPoint("CENTER")
-    welcomeFrame:SetFrameStrata("DIALOG")
+    welcomeFrame:SetFrameStrata("FULLSCREEN_DIALOG") -- as MainWindow.lua: "DIALOG" still let nameplates/the tracker through
     welcomeFrame:SetToplevel(true) -- the welcome windows of several addons open at the same spot: the shown or clicked one comes in front, with its content
     welcomeFrame:SetClampedToScreen(true)
     welcomeFrame:SetBackdrop({

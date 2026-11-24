@@ -82,7 +82,7 @@ local function create()
     prefs = CreateFrame("Frame", "FabrikaoPreferencesFrame", UIParent, "BackdropTemplate")
     prefs:SetSize(WIDTH, HEIGHT)
     prefs:SetPoint("CENTER")
-    prefs:SetFrameStrata("DIALOG")
+    prefs:SetFrameStrata("FULLSCREEN_DIALOG") -- as MainWindow.lua: "DIALOG" still let nameplates/the tracker through
     prefs:SetClampedToScreen(true)
     prefs:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",

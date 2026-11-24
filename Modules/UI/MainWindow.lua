@@ -310,9 +310,10 @@ local function createFrame()
     else
         frame:SetPoint("CENTER")
     end
-    -- DIALOG (as Preferences.lua and Welcome.lua already use): "HIGH" let nameplates and world text show through
-    -- the window and its children (the recipe panel, the trainers panel), since the game draws those above it
-    frame:SetFrameStrata("DIALOG")
+    -- FULLSCREEN_DIALOG: "DIALOG" was still not high enough -- nameplates and the objective tracker (bar-shaped,
+    -- segmented) kept showing through the window and its children (the recipe panel, the trainers panel). One
+    -- step below TOOLTIP, which would also swallow the window's own mouse clicks.
+    frame:SetFrameStrata("FULLSCREEN_DIALOG")
     -- raised above the other addons' windows when shown or clicked, with all its children: otherwise another
     -- window of the same strata draws its contents over this one's background
     frame:SetToplevel(true)
@@ -378,10 +379,12 @@ local function createFrame()
     medallion:SetPoint("TOPLEFT", frame, "TOPLEFT", -12, 12)
     medallion:SetTexture(T.MEDIA .. "FabrikaoMedallionLarge.png")
 
-    -- the riveted bronze corners (bigger here than on the sub-panels: this is the window itself, kept clear of the
-    -- gear/switch/close cluster at the top right); the medallion already covers the top-left one
+    -- the riveted bronze corners (bigger here than on the sub-panels: this is the window itself); only the bottom
+    -- two draw -- the medallion covers the top-left one, and the top-right one sat right on top of the
+    -- gear/switch/close cluster, which has no room to spare and isn't ours to rearrange
     local corners = T.ApplyForgedCorners(chrome, 40, 2)
     corners[1]:Hide()
+    corners[2]:Hide()
 
     -- the title plate (griffin wings on a bronze bar, as Completao!!'s own header): drawn over whatever Blizzard's
     -- own title text would say, since it carries the name and version itself
