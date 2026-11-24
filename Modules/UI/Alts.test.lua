@@ -103,15 +103,15 @@ describe("Other characters' items", function()
         assert.matches("Elsa|r: 4 in bags", text)
     end)
 
-    it("the ingredient icon is tinted by what the counts allow", function()
+    it("the ingredient icon is bordered by what the counts allow", function()
         ns.char.view = "table"
         openAlchemy()
         local icon = recipeRows()[1].compIcons[1]
-        assert.are.same({ 1, 0.35, 0.35 }, icon.texture._set.SetVertexColor) -- one of two
+        assert.are.same({ ns.Theme.rgba("loss", 0.6) }, { unpack(icon._set.SetBackdropBorderColor) }) -- one of two
         local alts = checks()[3]
         alts:SetChecked(true)
         click(alts)
-        assert.are.same({ 1, 1, 1 }, recipeRows()[1].compIcons[1].texture._set.SetVertexColor) -- five
+        assert.are.same({ ns.Theme.rgba("profit", 1) }, { unpack(recipeRows()[1].compIcons[1]._set.SetBackdropBorderColor) }) -- five
     end)
 
     -- the panel of the first result of the search, as data

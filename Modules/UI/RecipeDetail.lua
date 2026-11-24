@@ -1,5 +1,6 @@
 local _, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- The panel of a recipe, next to the main window: everything the addon knows about it (status, skill and colors, what it makes,
 -- the ingredients with how many you have, cost and profit, the item that teaches it, where it is learned). A click on a
@@ -243,18 +244,18 @@ local function put(font, x, y, width, text, justify, color)
 end
 
 local function heading(y, title)
-    put(FONT_HEAD, 0, y, TEXT_W, title, nil, { 1, 0.82, 0 })
+    put(FONT_HEAD, 0, y, TEXT_W, title, nil, { T.rgba("bronzeLight") })
     local line = acquire("line", function() return panel.child:CreateTexture(nil, "ARTWORK") end)
     line:ClearAllPoints()
     line:SetPoint("TOPLEFT", panel.child, "TOPLEFT", 0, -(y + 28))
     line:SetSize(TEXT_W, 1)
-    line:SetColorTexture(1, 0.82, 0, 0.4)
+    line:SetColorTexture(T.rgba("brass", 0.5))
     return y + 40
 end
 
 -- "Label    value" with the value wrapping in its own column
 local function factRow(y, label, value)
-    local a = put(FONT_LABEL, 0, y, LABEL_W, label, nil, { 1, 0.82, 0 })
+    local a = put(FONT_LABEL, 0, y, LABEL_W, label, nil, { T.rgba("bronzeLight") })
     local b = put(FONT_BODY, LABEL_W + 8, y, TEXT_W - LABEL_W - 8, value)
     return y + math.max(a, b) + 9
 end
@@ -389,7 +390,7 @@ local function render()
     local data = ns.RecipeDetail_Build(current.recipe, current.opts)
     releaseAll()
     updateCraftBar()
-    panel:SetBackdropColor(0.05, 0.05, 0.07, 1)
+    panel:SetBackdropColor(T.rgba("iron"))
 
     panel.name:SetText(data.name)
     panel.name:SetTextColor(data.color[1], data.color[2], data.color[3])
@@ -450,7 +451,7 @@ local function create(parent)
         tile = true, tileSize = 32, edgeSize = 32,
         insets = { left = 11, right = 12, top = 12, bottom = 11 },
     })
-    panel:SetBackdropColor(0.05, 0.05, 0.07, 1)
+    panel:SetBackdropColor(T.rgba("iron"))
     panel:SetToplevel(true)
     panel:EnableMouse(true) -- clicks must not fall through to what is behind it
 
@@ -463,7 +464,7 @@ local function create(parent)
     iconFrame:SetSize(72, 72)
     iconFrame:SetPoint("TOPLEFT", MARGIN, -MARGIN)
     iconFrame:SetBackdrop({ edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14 })
-    iconFrame:SetBackdropBorderColor(1, 0.82, 0, 0.9)
+    iconFrame:SetBackdropBorderColor(T.rgba("bronzeLight", 0.9))
     local iconButton = CreateFrame("Button", nil, iconFrame)
     iconButton:SetPoint("TOPLEFT", 5, -5)
     iconButton:SetPoint("BOTTOMRIGHT", -5, 5)
@@ -497,7 +498,7 @@ local function create(parent)
     separator:SetPoint("TOPLEFT", panel, "TOPLEFT", MARGIN, -(MARGIN + 72 + 44))
     separator:SetPoint("RIGHT", panel, "RIGHT", -MARGIN, 0)
     separator:SetHeight(1)
-    separator:SetColorTexture(1, 0.82, 0, 0.5)
+    separator:SetColorTexture(T.rgba("brass", 0.6))
 
     -- (the bar is only there when the content is taller than the frame)
     panel.scroll, panel.child = ns.AutoScroll_Create(panel, function(withBar, scroll)
@@ -511,10 +512,8 @@ local function create(parent)
     panel.craftBar:SetPoint("BOTTOMLEFT", MARGIN, MARGIN - 2)
     panel.craftBar:SetPoint("BOTTOMRIGHT", -MARGIN, MARGIN - 2)
     panel.craftBar:SetHeight(28)
-    panel.craftButton = CreateFrame("Button", nil, panel.craftBar, "UIPanelButtonTemplate")
-    panel.craftButton:SetSize(150, 26)
+    panel.craftButton = T.CreateBronzeButton(panel.craftBar, L["Craft"], 150, 26)
     panel.craftButton:SetPoint("LEFT", 0, 0)
-    panel.craftButton:SetText(L["Craft"])
     panel.craftButton:SetScript("OnClick", function()
         local recipe = current and current.recipe
         if recipe then ns.Craft_Open(recipe.id, recipe.db and recipe.db.s) end

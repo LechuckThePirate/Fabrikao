@@ -1,5 +1,6 @@
 local _, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- The scrolling list of recipes of a profession page, in the two views the player can choose in the preferences:
 --   table     columns: icon, name, components (the ingredients' icons, with their tooltips), approximate cost, approximate
@@ -135,10 +136,13 @@ end
 ---------------------------------------------------------------------------------------------------
 -- One ingredient of a recipe as an icon with its count, with the item's tooltip on hover (and how many the bags have).
 local function newComponent(row)
-    local button = CreateFrame("Button", nil, row)
+    -- a thin border says at a glance whether the bags cover it: emerald when they do, dim crimson when they don't
+    -- (the style book's "material availability" border; brass and neutral while the recipe isn't known yet)
+    local button = CreateFrame("Button", nil, row, "BackdropTemplate")
     button:SetSize(COMP_ICON, COMP_ICON)
     button.texture = button:CreateTexture(nil, "ARTWORK")
-    button.texture:SetAllPoints()
+    button.texture:SetPoint("TOPLEFT", 1, -1)
+    button.texture:SetPoint("BOTTOMRIGHT", -1, 1)
     button.count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
     button.count:SetPoint("BOTTOMRIGHT", 1, 0)
     button:SetScript("OnEnter", function(self)
@@ -315,10 +319,12 @@ local function showComponents(b, recipe, alts, x, w, size, top, dash)
             icon:SetPoint("LEFT", b, "LEFT", x + (i - 1) * (size + COMP_GAP), 0)
         end
         icon.texture:SetTexture(ns.ItemIcon(itemID) or 134400)
-        if recipe.learned and owned < reagent.quantity then
-            icon.texture:SetVertexColor(1, 0.35, 0.35)
+        if recipe.learned then
+            T.SetStockBorder(icon, owned >= reagent.quantity)
         else
-            icon.texture:SetVertexColor(1, 1, 1)
+            icon:SetBackdrop(T.BACKDROP)
+            icon:SetBackdropColor(0, 0, 0, 0)
+            icon:SetBackdropBorderColor(T.rgba("brass", 0.5))
         end
         icon.count:SetText(reagent.quantity > 1 and tostring(reagent.quantity) or "")
         icon:Show()

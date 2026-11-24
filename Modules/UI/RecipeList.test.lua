@@ -65,20 +65,20 @@ describe("RecipeList", function()
             assert.matches("|cffff4c4c250|r", other.level._text) -- skill 60 isn't enough for 250: red
         end)
 
-        it("shows the ingredients as icons with their count, the missing ones of a known recipe tinted red", function()
+        it("shows the ingredients as icons with their count, bordered emerald or dim crimson by whether the bags cover them", function()
             ns.RecipeList_Set(rows(), "table", nil, 60)
             local icons = rowsShown()[2].compIcons
             assert.are.equal(10, icons[1].itemID)
             assert.are.equal("2", icons[1].count._text)
-            assert.are.same({ 1, 1, 1 }, icons[1].texture._set.SetVertexColor) -- the bags have 5
+            assert.are.same({ ns.Theme.rgba("profit", 1) }, { unpack(icons[1]._set.SetBackdropBorderColor) }) -- the bags have 5
             assert.are.equal(11, icons[2].itemID)
             assert.are.equal("", icons[2].count._text) -- one of them: no number
-            assert.are.same({ 1, 0.35, 0.35 }, icons[2].texture._set.SetVertexColor) -- the bags have none
+            assert.are.same({ ns.Theme.rgba("loss", 0.6) }, { unpack(icons[2]._set.SetBackdropBorderColor) }) -- the bags have none
             assert.is_true(icons[1]:IsShown())
             assert.is_false(rowsShown()[2].comp:IsShown())
-            -- a recipe the character doesn't know isn't tinted
+            -- a recipe the character doesn't know gets a neutral brass border: stock isn't checked against it
             local unknownIcon = rowsShown()[4].compIcons[1]
-            assert.are.same({ 1, 1, 1 }, unknownIcon.texture._set.SetVertexColor)
+            assert.are.same({ ns.Theme.rgba("brass", 0.5) }, { unpack(unknownIcon._set.SetBackdropBorderColor) })
         end)
 
         it("an ingredient's icon shows the item's tooltip and how many are needed and owned", function()
