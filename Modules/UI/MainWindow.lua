@@ -126,7 +126,7 @@ local function createPage(parent, top)
     -- the style book's per-profession backdrop, faint behind the recipe list (ns.UI_ShowRecipes sets it)
     page.background = page:CreateTexture(nil, "BACKGROUND")
     page.background:SetAllPoints()
-    page.background:SetAlpha(0.16)
+    page.background:SetAlpha(0.4) -- a flat panel with nothing behind it read as unfinished at the style book's own 16%
 
     local back = T.CreateGhostButton(page, L["< Professions"], 90, 22)
     back:SetPoint("TOPLEFT", 0, 0)

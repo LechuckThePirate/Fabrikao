@@ -309,6 +309,7 @@ end
 local function newQuadrant(key, place)
     local q = { key = key }
     q.frame = T.CreateForgedFrame(overview, "Frame", "slate", "brass")
+    T.ApplyForgeBackground(q.frame)
     place(q.frame)
     T.ApplyForgedCorners(q.frame, 24)
     q.title = q.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -850,6 +851,7 @@ function ns.Overview_Create(parent, top)
     overview = CreateFrame("Frame", nil, parent)
     overview:SetPoint("TOPLEFT", 12, -top)
     overview:SetPoint("BOTTOMRIGHT", -12, 12)
+    T.ApplyForgeBackground(overview, 0.35) -- fills the margins around and between the quadrants
 
     -- the welcome line, the search box (what is typed goes to the search of every recipe) and the row of the toggle
     overview.welcome = overview:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")

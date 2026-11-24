@@ -98,7 +98,7 @@ function T.Text(parent, kind, color, layer)
     return T.Font(fs, kind, color)
 end
 
-local BACKDROP = { bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 }
+local BACKDROP = { bgFile = WHITE, edgeFile = WHITE, edgeSize = 2 }
 T.BACKDROP = BACKDROP
 
 -- A flat forged panel: palette background (slate by default) and a 1px brass border. On a BackdropTemplate frame.
@@ -116,6 +116,18 @@ end
 function T.CreateForgedFrame(parent, kind, bg, border, name)
     local f = CreateFrame(kind or "Frame", name, parent, "BackdropTemplate")
     return T.Style(f, bg, border)
+end
+
+-- The dark stone-and-schematic backdrop (ForgeBackground, cut from the style book's concept art) behind a panel's
+-- own flat fill, at a clearly visible strength (not a faint watermark -- a flat color alone read as "unfinished").
+-- `alpha` 0.5 by default; pass a lower one for a page where a profession's own backdrop (T.ProfessionBackground)
+-- is layered on top instead.
+function T.ApplyForgeBackground(f, alpha)
+    local tex = f:CreateTexture(nil, "BACKGROUND", nil, -1)
+    tex:SetAllPoints()
+    tex:SetTexture(T.MEDIA .. "ForgeBackground.png")
+    tex:SetAlpha(alpha or 0.5)
+    return tex
 end
 
 -- One riveted bronze corner (CornerBronze), mirrored with SetTexCoord onto the other three: the "tarjeta forjada"

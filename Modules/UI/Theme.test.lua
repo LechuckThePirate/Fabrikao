@@ -65,6 +65,14 @@ describe("Theme palette", function()
         assert.are.equal("|cffd97706", ns.Theme.code("bronze"))
     end)
 
+    it("draws the forge background at a clearly visible alpha by default", function()
+        local f = CreateFrame("Frame", nil, UIParent)
+        local tex = ns.Theme.ApplyForgeBackground(f)
+        assert.are.equal(0.5, tex:GetAlpha())
+        local dim = ns.Theme.ApplyForgeBackground(f, 0.2)
+        assert.are.equal(0.2, dim:GetAlpha())
+    end)
+
     it("picks a profession's own backdrop, or the generic one for a profession the concept art hasn't reached", function()
         assert.matches("Professions\\Alchemy%.png$", ns.Theme.ProfessionBackground(171))
         assert.matches("Professions\\Generic%.png$", ns.Theme.ProfessionBackground(165)) -- Leatherworking: no art yet

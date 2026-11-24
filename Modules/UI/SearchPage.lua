@@ -185,6 +185,7 @@ function ns.SearchPage_Create(parent, top)
     page = CreateFrame("Frame", nil, parent)
     page:SetPoint("TOPLEFT", 12, -top)
     page:SetPoint("BOTTOMRIGHT", -12, 12)
+    T.ApplyForgeBackground(page, 0.35)
 
     local back = T.CreateGhostButton(page, L["< Professions"], 90, 22)
     back:SetPoint("TOPLEFT", 0, 0)

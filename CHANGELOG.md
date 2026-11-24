@@ -5,6 +5,7 @@
 - New: "La Forja del Maestro Artesano" visual revamp (`Modules/UI/Theme.lua`, the style book's forged iron, tempered bronze and amber palette), across every window: the main window's chrome (the portrait is now the forged anvil medallion), the "Table / Detailed" switch (a segmented toggle, replacing the plain red button), the start screen's profession cards (riveted bronze corners, metallic skill bars, an emerald accent on "You can craft now"), the recipe catalog's material-availability borders on the component icons, the recipe panel's forged Craft button and corners, the filter dropdowns' brass frame, and the trainers / preferences / welcome popups' chrome and buttons. A profession's recipe page has a faint backdrop of its own (Alchemy's purple-and-amber stone, Blacksmithing's embers, Mining's ore veins...), a neutral one for the professions the concept art hasn't reached yet (Leatherworking, Skinning, Poisons).
 - Fix: the main window (and the recipe/trainers panels docked to it) no longer let nameplates, the player model or other game UI show through their background.
 - New: the title bar now shows a bronze plate with griffin wings (Completao!!'s own `TitlePlate.tga`, already gold/bronze rather than green, reused as-is) instead of plain text.
+- Fix: the start screen, the recipe page and the search page read as flat, unfinished rectangles with nothing behind them -- they now carry the style book's stone-and-schematic backdrop (or, for a profession's own recipe page, its own backdrop at a far more visible strength than before).
 
 ## 0.9.1
 
