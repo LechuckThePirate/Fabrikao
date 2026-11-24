@@ -120,7 +120,7 @@ function T.ApplyForgedCorners(f, size, out)
     local parts = {}
     for _, corner in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do
         local tex = f:CreateTexture(nil, "OVERLAY", nil, 7)
-        tex:SetTexture(T.MEDIA .. "CornerBronze")
+        tex:SetTexture(T.MEDIA .. "CornerBronze.png")
         tex:SetTexCoord(unpack(CORNER_TEXCOORD[corner]))
         tex:SetSize(size, size)
         local ox = corner:find("LEFT") and -out or out
