@@ -362,11 +362,19 @@ local function createFrame()
         -- the style book's anvil medallion, replacing the plain circular icon
         frame:SetPortraitToAsset(T.MEDIA .. "FabrikaoMedallion.png")
     end
-    local title = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText
-    if title then
-        title:SetText(("Fabrikao!! v%s"):format(ns.Version()))
-        if title.SetTextColor then title:SetTextColor(T.rgba("bronzeLight")) end
-    end
+    -- the title plate (griffin wings on a bronze bar, as Completao!!'s own header): drawn over whatever Blizzard's
+    -- own title text would say, since it carries the name and version itself
+    local titleText = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText
+    if titleText then titleText:SetText("") end
+    local PLATE_H = 40
+    local plate = frame:CreateTexture(nil, "ARTWORK")
+    plate:SetTexture(T.MEDIA .. "TitlePlate.tga")
+    plate:SetTexCoord(0, 1, 0, 106 / 128) -- the asset's own lower rim (meant for a parchment panel below it) is cropped off
+    plate:SetSize(PLATE_H * 512 / 106, PLATE_H)
+    plate:SetPoint("TOP", frame, "TOP", 0, -2)
+    local title = T.Text(frame, "title", "bronzeLight")
+    title:SetPoint("CENTER", plate, "CENTER", 0, 1)
+    title:SetText(("Fabrikao!! v%s"):format(ns.Version()))
 
     -- the gear next to the X opens the preferences: our own icon, tinted gold
     local gear = CreateFrame("Button", nil, frame)
