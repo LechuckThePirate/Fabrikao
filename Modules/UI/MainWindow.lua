@@ -310,7 +310,9 @@ local function createFrame()
     else
         frame:SetPoint("CENTER")
     end
-    frame:SetFrameStrata("HIGH")
+    -- DIALOG (as Preferences.lua and Welcome.lua already use): "HIGH" let nameplates and world text show through
+    -- the window and its children (the recipe panel, the trainers panel), since the game draws those above it
+    frame:SetFrameStrata("DIALOG")
     -- raised above the other addons' windows when shown or clicked, with all its children: otherwise another
     -- window of the same strata draws its contents over this one's background
     frame:SetToplevel(true)
