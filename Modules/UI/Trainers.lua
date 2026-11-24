@@ -1,5 +1,6 @@
 local _, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- The trainers of a profession, nearest first, in a panel next to the main window (the same place as a recipe's panel, which it
 -- replaces). Each one has the buttons that show it on the map and set a TomTom waypoint, as the trainers in a recipe's panel do.
@@ -13,7 +14,7 @@ local MARGIN = 22
 local SCROLL_W = 28
 local TEXT_W = WIDTH - MARGIN - SCROLL_W - 6
 local MAX_TRAINERS = 40
-local DIM, GOLD = "|cff9a9a9a", "|cffffd100"
+local DIM, GOLD = "|cff9a9a9a", T.code("bronzeLight")
 
 local panel
 local current -- { skillLine =, name = }
@@ -97,9 +98,10 @@ local function create(parent)
         tile = true, tileSize = 32, edgeSize = 32,
         insets = { left = 11, right = 12, top = 12, bottom = 11 },
     })
-    panel:SetBackdropColor(0.05, 0.05, 0.07, 1)
+    panel:SetBackdropColor(T.rgba("iron"))
     panel:SetToplevel(true)
     panel:EnableMouse(true) -- clicks must not fall through to what is behind it
+    T.ApplyForgedCorners(panel, 32, 2)
 
     local okClose, close = pcall(CreateFrame, "Button", nil, panel, "UIPanelCloseButtonDefaultAnchors")
     if not okClose or not close then close = CreateFrame("Button", nil, panel, "UIPanelCloseButton") end
@@ -109,15 +111,16 @@ local function create(parent)
     panel.title:SetPoint("TOPLEFT", MARGIN, -MARGIN)
     panel.title:SetPoint("RIGHT", panel, "RIGHT", -MARGIN - 24, 0)
     panel.title:SetJustifyH("LEFT")
+    T.Font(panel.title, "title", "bronzeLight")
     panel.subtitle = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     panel.subtitle:SetPoint("TOPLEFT", panel.title, "BOTTOMLEFT", 0, -6)
-    panel.subtitle:SetTextColor(0.7, 0.7, 0.7)
+    T.Font(panel.subtitle, "body", "muted")
 
     local separator = panel:CreateTexture(nil, "ARTWORK")
     separator:SetPoint("TOPLEFT", panel, "TOPLEFT", MARGIN, -(MARGIN + 52))
     separator:SetPoint("RIGHT", panel, "RIGHT", -MARGIN, 0)
     separator:SetHeight(1)
-    separator:SetColorTexture(1, 0.82, 0, 0.5)
+    separator:SetColorTexture(T.rgba("brass", 0.6))
 
     -- (the bar is only there when the content is taller than the frame)
     panel.scroll, panel.child = ns.AutoScroll_Create(panel, function(withBar, scroll)

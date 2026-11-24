@@ -1,5 +1,6 @@
 local _, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- The two rows of filters and sorting of the recipe pages (the profession's page and the search of every recipe): a row
 -- of checkboxes ("can make now", "hide grey") with "Clear", and a row of dropdowns like the ones of the game's options
@@ -66,6 +67,18 @@ local function createCheck(parent, label, onClick)
     return check
 end
 
+-- A thin aged-brass frame around a native widget (the dropdown's own box, or the fallback cycle button), since
+-- their own look is Blizzard's: the style book's border is drawn behind and around it, not over it.
+local function backingFor(widget)
+    local backing = CreateFrame("Frame", nil, widget:GetParent(), "BackdropTemplate")
+    backing:SetBackdrop(T.BACKDROP)
+    backing:SetBackdropColor(0, 0, 0, 0)
+    backing:SetBackdropBorderColor(T.rgba("brass"))
+    backing:SetPoint("TOPLEFT", widget, "TOPLEFT", -2, 2)
+    backing:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", 2, -2)
+    backing:SetFrameLevel(math.max(0, widget:GetFrameLevel() - 1))
+end
+
 -- A picker of one of several values. In the game it is the dropdown of the options screens (a menu with a radio button per value);
 -- without the menu templates it is a button that goes to the next value on a click. config = { width =,
 -- options = function() returning { { value =, text = }... } (the first is "no filter"), get = function() the current value,
@@ -75,6 +88,7 @@ local function createPicker(parent, config)
     local ok, dropdown = pcall(CreateFrame, "DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
     if ok and dropdown and dropdown.SetupMenu and dropdown.GenerateMenu then
         dropdown:SetWidth(config.width)
+        backingFor(dropdown)
         -- the text comes from the filters, not from the selected entry: a filter of a value the list lacks still shows
         if dropdown.SetSelectionTranslator then dropdown:SetSelectionTranslator(function() return config.text() end) end
         dropdown:SetupMenu(function(_, rootDescription)
@@ -96,6 +110,7 @@ local function createPicker(parent, config)
     if ok and dropdown then dropdown:Hide() end
     local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     button:SetSize(config.width, 22)
+    backingFor(button)
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     button:SetScript("OnClick", function(_, mouseButton)
         if mouseButton == "RightButton" and config.altClick and config.altClick() then return end

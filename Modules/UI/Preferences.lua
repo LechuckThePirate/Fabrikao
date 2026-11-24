@@ -1,5 +1,6 @@
 local _, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- Preferences window (opened with the main window's gear). Basic settings, in ns.char: per character or shared by
 -- the account, depending on the first checkbox, as in the other addons.
@@ -71,10 +72,8 @@ local function makeSlider(parent, y, getValue, setValue, labelFor)
 end
 
 local function makeButton(parent, y, text, onClick)
-    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    button:SetSize(WIDTH - 48, 24)
+    local button = T.CreateGhostButton(parent, text, WIDTH - 48, 24)
     button:SetPoint("TOPLEFT", 24, y)
-    button:SetText(text)
     button:SetScript("OnClick", onClick)
     return button
 end
@@ -91,7 +90,8 @@ local function create()
         tile = true, tileSize = 16, edgeSize = 16,
         insets = { left = 4, right = 4, top = 4, bottom = 4 },
     })
-    prefs:SetBackdropColor(0, 0, 0, 0.9)
+    prefs:SetBackdropColor(T.rgba("iron", 0.96))
+    T.ApplyForgedCorners(prefs, 28, 2)
     prefs:SetMovable(true)
     prefs:EnableMouse(true)
     prefs:RegisterForDrag("LeftButton")
@@ -108,6 +108,7 @@ local function create()
     local title = prefs:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -16)
     title:SetText(L["Fabrikao!! Preferences"])
+    T.Font(title, "title", "bronzeLight")
 
     local widgets = {}
     local note = prefs:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")

@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- Welcome / "what's new" window, as in Embolsao, Completao and Aggreao: shown once per version (PLAYER_ENTERING_WORLD, see
 -- Fabrikao.lua), with the addon's icon, a note pointing at the GitHub issue tracker, the latest changelog entry and links
@@ -62,7 +63,8 @@ local function create()
         tile = true, tileSize = 16, edgeSize = 16,
         insets = { left = 4, right = 4, top = 4, bottom = 4 },
     })
-    welcomeFrame:SetBackdropColor(0.06, 0.06, 0.06, 1)
+    welcomeFrame:SetBackdropColor(T.rgba("iron"))
+    T.ApplyForgedCorners(welcomeFrame, 28, 2)
     welcomeFrame:SetMovable(true)
     welcomeFrame:EnableMouse(true)
     welcomeFrame:RegisterForDrag("LeftButton")
@@ -84,6 +86,7 @@ local function create()
     welcomeFrame.title = welcomeFrame:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     welcomeFrame.title:SetPoint("TOP", 0, -70)
     welcomeFrame.title:SetText(L["Welcome to Fabrikao!!"])
+    T.Font(welcomeFrame.title, "title", "bronzeLight")
 
     -- Where to report bugs and ideas: always shown, with the GitHub issue tracker just below it.
     welcomeFrame.body = welcomeFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
@@ -144,10 +147,8 @@ local function create()
     welcomeFrame.dontShowAgainLabel:SetPoint("LEFT", welcomeFrame.dontShowAgainCheck, "RIGHT", 2, 0)
     welcomeFrame.dontShowAgainLabel:SetText(L["Don't show this message again"])
 
-    local closeButton = CreateFrame("Button", nil, welcomeFrame, "UIPanelButtonTemplate")
-    closeButton:SetSize(90, 22)
+    local closeButton = T.CreateBronzeButton(welcomeFrame, CLOSE, 90, 22)
     closeButton:SetPoint("BOTTOMRIGHT", -16, 14)
-    closeButton:SetText(CLOSE)
     closeButton:SetScript("OnClick", function() welcomeFrame:Hide() end)
 
     welcomeFrame:SetScript("OnShow", function()
