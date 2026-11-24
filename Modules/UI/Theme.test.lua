@@ -64,6 +64,11 @@ describe("Theme palette", function()
     it("formats a palette color as inline text", function()
         assert.are.equal("|cffd97706", ns.Theme.code("bronze"))
     end)
+
+    it("picks a profession's own backdrop, or the generic one for a profession the concept art hasn't reached", function()
+        assert.matches("Professions\\Alchemy%.png$", ns.Theme.ProfessionBackground(171))
+        assert.matches("Professions\\Generic%.png$", ns.Theme.ProfessionBackground(165)) -- Leatherworking: no art yet
+    end)
 end)
 
 describe("Theme widgets", function()

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- New: "La Forja del Maestro Artesano" visual revamp, in progress (`Modules/UI/Theme.lua`, the style book's forged iron, tempered bronze and amber palette): the window chrome (the portrait is now the forged anvil medallion), the "Table / Detailed" switch (now a segmented toggle, replacing the plain red button), the start screen's profession cards (riveted bronze corners, metallic skill bars, an emerald accent on "You can craft now"), the recipe catalog's material-availability borders on the component icons, and the recipe panel's forged Craft button and corners.
+- New: "La Forja del Maestro Artesano" visual revamp, in progress (`Modules/UI/Theme.lua`, the style book's forged iron, tempered bronze and amber palette): the window chrome (the portrait is now the forged anvil medallion), the "Table / Detailed" switch (now a segmented toggle, replacing the plain red button), the start screen's profession cards (riveted bronze corners, metallic skill bars, an emerald accent on "You can craft now"), the recipe catalog's material-availability borders on the component icons, and the recipe panel's forged Craft button and corners. A profession's recipe page now has a faint backdrop of its own (Alchemy's purple-and-amber stone, Blacksmithing's embers, Mining's ore veins...), a neutral one for the professions the concept art hasn't reached yet.
 
 ## 0.9.1
 

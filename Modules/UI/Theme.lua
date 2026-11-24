@@ -5,16 +5,29 @@ local ADDON, ns = ...
 -- border, the riveted corners). The windows only ask for them by name, so a color or a texture changes here for
 -- all of them.
 --
--- Media\Textures holds two assets cut from the style book's concept art (images/ai/, chroma-keyed off their black
--- background): FabrikaoMedallion (the anvil medallion, used as the window's portrait) and CornerBronze (one
--- riveted bronze corner, mirrored with SetTexCoord onto all four -- see T.ApplyForgedCorners). The style book's
--- full 9-slice frame and forge header are not painted yet: panels keep the flat backdrop (a brass 1px border)
--- rather than a proper T.NineSlice, same shape as Completao's Theme so swapping one in later only touches this file.
+-- Media\Textures holds assets cut from the style book's concept art (images/ai/): FabrikaoMedallion (the anvil
+-- medallion, the window's portrait, chroma-keyed off its black background) and CornerBronze (one riveted bronze
+-- corner, mirrored with SetTexCoord onto all four -- see T.ApplyForgedCorners). The style book's full 9-slice
+-- frame and forge header are not painted yet: panels keep the flat backdrop (a brass 1px border) rather than a
+-- proper T.NineSlice, same shape as Completao's Theme so swapping one in later only touches this file.
+-- Media\Textures\Professions holds a faint per-profession backdrop each (plain rectangle crops, no keying needed),
+-- for the recipe list page -- see T.ProfessionBackground.
 local T = {}
 ns.Theme = T
 
 T.MEDIA = "Interface\\AddOns\\" .. ADDON .. "\\Media\\Textures\\"
 local WHITE = "Interface\\Buttons\\WHITE8x8"
+
+-- skill line -> Media\Textures\Professions\<name>.png; a profession the concept art hasn't reached yet (Poisons,
+-- Leatherworking, Skinning) gets the neutral "Generic" backdrop.
+local PROFESSION_BG = {
+    [171] = "Alchemy", [164] = "Blacksmithing", [333] = "Enchanting", [202] = "Engineering",
+    [197] = "Tailoring", [186] = "Mining", [182] = "Herbalism", [129] = "FirstAid",
+    [185] = "Cooking", [356] = "Fishing",
+}
+function T.ProfessionBackground(skillLine)
+    return T.MEDIA .. "Professions\\" .. (PROFESSION_BG[skillLine] or "Generic") .. ".png"
+end
 
 local function hex(s, a)
     return { tonumber(s:sub(1, 2), 16) / 255, tonumber(s:sub(3, 4), 16) / 255, tonumber(s:sub(5, 6), 16) / 255, a or 1 }
