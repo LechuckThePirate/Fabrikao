@@ -351,7 +351,8 @@ local function createFrame()
     end
 
     if hasPortrait then
-        frame:SetPortraitToAsset("Interface\\AddOns\\" .. ADDON .. "\\Icons\\Fabrikao.png")
+        -- the style book's anvil medallion, replacing the plain circular icon
+        frame:SetPortraitToAsset(T.MEDIA .. "FabrikaoMedallion")
     end
     local title = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText
     if title then

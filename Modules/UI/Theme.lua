@@ -2,11 +2,14 @@ local ADDON, ns = ...
 
 -- The look of every window ("La Forja del Maestro Artesano" - forged iron, tempered bronze and amber embers): one
 -- palette, the fonts and the pieces the windows are built from (panels, bronze buttons, skill bars, the brass
--- border). The windows only ask for them by name, so a color or a texture changes here for all of them.
+-- border, the riveted corners). The windows only ask for them by name, so a color or a texture changes here for
+-- all of them.
 --
--- The style book's 9-slice frames (FrameBronze9Slice, the anvil medallion, the forge header) are not painted yet:
--- until Media\Textures holds them, panels are flat backdrops (a brass 1px border) rather than T.NineSlice, same
--- shape as Completao's Theme so swapping them in later only touches this file.
+-- Media\Textures holds two assets cut from the style book's concept art (images/ai/, chroma-keyed off their black
+-- background): FabrikaoMedallion (the anvil medallion, used as the window's portrait) and CornerBronze (one
+-- riveted bronze corner, mirrored with SetTexCoord onto all four -- see T.ApplyForgedCorners). The style book's
+-- full 9-slice frame and forge header are not painted yet: panels keep the flat backdrop (a brass 1px border)
+-- rather than a proper T.NineSlice, same shape as Completao's Theme so swapping one in later only touches this file.
 local T = {}
 ns.Theme = T
 
@@ -100,6 +103,33 @@ end
 function T.CreateForgedFrame(parent, kind, bg, border, name)
     local f = CreateFrame(kind or "Frame", name, parent, "BackdropTemplate")
     return T.Style(f, bg, border)
+end
+
+-- One riveted bronze corner (CornerBronze), mirrored with SetTexCoord onto the other three: the "tarjeta forjada"
+-- corner flourish of the style book, for a panel that doesn't have the full 9-slice frame yet. `size` is the corner's
+-- drawn side (40px by default); `out` how far outside the frame it sits (0: flush with the edge). Returns the four
+-- corner textures (f.forgedCorners).
+local CORNER_TEXCOORD = {
+    TOPLEFT = { 0, 0, 0, 1, 1, 0, 1, 1 },
+    TOPRIGHT = { 1, 0, 1, 1, 0, 0, 0, 1 },
+    BOTTOMLEFT = { 0, 1, 0, 0, 1, 1, 1, 0 },
+    BOTTOMRIGHT = { 1, 1, 1, 0, 0, 1, 0, 0 },
+}
+function T.ApplyForgedCorners(f, size, out)
+    size, out = size or 40, out or 0
+    local parts = {}
+    for _, corner in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do
+        local tex = f:CreateTexture(nil, "OVERLAY", nil, 7)
+        tex:SetTexture(T.MEDIA .. "CornerBronze")
+        tex:SetTexCoord(unpack(CORNER_TEXCOORD[corner]))
+        tex:SetSize(size, size)
+        local ox = corner:find("LEFT") and -out or out
+        local oy = corner:find("TOP") and out or -out
+        tex:SetPoint(corner, ox, oy)
+        parts[#parts + 1] = tex
+    end
+    f.forgedCorners = parts
+    return parts
 end
 
 ---------------------------------------------------------------------------------------------------------- buttons

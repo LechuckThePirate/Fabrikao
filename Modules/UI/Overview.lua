@@ -310,6 +310,7 @@ local function newQuadrant(key, place)
     local q = { key = key }
     q.frame = T.CreateForgedFrame(overview, "Frame", "slate", "brass")
     place(q.frame)
+    T.ApplyForgedCorners(q.frame, 28)
     q.title = q.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     q.title:SetPoint("TOPLEFT", 10, -6)
     q.title:SetJustifyH("LEFT")

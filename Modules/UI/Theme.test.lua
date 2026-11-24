@@ -108,4 +108,16 @@ describe("Theme widgets", function()
         bar:SetProgress(50, 100)
         assert.are.equal((200 - 2) * 0.5, bar.fill._w)
     end)
+
+    it("mirrors the one bronze corner texture onto all four corners", function()
+        local f = CreateFrame("Frame", nil, UIParent)
+        local corners = ns.Theme.ApplyForgedCorners(f, 28)
+        assert.are.equal(4, #corners)
+        for _, tex in ipairs(corners) do
+            assert.are.same({ 28, 28 }, { tex._w, tex._h })
+        end
+        -- the top-left corner is unflipped, the top-right mirrored horizontally
+        assert.are.same({ 0, 0, 0, 1, 1, 0, 1, 1 }, corners[1]._set.SetTexCoord)
+        assert.are.same({ 1, 0, 1, 1, 0, 0, 0, 1 }, corners[2]._set.SetTexCoord)
+    end)
 end)

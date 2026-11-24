@@ -453,6 +453,7 @@ local function create(parent)
     })
     panel:SetBackdropColor(T.rgba("iron"))
     panel:SetToplevel(true)
+    T.ApplyForgedCorners(panel, 32, 2)
     panel:EnableMouse(true) -- clicks must not fall through to what is behind it
 
     local okClose, close = pcall(CreateFrame, "Button", nil, panel, "UIPanelCloseButtonDefaultAnchors")
