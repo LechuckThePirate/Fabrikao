@@ -358,31 +358,48 @@ local function createFrame()
         frame.grip = grip
     end
 
-    if hasPortrait then
-        -- the style book's anvil medallion, replacing the plain circular icon
-        frame:SetPortraitToAsset(T.MEDIA .. "FabrikaoMedallion.png")
-    end
+    -- an elevated layer for everything of ours that has to sit above Blizzard's own border and title chrome
+    -- (NineSlice draws on top of a frame's own plain textures, so the corners and the title plate would otherwise
+    -- end up half-hidden behind it, as they did the first time)
+    local closeButton = frame.CloseButton
+    local level = frame:GetFrameLevel() + 10
+    if frame.NineSlice then level = math.max(level, frame.NineSlice:GetFrameLevel() + 10) end -- Blizzard's border would cover it
+    if closeButton then level = math.max(level, closeButton:GetFrameLevel()) end
+    local chrome = CreateFrame("Frame", nil, frame)
+    chrome:SetAllPoints()
+    chrome:SetFrameLevel(level)
+
+    -- the anvil medallion, big and sticking out of the top-left corner (Completao!!'s own medallion does the same):
+    -- a plain texture, not Blizzard's masked portrait, which only takes assets up to 64x64 and left most of a
+    -- bigger one uncropped off-screen
+    local MEDALLION = 84
+    local medallion = chrome:CreateTexture(nil, "OVERLAY")
+    medallion:SetSize(MEDALLION, MEDALLION)
+    medallion:SetPoint("TOPLEFT", frame, "TOPLEFT", -12, 12)
+    medallion:SetTexture(T.MEDIA .. "FabrikaoMedallionLarge.png")
+
+    -- the riveted bronze corners (bigger here than on the sub-panels: this is the window itself, kept clear of the
+    -- gear/switch/close cluster at the top right); the medallion already covers the top-left one
+    local corners = T.ApplyForgedCorners(chrome, 40, 2)
+    corners[1]:Hide()
+
     -- the title plate (griffin wings on a bronze bar, as Completao!!'s own header): drawn over whatever Blizzard's
     -- own title text would say, since it carries the name and version itself
     local titleText = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText
     if titleText then titleText:SetText("") end
-    local PLATE_H = 40
-    local plate = frame:CreateTexture(nil, "ARTWORK")
+    local PLATE_H = 44
+    local plate = chrome:CreateTexture(nil, "ARTWORK")
     plate:SetTexture(T.MEDIA .. "TitlePlate.tga")
     plate:SetTexCoord(0, 1, 0, 106 / 128) -- the asset's own lower rim (meant for a parchment panel below it) is cropped off
     plate:SetSize(PLATE_H * 512 / 106, PLATE_H)
     plate:SetPoint("TOP", frame, "TOP", 0, -2)
-    local title = T.Text(frame, "title", "bronzeLight")
+    local title = T.Text(chrome, "title", "bronzeLight")
     title:SetPoint("CENTER", plate, "CENTER", 0, 1)
     title:SetText(("Fabrikao!! v%s"):format(ns.Version()))
 
     -- the gear next to the X opens the preferences: our own icon, tinted gold
     local gear = CreateFrame("Button", nil, frame)
     gear:SetSize(20, 20)
-    local closeButton = frame.CloseButton
-    local level = frame:GetFrameLevel() + 10
-    if frame.NineSlice then level = math.max(level, frame.NineSlice:GetFrameLevel() + 10) end -- Blizzard's border would cover it
-    if closeButton then level = math.max(level, closeButton:GetFrameLevel()) end
     gear:SetFrameLevel(level)
     if closeButton then
         gear:SetPoint("RIGHT", closeButton, "LEFT", -2, 0)

@@ -310,9 +310,9 @@ local function newQuadrant(key, place)
     local q = { key = key }
     q.frame = T.CreateForgedFrame(overview, "Frame", "slate", "brass")
     place(q.frame)
-    T.ApplyForgedCorners(q.frame, 16)
+    T.ApplyForgedCorners(q.frame, 24)
     q.title = q.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    q.title:SetPoint("TOPLEFT", 22, -6) -- clears the corner ornament (16px + a small gap)
+    q.title:SetPoint("TOPLEFT", 30, -6) -- clears the corner ornament (24px + a small gap)
     q.title:SetJustifyH("LEFT")
     T.Font(q.title, "heading", "bronzeLight")
     local line = q.frame:CreateTexture(nil, "ARTWORK")
@@ -465,7 +465,7 @@ end
 local function newSortButton(parent, onChange)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(22, 22)
-    b:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -20, -4) -- clears the quadrant's corner ornament
+    b:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -28, -4) -- clears the quadrant's corner ornament
     local texture = "Interface\\AddOns\\" .. ADDON .. "\\Icons\\Sort.png"
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetAllPoints()
