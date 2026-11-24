@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- The start screen of the window, under a welcome line and the search box (with "Consolidate alts" on, of every character):
 --   top left      the professions (icon, skill bar and name; "Can train: ..." when a trainer can teach the next rank)
@@ -110,22 +111,16 @@ local function newProfessionRow(content)
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetSize(38, 38)
     b.icon:SetPoint("LEFT", 6, 0)
-    b.name = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    b.name = T.Text(b, "body", "text")
     b.name:SetPoint("TOPLEFT", b.icon, "TOPRIGHT", 8, -1)
-    b.bar = CreateFrame("StatusBar", nil, b)
-    b.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    b.bar:SetHeight(13)
+    -- the style book's metallic, beveled skill bar (bronze while training, emerald once a profession is maxed)
+    b.bar = T.CreateSkillBar(b, 13, true)
     b.bar:SetPoint("BOTTOMLEFT", b.icon, "BOTTOMRIGHT", 8, 1)
     b.bar:SetPoint("RIGHT", -10, 0)
-    local back = b.bar:CreateTexture(nil, "BACKGROUND")
-    back:SetAllPoints()
-    back:SetColorTexture(0, 0, 0, 0.5)
-    b.barText = b.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    b.barText:SetPoint("CENTER")
+    b.barText = b.bar.label
     -- "Can train: Journeyman": the skill is close enough to the cap of its rank and a trainer can teach the next one
-    b.train = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    b.train = T.Text(b, "small", "profit")
     b.train:SetPoint("TOPRIGHT", -10, -4)
-    b.train:SetTextColor(0.25, 1, 0.25)
     b.train:Hide()
     -- (the name can be long with the alts that have the profession after it: it stops short of the notice)
     b.name:SetPoint("RIGHT", b.train, "LEFT", -8, 0)
@@ -140,10 +135,10 @@ end
 
 -- A title inside a quadrant with a line under it (not clickable).
 local function newSection(content)
-    local text = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local text = T.Text(content, "heading", "bronzeLight")
     text:SetJustifyH("LEFT")
     local line = content:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(1, 0.82, 0, 0.35)
+    line:SetColorTexture(T.rgba("brass", 0.6))
     line:SetHeight(1)
     line:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -2)
     line:SetPoint("RIGHT", content, "RIGHT", -8, 0)
@@ -165,13 +160,12 @@ local function newGroupHeader(content, onClick)
     b.profIcon = b:CreateTexture(nil, "ARTWORK")
     b.profIcon:SetSize(18, 18)
     b.profIcon:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
-    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    b.text = T.Text(b, "body", "text")
     b.text:SetPoint("LEFT", b.profIcon, "RIGHT", 6, 0)
-    b.note = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    b.note = T.Text(b, "small", "profit")
     b.note:SetPoint("RIGHT", -8, 0)
-    b.note:SetTextColor(0.25, 1, 0.25)
     local line = b:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(1, 0.82, 0, 0.35)
+    line:SetColorTexture(T.rgba("brass", 0.6))
     line:SetHeight(1)
     line:SetPoint("BOTTOMLEFT", 4, 0)
     line:SetPoint("BOTTOMRIGHT", -4, 0)
@@ -314,16 +308,14 @@ end
 -- title, scroll (with its bar only when it is needed), a note for when there is nothing to list, and the pools of rows
 local function newQuadrant(key, place)
     local q = { key = key }
-    q.frame = CreateFrame("Frame", nil, overview)
+    q.frame = T.CreateForgedFrame(overview, "Frame", "slate", "brass")
     place(q.frame)
-    local back = q.frame:CreateTexture(nil, "BACKGROUND")
-    back:SetAllPoints()
-    back:SetColorTexture(0, 0, 0, 0.22)
     q.title = q.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     q.title:SetPoint("TOPLEFT", 10, -6)
     q.title:SetJustifyH("LEFT")
+    T.Font(q.title, "heading", "bronzeLight")
     local line = q.frame:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(1, 0.82, 0, 0.5)
+    line:SetColorTexture(T.rgba("brass"))
     line:SetHeight(1)
     line:SetPoint("TOPLEFT", 8, -(TITLE_H + 2))
     line:SetPoint("RIGHT", q.frame, "RIGHT", -8, 0)
@@ -428,14 +420,13 @@ local function layoutProfessions()
         local holders = profession.holders and #profession.holders > 0 and ns.Roster_NamesText(profession.holders)
         b.name:SetText(holders and ("%s |cffffffff(|r%s|cffffffff)|r"):format(profession.name, holders) or profession.name)
         if learned then
-            b.bar:SetMinMaxValues(0, math.max(1, profession.maxRank))
-            b.bar:SetValue(profession.rank)
             local full = profession.maxRank > 0 and profession.rank >= profession.maxRank
-            b.bar:SetStatusBarColor(full and 0.2 or 0.1, full and 0.7 or 0.4, full and 0.2 or 0.9)
+            b.bar:SetProgress(profession.rank, math.max(1, profession.maxRank))
+            b.bar:SetFillColor(full and "profit" or "bronze")
             b.barText:SetText(profession.rank .. " / " .. profession.maxRank)
         else
-            b.bar:SetMinMaxValues(0, 1)
-            b.bar:SetValue(0)
+            b.bar:SetProgress(0, 1)
+            b.bar:SetFillColor("bronze")
             b.barText:SetText(L["Not learned"])
         end
         b:SetAlpha((profession.hasRecipes and learned) and 1 or 0.6)
@@ -937,6 +928,10 @@ function ns.Overview_Create(parent, top)
     craft.rows = newPool(function() return newCraftRow(craft.content) end)
     craft.relayout = layoutCraft
     craft.embolsao = newEmbolsaoPromo(craft.content)
+    -- the style book's emerald accent on the block of recipes ready to craft right now
+    local craftAccent = T.CreateAccentBar(craft.frame, "profit")
+    craftAccent:SetPoint("TOPLEFT")
+    craftAccent:SetPoint("BOTTOMLEFT")
 
     return overview
 end

@@ -13,6 +13,7 @@
     <Script file="Modules\Professions\Roster.lua"/>
     <Script file="Modules\Professions\Recipes.lua"/>
     <Script file="Modules\Professions\Craft.lua"/>
+    <Script file="Modules\UI\Theme.lua"/>
     <Script file="Modules\UI\AutoScroll.lua"/>
     <Script file="Modules\UI\IconButton.lua"/>
     <Script file="Modules\UI\RecipeList.lua"/>

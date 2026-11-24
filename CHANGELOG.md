@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- New: the first pass of "La Forja del Maestro Artesano" visual revamp (`Modules/UI/Theme.lua`, the style book's forged iron, tempered bronze and amber palette): the window chrome, the "Table / Detailed" switch (now a segmented toggle, replacing the plain red button) and the start screen's profession cards, skill bars and "You can craft now" block. The style book's 9-slice frames and medallion art are not in yet; this is colors and widgets only.
+
 ## 0.9.1
 
 - Fix: on WoW Forever, since the game stopped giving the realm name, "Consolidate alts" left out the alts that had not logged in since, and could list the character you play, or an alt, twice. An unknown realm now goes with any: all your characters are together again, each once, from its newest copy.

@@ -1,5 +1,6 @@
 local _, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- Page of the main window that searches every recipe in the game's data (also the ones of professions the
 -- character doesn't have). The matches are listed like those of a profession's page (the same list, in the table or
@@ -33,10 +34,6 @@ local function viewName()
     local view = ns.char.view
     for _, name in ipairs(VIEW_NAMES) do if name == view then return view end end
     return "table"
-end
-
-local function viewLabel(view)
-    return ({ table = L["Table"], detailed = L["Detailed"] })[view]
 end
 
 local function updateCount()
@@ -121,7 +118,7 @@ local function refresh()
 
     ns.RecipeList_Set(results, viewName(), filters.sort)
     updateCount()
-    page.viewButton:SetText(L["View: %s"]:format(viewLabel(viewName())))
+    page.viewToggle:SetValue(viewName())
     page.filterBar.Update()
 
     -- the panel of a recipe that is no longer in the list closes
@@ -151,11 +148,6 @@ end
 local function sortBy(key)
     ns.FilterBar_SortBy(filters, key)
     saveFilters()
-    refresh()
-end
-
-local function cycleView()
-    ns.char.view = ns.FilterBar_NextValue(VIEW_NAMES, 2, viewName())
     refresh()
 end
 
@@ -194,23 +186,24 @@ function ns.SearchPage_Create(parent, top)
     page:SetPoint("TOPLEFT", 12, -top)
     page:SetPoint("BOTTOMRIGHT", -12, 12)
 
-    local back = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    back:SetSize(90, 22)
+    local back = T.CreateGhostButton(page, L["< Professions"], 90, 22)
     back:SetPoint("TOPLEFT", 0, 0)
-    back:SetText(L["< Professions"])
     back:SetScript("OnClick", function() ns.UI_ShowOverview() end)
 
     -- the view (as in a profession's page), on the right of the first row
-    local viewButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    viewButton:SetSize(130, 22)
-    viewButton:SetPoint("TOPRIGHT", 0, 0)
-    viewButton:SetScript("OnClick", cycleView)
-    page.viewButton = viewButton
+    local viewToggle = T.CreateSegmentedToggle(page, { { value = "table", text = L["Table"] },
+        { value = "detailed", text = L["Detailed"] } }, function(view)
+        ns.char.view = view
+        refresh()
+    end)
+    viewToggle:SetSize(130, 22)
+    viewToggle:SetPoint("TOPRIGHT", 0, 0)
+    page.viewToggle = viewToggle
 
     local search = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
     search:SetHeight(20)
     search:SetPoint("LEFT", back, "RIGHT", 14, 0)
-    search:SetPoint("RIGHT", viewButton, "LEFT", -10, 0)
+    search:SetPoint("RIGHT", viewToggle, "LEFT", -10, 0)
     search:SetAutoFocus(false)
     search:SetMaxLetters(60)
     local hint = search:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -237,10 +230,8 @@ function ns.SearchPage_Create(parent, top)
         categories = function() return state.categories end,
         onChange = function() saveFilters(); refresh() end,
     })
-    local skillButton = CreateFrame("Button", nil, page.filterBar.checks, "UIPanelButtonTemplate")
-    skillButton:SetSize(190, 22)
+    local skillButton = T.CreateGhostButton(page.filterBar.checks, L["Profession: %s"]:format(L["All"]), 190, 22)
     skillButton:SetPoint("RIGHT", page.filterBar.clearButton, "LEFT", -6, 0)
-    skillButton:SetText(L["Profession: %s"]:format(L["All"]))
     skillButton:SetScript("OnClick", cycleSkill)
     page.skillButton = skillButton
 

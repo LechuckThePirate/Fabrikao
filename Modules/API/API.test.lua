@@ -54,7 +54,7 @@ describe("FabrikaoAPI", function()
 
     it("takes the profession picked in the search page out of the way", function()
         ns.UI_ShowSearch("i")
-        local skillButton = WowMock.Find(function(f) return f._template == "UIPanelButtonTemplate" and f:GetText() == "Profession: All" end)
+        local skillButton = WowMock.Find(function(f) return f:GetText() == "Profession: All" and f._scripts.OnClick ~= nil end)
         skillButton._scripts.OnClick(skillButton) -- Alchemy first
         FabrikaoAPI.ShowRecipesUsing(13)
         assert.are.same({ "Iron Sword" }, names(ns.SearchPage_Results()))

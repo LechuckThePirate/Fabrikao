@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 local L = ns.L
+local T = ns.Theme
 
 -- The addon's window. First page: the start screen in four quadrants (Overview.lua): the character's professions, what it can learn,
 -- what it can craft now and the trainers close by, under a search box and a button that lists the professions that are not learned
@@ -52,13 +53,9 @@ local function viewName()
     return "table" -- also what an older version's "list" becomes
 end
 
-local function viewLabel(view)
-    return ({ table = L["Table"], detailed = L["Detailed"] })[view]
-end
-
 local function updateControls()
     page.filterBar.Update()
-    page.viewButton:SetText(L["View: %s"]:format(viewLabel(viewName())))
+    page.viewToggle:SetValue(viewName())
 end
 
 local function refreshRecipes()
@@ -95,11 +92,6 @@ local function sortBy(key)
     changed()
 end
 
-local function cycleView()
-    ns.char.view = ns.FilterBar_NextValue(VIEW_NAMES, 2, viewName())
-    refreshRecipes()
-end
-
 -- a click on a recipe: its panel opens next to the window
 local function selectRecipe(data)
     local profession = state.skillLine and ns.Professions_Get(state.skillLine)
@@ -131,10 +123,8 @@ local function createPage(parent, top)
     page:SetPoint("TOPLEFT", 12, -top)
     page:SetPoint("BOTTOMRIGHT", -12, 12)
 
-    local back = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    back:SetSize(90, 22)
+    local back = T.CreateGhostButton(page, L["< Professions"], 90, 22)
     back:SetPoint("TOPLEFT", 0, 0)
-    back:SetText(L["< Professions"])
     back:SetScript("OnClick", function() ns.UI_ShowOverview() end)
 
     page.icon = page:CreateTexture(nil, "ARTWORK")
@@ -142,19 +132,19 @@ local function createPage(parent, top)
     page.icon:SetPoint("LEFT", back, "RIGHT", 12, 0)
     page.title = page:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     page.title:SetPoint("LEFT", page.icon, "RIGHT", 8, 0)
+    T.Font(page.title, "title", "bronze")
     page.rank = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     page.rank:SetPoint("TOPRIGHT", 0, -4)
+    T.Font(page.rank, "body", "text")
     -- said on the page itself when the recipes are the whole account's ("Consolidate alts")
     page.accountBanner = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     page.accountBanner:SetPoint("TOPRIGHT", page.rank, "BOTTOMRIGHT", 0, -2)
-    page.accountBanner:SetTextColor(0.4, 1, 0.4)
+    T.Font(page.accountBanner, "small", "profit")
     page.accountBanner:Hide()
 
     -- the profession's trainers, nearest first, in a panel next to the window (Trainers.lua)
-    page.trainersButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    page.trainersButton:SetSize(96, 22)
+    page.trainersButton = T.CreateGhostButton(page, L["Trainers"], 96, 22)
     page.trainersButton:SetPoint("RIGHT", page.rank, "LEFT", -14, 0)
-    page.trainersButton:SetText(L["Trainers"])
     page.trainersButton:SetScript("OnClick", function()
         if state.skillLine then ns.Trainers_Toggle(state.skillLine, state.professionName, state.nextRank) end
     end)
@@ -195,10 +185,14 @@ local function createPage(parent, top)
             page.updateHint()
         end,
     })
-    page.viewButton = CreateFrame("Button", nil, page.filterBar.checks, "UIPanelButtonTemplate")
-    page.viewButton:SetSize(130, 22)
-    page.viewButton:SetPoint("RIGHT", page.filterBar.clearButton, "LEFT", -6, 0)
-    page.viewButton:SetScript("OnClick", cycleView)
+    -- the segmented [ Table | Detailed ] switch, replacing the style book's flagged "View: Table" red button
+    page.viewToggle = T.CreateSegmentedToggle(page.filterBar.checks, { { value = "table", text = L["Table"] },
+        { value = "detailed", text = L["Detailed"] } }, function(view)
+        ns.char.view = view
+        refreshRecipes()
+    end)
+    page.viewToggle:SetSize(130, 22)
+    page.viewToggle:SetPoint("RIGHT", page.filterBar.clearButton, "LEFT", -6, 0)
 
     page.count = page:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     page.count:SetPoint("BOTTOMLEFT", 4, 0)
@@ -360,7 +354,10 @@ local function createFrame()
         frame:SetPortraitToAsset("Interface\\AddOns\\" .. ADDON .. "\\Icons\\Fabrikao.png")
     end
     local title = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText
-    if title then title:SetText(("Fabrikao!! v%s"):format(ns.Version())) end
+    if title then
+        title:SetText(("Fabrikao!! v%s"):format(ns.Version()))
+        if title.SetTextColor then title:SetTextColor(T.rgba("bronzeLight")) end
+    end
 
     -- the gear next to the X opens the preferences: our own icon, tinted gold
     local gear = CreateFrame("Button", nil, frame)
@@ -405,10 +402,10 @@ local function createFrame()
     function switch.Update()
         local on = ns.Consolidated()
         switch.on = on
-        track:SetColorTexture(on and 0.20 or 0.30, on and 0.65 or 0.30, on and 0.25 or 0.30, 1)
+        track:SetColorTexture(T.rgba(on and "bronze" or "iron"))
         knob:ClearAllPoints()
         knob:SetPoint(on and "RIGHT" or "LEFT", on and -1 or 1, 0)
-        switchLabel:SetTextColor(on and 0.4 or 0.6, on and 1 or 0.6, on and 0.4 or 0.6)
+        switchLabel:SetTextColor(T.rgba(on and "bronzeLight" or "muted"))
     end
     switch:SetScript("OnClick", function()
         ns.SetConsolidated(not ns.Consolidated())

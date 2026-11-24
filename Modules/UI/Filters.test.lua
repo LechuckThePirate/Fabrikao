@@ -41,6 +41,12 @@ describe("Recipes page", function()
         return WowMock.Find(function(f) return type(f._text) == "string" and named(f._text) and f._scripts.OnClick and f:IsVisible() end)
     end
 
+    -- a segment of the [ Table | Detailed ] toggle: its label is a child font string of the clickable button
+    local function segment(text)
+        local label = WowMock.Find(function(f) return f._text == text and f:IsVisible() end)
+        return label and label:GetParent()
+    end
+
     local function checks()
         return WowMock.FindAll(function(f) return f._template == "UICheckButtonTemplate" and f:IsVisible() end)
     end
@@ -190,22 +196,22 @@ describe("Recipes page", function()
     end)
 
     describe("the views", function()
-        it("the page opens as a table; the view button goes to detailed and back, and the choice is kept", function()
+        it("the page opens as a table; the view toggle switches to detailed and back, and the choice is kept", function()
             openAlchemy()
-            assert.matches("Table", button("View:")._text)
+            assert.is_true(segment("Table").fill:IsShown())
             assert.is_not_nil(visible("data")[2].compIcons[1])
-            click(button("View:"))
+            click(segment("Detailed"))
             assert.are.equal("detailed", ns.char.view)
-            assert.matches("Detailed", button("View:")._text)
+            assert.is_true(segment("Detailed").fill:IsShown())
             assert.are.equal(58, visible("data")[2]:GetHeight())
-            click(button("View:"))
+            click(segment("Table"))
             assert.are.equal("table", ns.char.view)
         end)
 
         it("a \"list\" saved by an older version opens as the table", function()
             ns.char.view = "list"
             openAlchemy()
-            assert.matches("Table", button("View:")._text)
+            assert.is_true(segment("Table").fill:IsShown())
             assert.is_not_nil(visible("data")[2].compIcons[1])
         end)
 
